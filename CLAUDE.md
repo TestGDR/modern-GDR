@@ -19,6 +19,7 @@ GDR (gioco di ruolo) play by chat moderno ambientato a Miami: chat di gioco, mes
 - `src/config/site.ts` — nome del sito, tagline e voci di menu.
 - `src/app/(gioco)/` — area di gioco (bacheca, mappa, chat, messaggi, forum, social, scheda) con il layout comune.
 - `src/components/scenery/` — scenografia (cielo al tramonto, palme SVG).
+- `src/app/(gioco)/gestione/` — pannello di gestione (caratteristiche, abilità, scelte, elenchi, impostazioni, livelli e permessi, utenti, registro). Sezioni e permessi in `src/config/admin.ts`; ogni pagina usa `requirePermission()` di `src/lib/admin.ts` (senza permesso: "non trovata"). Letture in `src/lib/admin-data.ts`, scritture in `src/lib/actions/admin.ts`, interfaccia in `src/components/admin/`.
 - `src/lib/auth.ts` — utente collegato: `getPlayer()`, `requirePlayer()` (serve l'accesso; il personaggio può essere null) e `requireCharacter()` (per le azioni che richiedono un personaggio).
 - `supabase/email-templates/` — modelli delle email di Supabase (da incollare in Authentication > Emails > Templates).
 - Scheda personaggio in finestra: `src/app/(gioco)/@modal/(.)scheda` intercetta `/scheda` e `/scheda/[id]` e li apre in una finestra 800×550 (`SheetModal`, trascinabile e ridimensionabile). Aprendo l'indirizzo direttamente si vede la pagina intera. Il contenuto è condiviso in `src/components/game/sheet-content.tsx`.
@@ -28,7 +29,9 @@ GDR (gioco di ruolo) play by chat moderno ambientato a Miami: chat di gioco, mes
 ## Percorso del giocatore
 - Registrazione (nome del personaggio + email + password) → email di conferma → accesso con **nome del personaggio + password** → bacheca.
 - Il nome scelto in registrazione (`profiles.username`) è il nome del personaggio: non si cambia. Unico senza distinguere maiuscole/minuscole.
-- La scheda (età, lavoro, storia, caratteristiche) si completa da **Scheda personaggio** (`/scheda`). Senza personaggio si può leggere tutto; per scrivere in chat, messaggi e social compare l'invito `NeedsCharacter`.
+- Creazione del personaggio da **Scheda personaggio**: "Crea personaggio" crea la bozza, poi la procedura in 6 passaggi (`src/components/creation/creation-wizard.tsx`): Anagrafica, Caratteristiche, Scelte, Abilità, Background, Riepilogo. Ogni modifica si salva da sola (`saveCreation`); si riprende dall'ultimo passaggio (`characters.creation_step`).
+- L'invio passa da `submit_character()` nel database, che ricontrolla tutto (punti, massimali, abilità ≤ caratteristica, PX, tenore). Approva/rifiuta con `review_character()` (permesso `personaggi.approvare`). Le regole di calcolo condivise sono in `src/lib/interlock.ts`, i numeri vengono da `game_settings`.
+- **Solo i personaggi approvati giocano**: nel codice `activeCharacter(player)`, nel database `owns_character()`. Senza personaggio attivo si può leggere tutto; dove serve scrivere compare l'invito `NeedsCharacter`.
 - Recupero password: `/recupera-password` → email → `/nuova-password`.
 - `src/lib/data.ts` — letture dal database (solo server). `src/lib/actions/` — Server Action (scritture).
 - `src/lib/types.ts` — tipi delle tabelle: aggiornarli quando cambia il database.

@@ -8,7 +8,7 @@ import { LoadingBlocks } from "@/components/game/loading";
 import { MessagesShell } from "@/components/game/messages-shell";
 import { NeedsCharacter } from "@/components/game/needs-character";
 import { PrivateChat } from "@/components/game/private-chat";
-import { requirePlayer } from "@/lib/auth";
+import { activeCharacter, requirePlayer } from "@/lib/auth";
 import { getCharacter, getConversations, getMessagesWith } from "@/lib/data";
 import { initials, isOnline } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
@@ -26,7 +26,7 @@ export default function ConversationPage({ params }: PageProps<"/messaggi/[id]">
 
 async function Content({ params }: { params: PageProps<"/messaggi/[id]">["params"] }) {
   const { id } = await params;
-  const { character } = await requirePlayer();
+  const character = activeCharacter(await requirePlayer());
   if (!character) {
     return <NeedsCharacter className="glass rounded-2xl" text="I messaggi privati si scambiano tra personaggi: completa la scheda del tuo per iniziare a scrivere." />;
   }

@@ -3,18 +3,23 @@ import { createClient } from "@/lib/supabase/server";
 import { ONLINE_WINDOW_MS } from "@/lib/format";
 import { requestTime } from "@/lib/request-time";
 import type {
+  Attribute,
   Character,
   CharacterSummary,
   ChatMessage,
   CityNews,
+  CreationOption,
   District,
   DistrictWithPlaces,
   ForumBoard,
   ForumPost,
   ForumSection,
   ForumThread,
+  GameSetting,
   Place,
   PrivateMessage,
+  SheetOption,
+  Skill,
   SocialComment,
   SocialPost,
 } from "@/lib/types";
@@ -307,5 +312,70 @@ export async function getFeed(limit = 30) {
     .order("created_at", { referencedTable: "social_comments", ascending: true })
     .limit(limit)
     .overrideTypes<FeedPost[], { merge: false }>();
+  return data ?? [];
+}
+
+/* --------------------------- Sistema Interlock --------------------------- */
+
+export type RulesData = {
+  attributes: Attribute[];
+  skills: Skill[];
+  options: CreationOption[];
+  sheetOptions: SheetOption[];
+  settings: GameSetting[];
+};
+
+/** Caratteristiche, abilità, scelte, elenchi e impostazioni (solo voci attive) */
+export async function getRulesData(): Promise<RulesData> {
+  const supabase = await createClient();
+  const [attributes, skills, options, sheetOptions, settings] = await Promise.all([
+    supabase.from("attributes").select("*").eq("active", true).order("sort_order").overrideTypes<Attribute[], { merge: false }>(),
+    supabase.from("skills").select("*").eq("active", true).order("sort_order").overrideTypes<Skill[], { merge: false }>(),
+    supabase.from("creation_options").select("*").eq("active", true).order("sort_order").overrideTypes<CreationOption[], { merge: false }>(),
+    supabase.from("sheet_options").select("*").eq("active", true).order("sort_order").overrideTypes<SheetOption[], { merge: false }>(),
+    supabase.from("game_settings").select("*").order("sort_order").overrideTypes<GameSetting[], { merge: false }>(),
+  ]);
+  return {
+    attributes: attributes.data ?? [],
+    skills: skills.data ?? [],
+    options: options.data ?? [],
+    sheetOptions: sheetOptions.data ?? [],
+    settings: settings.data ?? [],
+  };
+}
+
+export type CharacterBuild = {
+  attributes: Record<string, number>;
+  skills: Record<string, number>;
+  optionIds: string[];
+};
+
+/** Valori di un personaggio: caratteristiche, abilità e scelte di creazione */
+export async function getCharacterBuild(characterId: string): Promise<CharacterBuild> {
+  const supabase = await createClient();
+  const [attrs, skills, options] = await Promise.all([
+    supabase.from("character_attributes").select("attribute_id, value").eq("character_id", characterId)
+      .overrideTypes<{ attribute_id: string; value: number }[], { merge: false }>(),
+    supabase.from("character_skills").select("skill_id, level").eq("character_id", characterId)
+      .overrideTypes<{ skill_id: string; level: number }[], { merge: false }>(),
+    supabase.from("character_options").select("option_id").eq("character_id", characterId)
+      .overrideTypes<{ option_id: string }[], { merge: false }>(),
+  ]);
+  return {
+    attributes: Object.fromEntries((attrs.data ?? []).map((r) => [r.attribute_id, r.value])),
+    skills: Object.fromEntries((skills.data ?? []).map((r) => [r.skill_id, r.level])),
+    optionIds: (options.data ?? []).map((r) => r.option_id),
+  };
+}
+
+/** Schede in attesa di approvazione (visibili a chi ha il permesso di vederle) */
+export async function getPendingCharacters() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("characters")
+    .select("id, name, updated_at")
+    .eq("status", "in_attesa")
+    .order("updated_at")
+    .overrideTypes<{ id: string; name: string; updated_at: string }[], { merge: false }>();
   return data ?? [];
 }

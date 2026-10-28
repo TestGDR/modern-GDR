@@ -9,7 +9,7 @@ import { LoadingBlocks } from "@/components/game/loading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toggleThreadFlag } from "@/lib/actions/forum";
-import { can, requirePlayer } from "@/lib/auth";
+import { activeCharacter, can, requirePlayer } from "@/lib/auth";
 import { getBoard, getPosts, getThread } from "@/lib/data";
 import { formatDateTime, initials } from "@/lib/format";
 
@@ -26,7 +26,7 @@ export default function ThreadPage({ params }: PageProps<"/forum/[bacheca]/[disc
 async function Content({ params }: { params: PageProps<"/forum/[bacheca]/[discussione]">["params"] }) {
   const { bacheca, discussione } = await params;
   const player = await requirePlayer();
-  const { character } = player;
+  const character = activeCharacter(player);
   const [thread, board] = await Promise.all([getThread(discussione), getBoard(bacheca)]);
   if (!thread || !board || thread.board_id !== board.id) notFound();
   const posts = await getPosts(thread.id);

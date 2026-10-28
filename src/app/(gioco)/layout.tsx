@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { CircleUserRound, MessagesSquare } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { MobileNav, MobileNavFallback, SidebarNav, SidebarNavFallback } from "@/components/game/game-nav";
+import { AdminMobileLink, AdminSidebarLink } from "@/components/game/admin-link";
 import { MobileSignOut, PlayerBadge } from "@/components/game/player-badge";
 import { ModalGate } from "@/components/game/sheet-modal";
 import { DuskBackdrop } from "@/components/scenery/sunset-sky";
@@ -26,6 +27,9 @@ export default function GameLayout({ children, modal }: { children: React.ReactN
           <Suspense fallback={<SidebarNavFallback />}>
             <SidebarNav />
           </Suspense>
+          <Suspense>
+            <AdminSidebarLink />
+          </Suspense>
         </div>
         <Suspense fallback={<div className="m-3 h-16 animate-pulse rounded-2xl bg-white/5" />}>
           <PlayerBadge />
@@ -36,6 +40,9 @@ export default function GameLayout({ children, modal }: { children: React.ReactN
       <header className="glass fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-x-0 border-t-0 px-4 pt-[env(safe-area-inset-top)] lg:hidden">
         <Logo href="/bacheca" size="sm" />
         <div className="flex items-center gap-1">
+          <Suspense>
+            <AdminMobileLink />
+          </Suspense>
           <Link href="/forum" className={buttonVariants({ variant: "ghost", size: "icon" })} aria-label="Forum">
             <MessagesSquare className="size-5" />
           </Link>

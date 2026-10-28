@@ -2,7 +2,7 @@ import Link from "next/link";
 import { LogOut } from "lucide-react";
 import { CharacterAvatar } from "@/components/game/character-avatar";
 import { Button } from "@/components/ui/button";
-import { requirePlayer } from "@/lib/auth";
+import { activeCharacter, requirePlayer } from "@/lib/auth";
 import { signOut } from "@/lib/actions/auth";
 import { initials } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
@@ -20,7 +20,9 @@ async function touchLastSeen(characterId: string, lastSeenAt: string | null) {
 
 /** Riquadro del giocatore in fondo alla sidebar */
 export async function PlayerBadge() {
-  const { character, profile } = await requirePlayer();
+  const player = await requirePlayer();
+  const { profile } = player;
+  const character = activeCharacter(player);
   if (character) await touchLastSeen(character.id, character.last_seen_at);
   const name = character?.name ?? profile.username;
 
@@ -30,7 +32,7 @@ export async function PlayerBadge() {
         <CharacterAvatar initials={initials(name)} online={!!character} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{name}</p>
-          <p className="truncate text-xs text-muted-foreground">{character ? "In gioco" : "Scheda da completare"}</p>
+          <p className="truncate text-xs text-muted-foreground">{character ? "In gioco" : player.character?.status === "in_attesa" ? "Scheda in attesa" : "Scheda da completare"}</p>
         </div>
       </Link>
       <form action={signOut}>

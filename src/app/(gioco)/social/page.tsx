@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/game/page-header";
 import { CommentForm, NewPostForm } from "@/components/game/social-forms";
 import { Palm } from "@/components/scenery/palm";
 import { deletePost, toggleLike } from "@/lib/actions/social";
-import { requirePlayer } from "@/lib/auth";
+import { activeCharacter, requirePlayer } from "@/lib/auth";
 import { getFeed, type FeedPost } from "@/lib/data";
 import { gradientFor, initials, timeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -29,7 +29,9 @@ export default function SocialPage() {
 }
 
 async function Content() {
-  const { character, userId } = await requirePlayer();
+  const player = await requirePlayer();
+  const { userId } = player;
+  const character = activeCharacter(player);
   const posts = await getFeed();
   const now = await requestTime();
 

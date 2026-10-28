@@ -7,8 +7,8 @@ import { EmptyState, LoadingBlocks } from "@/components/game/loading";
 import { NeedsCharacter } from "@/components/game/needs-character";
 import { PageHeader } from "@/components/game/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { requirePlayer } from "@/lib/auth";
-import { getDistrictsWithPlaces, getNews, getOnlineCharacters, getPlaceActivity } from "@/lib/data";
+import { activeCharacter, can, requirePlayer } from "@/lib/auth";
+import { getDistrictsWithPlaces, getNews, getOnlineCharacters, getPendingCharacters, getPlaceActivity } from "@/lib/data";
 import { formatDateTime, initials } from "@/lib/format";
 import { requestTime } from "@/lib/request-time";
 
@@ -30,7 +30,10 @@ export default function BachecaPage() {
 }
 
 async function Content() {
-  const { character, profile } = await requirePlayer();
+  const player = await requirePlayer();
+  const { profile } = player;
+  const character = activeCharacter(player);
+  const pendingSheets = can(player, "personaggi.approvare") ? await getPendingCharacters() : [];
   const [districts, activity, online, news] = await Promise.all([
     getDistrictsWithPlaces(),
     getPlaceActivity(),
@@ -57,11 +60,31 @@ async function Content() {
         subtitle="Ecco cosa succede a Miami stasera."
       />
 
-      {!character && (
+      {!character && player.character?.status === "in_attesa" && (
+        <p className="glass mb-6 rounded-2xl px-5 py-4 text-sm text-peach">
+          La tua scheda è in attesa di approvazione: appena lo staff la approva potrai giocare.
+        </p>
+      )}
+      {!character && player.character?.status !== "in_attesa" && (
         <NeedsCharacter
           className="glass mb-6 rounded-2xl"
           text="Benvenuto a Miami! Puoi esplorare tutto; per giocare in chat, scrivere messaggi e usare il social completa prima la scheda del tuo personaggio."
         />
+      )}
+
+      {pendingSheets.length > 0 && (
+        <div className="glass mb-6 rounded-2xl px-5 py-4">
+          <p className="mb-2 font-heading text-xl tracking-wide text-peach">Schede in attesa di approvazione ({pendingSheets.length})</p>
+          <ul className="flex flex-wrap gap-2">
+            {pendingSheets.map((p) => (
+              <li key={p.id}>
+                <Link href={`/scheda/${p.id}`} className="block rounded-full bg-white/10 px-3 py-1 text-sm hover:bg-white/20">
+                  {p.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <div className="glass mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl px-5 py-4 text-sm">

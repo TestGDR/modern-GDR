@@ -48,11 +48,17 @@ export async function requirePlayer() {
   return player;
 }
 
-/** Per le azioni che richiedono un personaggio (scrivere in chat, sul social…). */
+/** Il personaggio che può giocare: solo se la scheda è approvata */
+export function activeCharacter(player: Pick<Player, "character">) {
+  return player.character?.status === "approvata" ? player.character : null;
+}
+
+/** Per le azioni che richiedono un personaggio attivo (scrivere in chat, sul social…). */
 export async function requireCharacter() {
   const player = await requirePlayer();
-  if (!player.character) redirect("/scheda");
-  return { ...player, character: player.character };
+  const character = activeCharacter(player);
+  if (!character) redirect("/scheda");
+  return { ...player, character };
 }
 
 /**

@@ -3,7 +3,6 @@
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPlayer } from "@/lib/auth";
-import { STAT_KEYS, STAT_MAX, STAT_MIN, STATS_BUDGET } from "@/lib/character-stats";
 import { createClient } from "@/lib/supabase/server";
 import type { FormState } from "@/lib/types";
 
@@ -14,7 +13,6 @@ const TEXT_FIELDS = {
   bio: 5000,
   appearance: 3000,
   traits: 3000,
-  skills: 3000,
   known_facts: 3000,
   relationships: 3000,
   equipment: 3000,
@@ -46,46 +44,9 @@ function readDetails(formData: FormData): { details: Details; error?: string } {
     }
     details[key] = url;
   }
-  if (formData.has("age")) {
-    const age = Number(formData.get("age"));
-    details.age = Number.isInteger(age) && age >= 16 && age <= 99 ? age : null;
-  }
   if (formData.has("district_id")) details.district_id = clean(formData.get("district_id"), 64);
 
   return { details };
-}
-
-export async function createCharacter(_prev: FormState, formData: FormData): Promise<FormState> {
-  const player = await getPlayer();
-  if (!player) redirect("/login");
-  if (player.character) {
-    refresh();
-    return { success: "Il personaggio esiste già." };
-  }
-
-  // Il nome del personaggio è quello scelto in registrazione (profiles.username)
-  const name = player.profile.username;
-
-  const stats = Object.fromEntries(STAT_KEYS.map((k) => [k, Number(formData.get(k))]));
-  const valid = STAT_KEYS.every((k) => Number.isInteger(stats[k]) && stats[k] >= STAT_MIN && stats[k] <= STAT_MAX);
-  const total = STAT_KEYS.reduce((sum, k) => sum + stats[k], 0);
-  if (!valid || total > STATS_BUDGET) {
-    return { error: `Caratteristiche non valide: ognuna da 1 a 10, massimo ${STATS_BUDGET} punti in totale.` };
-  }
-
-  const { details, error: detailsError } = readDetails(formData);
-  if (detailsError) return { error: detailsError };
-
-  const supabase = await createClient();
-  const { error } = await supabase.from("characters").insert({ name, ...details, ...stats });
-
-  if (error) {
-    if (error.code === "23505") return { error: "Esiste già un personaggio con questo nome." };
-    return { error: `Non è stato possibile creare il personaggio: ${error.message}` };
-  }
-  // Nessun cambio di pagina: si ricaricano i dati e la scheda (pagina o finestra) mostra il personaggio
-  refresh();
-  return { success: "Personaggio creato!" };
 }
 
 export async function updateCharacter(_prev: FormState, formData: FormData): Promise<FormState> {

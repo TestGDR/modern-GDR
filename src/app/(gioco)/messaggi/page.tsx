@@ -6,7 +6,7 @@ import { CharacterAvatar } from "@/components/game/character-avatar";
 import { LoadingBlocks } from "@/components/game/loading";
 import { MessagesShell } from "@/components/game/messages-shell";
 import { NeedsCharacter } from "@/components/game/needs-character";
-import { requirePlayer } from "@/lib/auth";
+import { activeCharacter, requirePlayer } from "@/lib/auth";
 import { getAllCharacters, getConversations } from "@/lib/data";
 import { initials, isOnline } from "@/lib/format";
 import { requestTime } from "@/lib/request-time";
@@ -22,7 +22,7 @@ export default function MessaggiPage() {
 }
 
 async function Content() {
-  const { character } = await requirePlayer();
+  const character = activeCharacter(await requirePlayer());
   if (!character) return <NoCharacter />;
   const [conversations, everyone] = await Promise.all([getConversations(character.id), getAllCharacters()]);
   const others = everyone.filter((c) => c.id !== character.id);

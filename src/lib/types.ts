@@ -45,6 +45,30 @@ export type Skill = {
   active: boolean;
 };
 
+/** Voce degli elenchi della scheda (indirizzi, anni, club, nazionalità) */
+export type SheetOption = {
+  id: string;
+  kind: "indirizzo" | "anno" | "club";
+  name: string;
+  sort_order: number;
+  active: boolean;
+};
+
+/** Vantaggio, svantaggio, tratto o tenore di vita */
+export type CreationOption = {
+  id: string;
+  kind: "vantaggio" | "svantaggio" | "tratto" | "tenore";
+  name: string;
+  /** Positivo se costa PX, negativo se ne dà */
+  cost_px: number;
+  description: string;
+  roll_modifier: number | null;
+  roll_skill_id: string | null;
+  incompatible_ids: string[];
+  sort_order: number;
+  active: boolean;
+};
+
 export type GameSetting = {
   key: string;
   value: number | number[] | string;
@@ -96,10 +120,15 @@ export type Character = {
   known_facts: string | null;
   relationships: string | null;
   equipment: string | null;
-  physique: number;
-  cunning: number;
-  charisma: number;
-  driving: number;
+  sex: "M" | "F" | "X" | null;
+  birth_date: string | null;
+  /** Testo libero scritto dal giocatore */
+  nationality: string | null;
+  study_track_id: string | null;
+  year_id: string | null;
+  club_id: string | null;
+  /** Ultimo passaggio raggiunto nella creazione (1-6) */
+  creation_step: number;
   last_seen_at: string | null;
   created_at: string;
   status: CharacterStatus;

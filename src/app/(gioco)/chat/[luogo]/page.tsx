@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { ChatRoom } from "@/components/game/chat-room";
-import { requirePlayer } from "@/lib/auth";
+import { activeCharacter, requirePlayer } from "@/lib/auth";
 import { getChatMessages, getPlaceBySlug } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Chat" };
@@ -25,7 +25,7 @@ export default function ChatRoomPage({ params }: PageProps<"/chat/[luogo]">) {
 
 async function Room({ params }: { params: PageProps<"/chat/[luogo]">["params"] }) {
   const { luogo } = await params;
-  const { character } = await requirePlayer();
+  const character = activeCharacter(await requirePlayer());
   const place = await getPlaceBySlug(luogo);
   if (!place) notFound();
   const messages = await getChatMessages(place.id);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -24,14 +24,15 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { FormMessage } from "@/components/auth/auth-forms";
-import { CreateCharacterForm } from "@/components/game/character-form";
 import { Palm } from "@/components/scenery/palm";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { updateCharacter } from "@/lib/actions/character";
-import { STATS } from "@/lib/character-stats";
+import { reviewCharacter, startCharacter } from "@/lib/actions/creation";
+import type { CharacterBuild, RulesData } from "@/lib/data";
+import { formatBirthDate } from "@/lib/interlock";
 import { initials } from "@/lib/format";
 import type { Character, District, FormState } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -58,8 +59,8 @@ const SECTIONS: Section[] = [
   { key: "si-sa-che", label: "Si sa che", icon: Eye, field: "known_facts", hint: "Voci, fatti noti, reputazione: ciò che a Miami si dice di lui o di lei." },
   { key: "affetti", label: "Affetti", icon: Heart, field: "relationships", hint: "Famiglia, amici, amori, nemici." },
   { key: "caratteristiche", label: "Caratteristiche", icon: Gauge },
-  { key: "abilita", label: "Abilità", icon: Zap, field: "skills", hint: "Cosa sa fare: mestieri, talenti, competenze." },
-  { key: "tratti", label: "Tratti", icon: Fingerprint, field: "traits", hint: "Carattere, abitudini, pregi e difetti." },
+  { key: "abilita", label: "Abilità", icon: Zap },
+  { key: "tratti", label: "Tratti", icon: Fingerprint, field: "traits", hint: "Carattere: personalità, abitudini, pregi e difetti." },
   { key: "aspetto", label: "Aspetto", icon: ScanFace, field: "appearance", hint: "Com'è fisicamente, come si veste, segni particolari." },
   { key: "storia", label: "Storia", icon: BookOpen, field: "bio", hint: "Da dove viene e cosa l'ha portato a Miami." },
   { key: "equipaggiamento", label: "Equipaggiamento", icon: Backpack, field: "equipment", hint: "Cosa porta con sé: auto, telefono, oggetti." },
@@ -77,6 +78,11 @@ type CharacterSheetWindowProps = {
   districts?: District[];
   /** "page" = pagina /scheda, "modal" = dentro la finestra trascinabile */
   variant?: SheetVariant;
+  /** Valori Interlock del personaggio e regole del sistema */
+  build: CharacterBuild;
+  rules: RulesData;
+  /** Chi può approvare vede i pulsanti Approva/Rifiuta sulle schede in attesa */
+  canReview?: boolean;
 };
 
 /** Scheda del personaggio a sezioni, nello stile "finestra" del gioco */
@@ -87,15 +93,19 @@ export function CharacterSheetWindow({
   since,
   districts = [],
   variant = "page",
+  build,
+  rules,
+  canReview = false,
 }: CharacterSheetWindowProps) {
   const [view, setView] = useState<View>({ section: "principale", mode: "view" });
   const section = SECTIONS.find((s) => s.key === view.section) ?? SECTIONS[0];
-  const canEdit = isOwner && section.key !== "caratteristiche";
+  const canEdit = isOwner && section.key !== "caratteristiche" && section.key !== "abilita";
 
   const open = (key: string) => setView({ section: key, mode: "view" });
 
   return (
     <SheetFrame title={`Scheda · ${character.name}`} variant={variant}>
+      <StatusBanner character={character} canReview={canReview} />
       <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto @2xl:grid-cols-[16rem_minmax(0,1fr)] @2xl:overflow-hidden">
         {/* Colonna sinistra: ritratto, quartiere, sezioni */}
         <aside className="flex flex-col border-white/10 @2xl:min-h-0 @2xl:border-r">
@@ -188,12 +198,22 @@ export function CharacterSheetWindow({
             <MainSection character={character} />
           ) : section.key === "dati" ? (
             <SectionFrame title="Dati">
-              <DataList character={character} online={online} since={since} />
+              <DataList character={character} online={online} since={since} rules={rules} />
             </SectionFrame>
           ) : section.key === "caratteristiche" ? (
             <SectionFrame title="Caratteristiche">
-              <StatBars character={character} />
-              <p className="mt-6 text-xs text-muted-foreground">Le caratteristiche possono essere modificate solo dallo staff.</p>
+              <StatBars build={build} rules={rules} />
+              <p className="mt-6 text-xs text-muted-foreground">Le caratteristiche non cambiano dopo l&apos;approvazione.</p>
+            </SectionFrame>
+          ) : section.key === "abilita" ? (
+            <SectionFrame title="Abilità">
+              <SkillList build={build} rules={rules} />
+            </SectionFrame>
+          ) : section.key === "tratti" ? (
+            <SectionFrame title="Tratti">
+              <ChosenOptions build={build} rules={rules} />
+              <h3 className="mt-6 mb-2 font-heading text-xl tracking-wide text-peach">Carattere</h3>
+              <FreeText text={character.traits} isOwner={isOwner} />
             </SectionFrame>
           ) : (
             <SectionFrame title={section.label}>
@@ -319,12 +339,22 @@ function FreeText({ text, isOwner }: { text: string | null; isOwner: boolean }) 
   return <p className="max-w-2xl text-[0.95rem] leading-relaxed whitespace-pre-line text-foreground/90">{text}</p>;
 }
 
-function DataList({ character, online, since }: { character: SheetCharacter; online: boolean; since: string }) {
+const SEX_LABELS: Record<string, string> = { M: "Maschile", F: "Femminile", X: "Non binario" };
+
+function DataList({ character, online, since, rules }: { character: SheetCharacter; online: boolean; since: string; rules: RulesData }) {
+  const option = (id: string | null) => rules.sheetOptions.find((o) => o.id === id)?.name ?? "—";
   const rows = [
     { label: "Nome", value: character.name },
+    { label: "Sesso", value: character.sex ? SEX_LABELS[character.sex] : "—" },
     { label: "Età", value: character.age ? `${character.age} anni` : "—" },
+    { label: "Nato/a il", value: formatBirthDate(character.birth_date) },
+    { label: "Nazionalità", value: character.nationality || "—" },
+    { label: "Indirizzo di studio", value: option(character.study_track_id) },
+    { label: "Anno di corso", value: option(character.year_id) },
+    { label: "Squadra o club", value: character.club_id ? option(character.club_id) : "—" },
     { label: "Lavoro", value: character.occupation ?? "—" },
     { label: "Quartiere", value: character.district?.name ?? "—" },
+    { label: "PX da spendere", value: String(character.px) },
     { label: "A Miami dal", value: since },
     { label: "Stato", value: online ? "Online" : "Offline" },
   ];
@@ -340,21 +370,154 @@ function DataList({ character, online, since }: { character: SheetCharacter; onl
   );
 }
 
-function StatBars({ character }: { character: SheetCharacter }) {
+function StatBars({ build, rules }: { build: CharacterBuild; rules: RulesData }) {
   return (
     <ul className="flex max-w-2xl flex-col gap-4">
-      {STATS.map(({ key, label }) => (
-        <li key={key}>
-          <div className="mb-1.5 flex justify-between text-sm">
-            <span className="tracking-wide uppercase">{label}</span>
-            <span className="text-muted-foreground">{character[key]}/10</span>
-          </div>
-          <div className="h-2.5 overflow-hidden rounded-full bg-white/10">
-            <div className="h-full rounded-full bg-gradient-to-r from-violet via-flamingo to-peach" style={{ width: `${character[key] * 10}%` }} />
-          </div>
-        </li>
-      ))}
+      {rules.attributes.map((a) => {
+        const value = build.attributes[a.id] ?? 0;
+        return (
+          <li key={a.id}>
+            <div className="mb-1.5 flex justify-between text-sm">
+              <span className="tracking-wide uppercase">
+                <span className="text-peach">{a.code}</span> · {a.name}
+              </span>
+              <span className="text-muted-foreground">{value}/10</span>
+            </div>
+            <div className="h-2.5 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full rounded-full bg-gradient-to-r from-violet via-flamingo to-peach" style={{ width: `${value * 10}%` }} />
+            </div>
+          </li>
+        );
+      })}
     </ul>
+  );
+}
+
+/** Abilità raggruppate per caratteristica, con il totale caratteristica + abilità */
+function SkillList({ build, rules }: { build: CharacterBuild; rules: RulesData }) {
+  const groups = rules.attributes
+    .map((a) => ({ attr: a, skills: rules.skills.filter((s) => s.attribute_id === a.id && (build.skills[s.id] ?? 0) > 0) }))
+    .filter((g) => g.skills.length > 0);
+  if (groups.length === 0) return <p className="text-sm text-muted-foreground">Nessuna abilità addestrata.</p>;
+  return (
+    <div className="flex max-w-2xl flex-col gap-5">
+      {groups.map(({ attr, skills }) => {
+        const attrValue = build.attributes[attr.id] ?? 0;
+        return (
+          <section key={attr.id}>
+            <h3 className="mb-2 flex justify-between font-heading text-xl tracking-wide">
+              <span>
+                <span className="text-peach">{attr.code}</span> · {attr.name}
+              </span>
+              <span className="text-base text-muted-foreground">{attrValue}</span>
+            </h3>
+            <ul className="flex flex-col gap-1.5">
+              {skills.map((s) => {
+                const level = build.skills[s.id] ?? 0;
+                return (
+                  <li key={s.id} className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3 py-2 text-sm">
+                    <span className="min-w-0 truncate" title={s.description}>{s.name}</span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="flex gap-0.5" aria-label={`Livello ${level}`}>
+                        {Array.from({ length: 10 }, (_, i) => (
+                          <span key={i} className={cn("size-2 rounded-full", i < level ? "bg-flamingo" : "bg-white/15")} />
+                        ))}
+                      </span>
+                      <span className="w-14 text-right text-xs text-muted-foreground">
+                        totale <strong className="text-foreground">{attrValue + level}</strong>
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+const OPTION_TITLES = { tenore: "Tenore di vita", vantaggio: "Vantaggi", svantaggio: "Svantaggi", tratto: "Tratti" } as const;
+
+function ChosenOptions({ build, rules }: { build: CharacterBuild; rules: RulesData }) {
+  const chosen = rules.options.filter((o) => build.optionIds.includes(o.id));
+  if (chosen.length === 0) return <p className="text-sm text-muted-foreground">Nessun vantaggio, svantaggio o tratto.</p>;
+  return (
+    <div className="grid max-w-2xl gap-4 @lg:grid-cols-2">
+      {(Object.keys(OPTION_TITLES) as (keyof typeof OPTION_TITLES)[]).map((kind) => {
+        const items = chosen.filter((o) => o.kind === kind);
+        if (items.length === 0) return null;
+        return (
+          <section key={kind}>
+            <h3 className="mb-2 font-heading text-lg tracking-wide text-peach">{OPTION_TITLES[kind]}</h3>
+            <ul className="flex flex-col gap-1.5">
+              {items.map((o) => (
+                <li key={o.id} className="rounded-lg bg-white/5 px-3 py-2 text-sm">
+                  <p className="font-medium">{o.name}</p>
+                  {o.description && <p className="text-xs text-muted-foreground">{o.description}</p>}
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Stato della scheda (bozza, in attesa, rifiutata) e, per chi può, Approva/Rifiuta */
+function StatusBanner({ character, canReview }: { character: SheetCharacter; canReview: boolean }) {
+  const [reason, setReason] = useState("");
+  const [rejecting, setRejecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  if (character.status === "approvata") return null;
+
+  function review(approve: boolean) {
+    startTransition(async () => {
+      const result = await reviewCharacter(character.id, approve, reason);
+      if (!result.ok) setError(result.error ?? "Operazione non riuscita.");
+    });
+  }
+
+  const label =
+    character.status === "in_attesa" ? "Scheda in attesa di approvazione" : character.status === "rifiutata" ? "Scheda rifiutata" : "Scheda in bozza";
+
+  return (
+    <div className="shrink-0 border-b border-peach/30 bg-peach/10 px-4 py-2 text-sm">
+      <p className="font-semibold text-peach">{label}</p>
+      {character.status === "rifiutata" && character.rejection_reason && <p className="text-white/80">Motivo: {character.rejection_reason}</p>}
+      {canReview && character.status === "in_attesa" && (
+        <div className="mt-2 flex flex-col gap-2">
+          {rejecting && (
+            <Textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Motivo del rifiuto (lo vedrà il giocatore)"
+              rows={2}
+              maxLength={1000}
+              className="bg-night/40"
+            />
+          )}
+          {error && <p className="text-destructive">{error}</p>}
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" disabled={pending} onClick={() => review(true)} className="rounded-full">
+              Approva
+            </Button>
+            {rejecting ? (
+              <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => review(false)} className="rounded-full">
+                Conferma rifiuto
+              </Button>
+            ) : (
+              <Button type="button" size="sm" variant="ghost" onClick={() => setRejecting(true)}>
+                Rifiuta…
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -406,14 +569,9 @@ function SectionEditor({
 
         {section.key === "dati" && (
           <>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <EditField id="age" label="Età">
-                <Input id="age" name="age" type="number" min={16} max={99} defaultValue={character.age ?? ""} className="h-10 bg-night/40" />
-              </EditField>
-              <EditField id="occupation" label="Lavoro">
-                <Input id="occupation" name="occupation" maxLength={60} defaultValue={character.occupation ?? ""} className="h-10 bg-night/40" />
-              </EditField>
-            </div>
+            <EditField id="occupation" label="Lavoro">
+              <Input id="occupation" name="occupation" maxLength={60} defaultValue={character.occupation ?? ""} className="h-10 bg-night/40" />
+            </EditField>
             <EditField id="district_id" label="Quartiere">
               <select id="district_id" name="district_id" defaultValue={character.district_id ?? ""} className={selectClass}>
                 <option value="">— Nessuno —</option>
@@ -491,7 +649,7 @@ export type SheetVariant = "page" | "modal";
  * Cornice della scheda: barra del titolo "SCHEDA · NOME" e X per chiudere.
  * Nella finestra la barra serve anche per trascinarla.
  */
-function SheetFrame({ title, variant, children }: { title: string; variant: SheetVariant; children: React.ReactNode }) {
+export function SheetFrame({ title, variant, children }: { title: string; variant: SheetVariant; children: React.ReactNode }) {
   const router = useRouter();
   const close = () => (window.history.length > 1 ? router.back() : router.push("/bacheca"));
   const inModal = variant === "modal";
@@ -523,41 +681,32 @@ function SheetFrame({ title, variant, children }: { title: string; variant: Shee
 }
 
 /** Scheda di chi non ha ancora creato il personaggio: al centro il pulsante "Crea personaggio" */
-export function NewCharacterSheet({
-  name,
-  districts,
-  variant = "page",
-}: {
-  name: string;
-  districts: District[];
-  variant?: SheetVariant;
-}) {
-  const [creating, setCreating] = useState(false);
+export function NewCharacterSheet({ name, variant = "page" }: { name: string; variant?: SheetVariant }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function create() {
+    startTransition(async () => {
+      const result = await startCharacter();
+      if (!result.ok) setError(result.error ?? "Non è stato possibile creare il personaggio.");
+    });
+  }
 
   return (
     <SheetFrame title={`Scheda · ${name}`} variant={variant}>
-      {creating ? (
-        <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
-          <div className="mx-auto max-w-xl">
-            <h2 className="font-heading text-3xl tracking-wide text-sunset">Crea il personaggio</h2>
-            <p className="mb-6 text-sm text-muted-foreground">Età, lavoro, quartiere, storia e caratteristiche. Il resto lo completi dopo, sezione per sezione.</p>
-            <CreateCharacterForm districts={districts} name={name} />
-          </div>
-        </div>
-      ) : (
-        <div className="relative grid min-h-[20rem] flex-1 place-items-center overflow-hidden p-6 text-center">
+      <div className="relative grid min-h-[20rem] flex-1 place-items-center overflow-hidden p-6 text-center">
           <div className="absolute inset-0 bg-gradient-to-b from-violet/40 via-flamingo/20 to-transparent" />
           <Palm className="absolute -bottom-2 -left-8 h-[70%] text-palm/60" lean={20} />
           <Palm className="absolute right-0 -bottom-2 h-[50%] text-palm/50" lean={-12} />
           <div className="relative flex flex-col items-center gap-4">
             <p className="font-heading text-4xl tracking-wide text-white">{name}</p>
             <p className="max-w-sm text-sm text-white/80">Il tuo personaggio non è ancora attivo: crealo per entrare in gioco.</p>
-            <Button type="button" size="lg" onClick={() => setCreating(true)} className="h-12 rounded-full px-8 text-base shadow-[0_8px_30px_rgb(255_121_176/0.45)]">
-              <UserRoundPlus /> Crea personaggio
+            <Button type="button" size="lg" disabled={pending} onClick={create} className="h-12 rounded-full px-8 text-base shadow-[0_8px_30px_rgb(255_121_176/0.45)]">
+              <UserRoundPlus /> {pending ? "Un attimo…" : "Crea personaggio"}
             </Button>
+            {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
-        </div>
-      )}
+      </div>
     </SheetFrame>
   );
 }
