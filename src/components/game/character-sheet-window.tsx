@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { FormMessage } from "@/components/auth/auth-forms";
 import { useCloseModal } from "@/components/game/page-modal";
+import { PrefsPanel } from "@/components/game/prefs-panel";
 import { Palm } from "@/components/scenery/palm";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -634,6 +635,9 @@ function SettingsPanel({ name, onClose }: { name: string; onClose: () => void })
         <Link href="/nuova-password" className={cn(buttonVariants({ variant: "outline" }), "w-fit rounded-full")}>
           <KeyRound /> Cambia password
         </Link>
+        <h3 className="mt-2 font-heading text-2xl tracking-wide">Preferenze</h3>
+        <p className="-mt-2 text-xs text-muted-foreground">Valgono per il tuo account, su qualsiasi dispositivo.</p>
+        <PrefsPanel />
         <Button type="button" variant="ghost" onClick={onClose} className="w-fit">
           Torna alla scheda
         </Button>

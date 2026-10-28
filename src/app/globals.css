@@ -127,6 +127,8 @@
   }
   html {
     @apply font-sans;
+    /* Grandezza del testo scelta nelle preferenze (Scheda -> Impostazioni) */
+    font-size: calc(100% * var(--text-scale, 1));
   }
 
   /* Barre di scorrimento sottili, nei colori del tramonto (non grigie) */
@@ -174,4 +176,16 @@
   .pb-mobile-nav {
     padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
   }
+}
+
+/* Icona con messaggi da leggere: lampeggia (dal Westeros: blink-call) */
+@keyframes blink-call {
+  0%, 100% { color: var(--muted-foreground); filter: none; }
+  50% { color: var(--peach); filter: drop-shadow(0 0 6px var(--flamingo)); }
+}
+.blink-call {
+  animation: blink-call 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .blink-call { animation: none; color: var(--peach); }
 }

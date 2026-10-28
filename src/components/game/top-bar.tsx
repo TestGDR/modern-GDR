@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { BookOpen, Mail, Palmtree, Send, ShieldCheck } from "lucide-react";
+import { BookOpen, Palmtree, ShieldCheck } from "lucide-react";
 import { ComingSoon, WindowButton } from "@/components/game/info-window";
 import { MenuButton } from "@/components/game/game-sidebar";
-import { sidebarIconClass } from "@/components/game/sidebar-styles";
+import { MessageButtons } from "@/components/game/message-buttons";
+import { barButtonClass as barBtn, sidebarIconClass } from "@/components/game/sidebar-styles";
 import { activeCharacter, can, getPlayer, requirePlayer } from "@/lib/auth";
 import { initials } from "@/lib/format";
 import { requestTime } from "@/lib/request-time";
@@ -18,9 +19,6 @@ async function touchLastSeen(characterId: string, lastSeenAt: string | null) {
   const supabase = await createClient();
   await supabase.from("characters").update({ last_seen_at: now.toISOString() }).eq("id", characterId);
 }
-
-const barBtn =
-  "flex flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-[0.65rem] font-medium tracking-wide text-muted-foreground uppercase transition-colors hover:bg-white/10 hover:text-foreground [&_svg]:size-5 sm:px-3";
 
 /** Ritratto del personaggio (80x80), si cambia dalla scheda */
 export async function PlayerPortrait() {
@@ -49,13 +47,19 @@ export async function PlayerPortrait() {
   );
 }
 
+/** Messaggi OFF e ON con i contatori del proprio personaggio */
+export async function PlayerMessages() {
+  const player = await getPlayer();
+  return <MessageButtons characterId={player ? (activeCharacter(player)?.id ?? null) : null} />;
+}
+
 /** Segnaposto del ritratto mentre arriva dal database */
 export function PortraitFallback() {
   return <span className="block size-16 animate-pulse rounded-full bg-white/10 lg:size-20" />;
 }
 
 /** Barra in alto: guida e ambientazione, ritratto al centro, messaggi */
-export function TopBar({ portrait }: { portrait: React.ReactNode }) {
+export function TopBar({ portrait, messages }: { portrait: React.ReactNode; messages: React.ReactNode }) {
   return (
     <header className="glass fixed inset-x-0 top-0 z-40 flex h-20 items-center border-x-0 border-t-0 px-2 pt-[env(safe-area-inset-top)] sm:px-4 lg:left-72 lg:h-24">
       <div className="flex flex-1 items-center gap-0.5 sm:gap-1">
@@ -79,15 +83,7 @@ export function TopBar({ portrait }: { portrait: React.ReactNode }) {
       </div>
 
       <div className="flex flex-1 items-center justify-end gap-0.5 sm:gap-1">
-        <WindowButton label="Messaggi OFF" shortLabel="OFF" icon={<Mail />} className={barBtn}>
-          <ComingSoon>
-            <p>I messaggi fuori gioco tra giocatori: conversazioni, gruppi, avvisi dello staff a tutti e i messaggi di SISTEMA del sito.</p>
-          </ComingSoon>
-        </WindowButton>
-        <Link href="/messaggi" className={barBtn}>
-          <Send /> <span className="sm:hidden">ON</span>
-          <span className="hidden sm:inline">Messaggi ON</span>
-        </Link>
+        {messages}
       </div>
     </header>
   );

@@ -109,6 +109,8 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
 
 export async function signOut() {
   const supabase = await createClient();
+  // si sparisce subito dai presenti online
+  await supabase.rpc("leave_online");
   await supabase.auth.signOut();
   redirect("/");
 }

@@ -18,6 +18,7 @@ import { NeedsCharacter } from "@/components/game/needs-character";
 import { Button } from "@/components/ui/button";
 import { deleteMessage, editMessage, joinChat, leaveChat, setInvisible } from "@/lib/actions/chat";
 import { HISTORY_SIZE, KIND_LABEL, freshSince, isFresh } from "@/lib/chat";
+import { playEvent } from "@/lib/notify-sound";
 import type { ChatPresent, ChatRoomData } from "@/lib/data";
 import { createClient } from "@/lib/supabase/client";
 import { useResync } from "@/lib/use-resync";
@@ -134,6 +135,8 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `room_id=eq.${roomId}` }, (payload) => {
         const msg = payload.new as Message;
         const own = msg.character_id === myId;
+        // il messaggio di un altro suona col suono scelto per la chat (preferenze)
+        if (!own && msg.kind !== "sistema") playEvent("chat");
         addMessage(msg, own);
         if (msg.kind === "sistema") {
           // la modalità master cambia i limiti: arrivano dal server

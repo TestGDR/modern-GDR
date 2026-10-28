@@ -1,12 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays,
   CircleUserRound,
   CloudSun,
+  EyeOff,
   Info,
   LifeBuoy,
   LogOut,
@@ -22,12 +23,14 @@ import { Logo } from "@/components/brand/logo";
 import { CharacterAvatar } from "@/components/game/character-avatar";
 import { ComingSoon, WindowButton } from "@/components/game/info-window";
 import { isModalPath } from "@/components/game/page-modal";
+import { usePresence } from "@/components/game/presence";
 import { sidebarIconClass } from "@/components/game/sidebar-styles";
 import { FloatingWindow } from "@/components/floating-window";
 import { signOut } from "@/lib/actions/auth";
-import { ONLINE_WINDOW_MS, initials } from "@/lib/format";
+import { AVAILABILITY, readAvailability, writeAvailability, type Availability } from "@/lib/availability";
+import { initials } from "@/lib/format";
+import { applyPrefs, cachedPrefs, loadPrefs } from "@/lib/prefs";
 import { createClient } from "@/lib/supabase/client";
-import { useResync } from "@/lib/use-resync";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------ Cassetto su mobile ------------------------------ */
@@ -100,8 +103,8 @@ function useBackgroundPath() {
   return bg;
 }
 
-/** Immagine della chat in cui si è, con info del luogo e meteo */
-function PlaceCard() {
+/** La chat in cui si è (letta una volta, serve all'immagine e ai presenti) */
+function useCurrentRoom() {
   const roomId = CHAT_PATH.exec(useBackgroundPath())?.[1] ?? null;
   const [room, setRoom] = useState<{ id: string; info: RoomInfo | null } | null>(null);
   const info = room && room.id === roomId ? room.info : null;
@@ -119,7 +122,11 @@ function PlaceCard() {
       alive = false;
     };
   }, [roomId]);
+  return { roomId, info };
+}
 
+/** Immagine della chat in cui si è, con info del luogo e meteo */
+function PlaceCard({ info }: { info: RoomInfo | null }) {
   const title = info?.name ?? "Miami";
   const subtitle = info ? (info.district?.name ?? "") : "Florida";
   const gradient = info?.district?.gradient ?? "from-violet via-flamingo to-peach";
@@ -218,81 +225,99 @@ function FeatureIcons({ adminSlot }: { adminSlot: React.ReactNode }) {
   );
 }
 
-type OnlineCharacter = { id: string; name: string; occupation: string | null; avatar_url: string | null };
-
-/** Presenti online; cliccando si apre l'elenco esteso */
-function OnlineBox() {
-  const supabase = useMemo(() => createClient(), []);
-  const [online, setOnline] = useState<OnlineCharacter[] | null>(null);
+/** Presenti online; cliccando si apre l'elenco esteso (con la propria disponibilità) */
+function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
+  const [availability, setAvailability] = useState<Availability>(readAvailability);
+  const { players, me } = usePresence({ availability, place, placeKey });
   const [open, setOpen] = useState(false);
+  const list = players ?? [];
 
-  const load = useCallback(async () => {
-    const since = new Date(Date.now() - ONLINE_WINDOW_MS).toISOString();
-    const { data } = await supabase
-      .from("characters")
-      .select("id, name, occupation, avatar_url")
-      .eq("status", "approvata")
-      .gte("last_seen_at", since)
-      .order("name")
-      .limit(200);
-    setOnline((data ?? []) as OnlineCharacter[]);
-  }, [supabase]);
+  function choose(a: Availability) {
+    writeAvailability(a);
+    setAvailability(a);
+  }
 
-  useEffect(() => {
-    const first = setTimeout(load, 0);
-    const t = setInterval(load, 20_000);
-    return () => {
-      clearTimeout(first);
-      clearInterval(t);
-    };
-  }, [load]);
-  useResync(load);
-
-  const list = online ?? [];
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className="flex flex-col gap-2 rounded-2xl bg-white/5 p-3 text-left transition-colors hover:bg-white/10">
         <span className="flex items-center gap-2 text-sm font-medium">
           <Users className="size-4 text-mint" />
           Presenti online
-          <span className="ml-auto rounded-full bg-mint/15 px-2 py-0.5 text-xs text-mint">{online ? list.length : "…"}</span>
+          <span className="ml-auto rounded-full bg-mint/15 px-2 py-0.5 text-xs text-mint">{players ? list.length : "…"}</span>
         </span>
         {list.length > 0 ? (
           <span className="flex flex-col gap-1">
             {list.slice(0, 8).map((c) => (
-              <span key={c.id} className="flex items-center gap-2 truncate text-xs text-muted-foreground">
-                <span className="size-1.5 shrink-0 rounded-full bg-mint" />
-                {c.name}
+              <span key={c.userId} className="flex items-center gap-2 truncate text-xs text-muted-foreground">
+                <span className={cn("size-1.5 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} />
+                <span className="truncate">{c.name}</span>
+                {c.invisible && <EyeOff className="size-3 shrink-0" aria-label="Invisibile" />}
               </span>
             ))}
             {list.length > 8 && <span className="text-xs text-lavender">e altri {list.length - 8}…</span>}
           </span>
         ) : (
-          <span className="text-xs text-muted-foreground">{online ? "Nessuno online in questo momento." : "Caricamento…"}</span>
+          <span className="text-xs text-muted-foreground">{players ? "Nessuno online in questo momento." : "Caricamento…"}</span>
         )}
       </button>
       {open && (
-        <FloatingWindow label="Presenti online" onClose={() => setOpen(false)} initialWidth={460} header={<h2 className="pb-4 font-heading text-3xl tracking-wide">Presenti online</h2>}>
+        <FloatingWindow label="Presenti online" onClose={() => setOpen(false)} initialWidth={480} header={<h2 className="pb-4 font-heading text-3xl tracking-wide">Presenti online</h2>}>
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-muted-foreground">La tua disponibilità:</span>
+            {(Object.keys(AVAILABILITY) as Availability[]).map((a) => (
+              <button
+                key={a}
+                type="button"
+                onClick={() => choose(a)}
+                aria-pressed={availability === a}
+                className={cn("flex items-center gap-1.5 rounded-full px-3 py-1 text-xs", availability === a ? "bg-white/15 text-white" : "text-muted-foreground hover:bg-white/5")}
+              >
+                <span className={cn("size-2 rounded-full", AVAILABILITY[a].dot)} />
+                {AVAILABILITY[a].label}
+              </button>
+            ))}
+          </div>
           {list.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nessuno online in questo momento.</p>
           ) : (
-            <ul className="flex flex-col gap-2">
-              {list.map((c) => (
-                <li key={c.id}>
-                  <Link href={`/scheda/${c.id}`} onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/5">
-                    {c.avatar_url ? (
+            <ul className="flex flex-col gap-1">
+              {list.map((c) => {
+                const row = (
+                  <>
+                    {c.avatar ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={c.avatar_url} alt="" className="size-10 shrink-0 rounded-full object-cover ring-2 ring-white/10" />
+                      <img src={c.avatar} alt="" className="size-10 shrink-0 rounded-full object-cover ring-2 ring-white/10" />
                     ) : (
-                      <CharacterAvatar initials={initials(c.name)} online />
+                      <CharacterAvatar initials={initials(c.name)} />
                     )}
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium">{c.name}</span>
-                      {c.occupation && <span className="block truncate text-xs text-muted-foreground">{c.occupation}</span>}
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2">
+                        <span className={cn("size-2 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} title={AVAILABILITY[c.availability].label} />
+                        <span className="truncate font-medium">{c.name}</span>
+                        {c.userId === me && <span className="text-xs text-muted-foreground">(tu)</span>}
+                        {c.invisible && <EyeOff className="size-3.5 shrink-0 text-muted-foreground" aria-label="Invisibile" />}
+                      </span>
+                      <span className="block truncate text-xs text-muted-foreground">{[c.place || "Mappa", AVAILABILITY[c.availability].label].join(" · ")}</span>
                     </span>
-                  </Link>
-                </li>
-              ))}
+                    {c.levelColor && (
+                      <span className="shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold" style={{ backgroundColor: `${c.levelColor}33`, color: c.levelColor }}>
+                        {c.levelName}
+                      </span>
+                    )}
+                  </>
+                );
+                return (
+                  <li key={c.userId}>
+                    {c.characterId ? (
+                      <Link href={`/scheda/${c.characterId}`} onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/5">
+                        {row}
+                      </Link>
+                    ) : (
+                      <div className="flex items-center gap-3 rounded-xl p-2">{row}</div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </FloatingWindow>
@@ -301,17 +326,29 @@ function OnlineBox() {
   );
 }
 
+/** Applica le preferenze: subito quelle salvate nel browser, poi quelle del database */
+function PrefsLoader() {
+  useEffect(() => {
+    const cached = cachedPrefs();
+    if (cached) applyPrefs(cached);
+    loadPrefs(createClient()).then(applyPrefs);
+  }, []);
+  return null;
+}
+
 /** Barra laterale del gioco */
 export function GameSidebar({ adminSlot }: { adminSlot: React.ReactNode }) {
+  const { roomId, info } = useCurrentRoom();
   return (
     <div className="flex flex-col gap-4 p-4">
+      <PrefsLoader />
       <div className="hidden justify-center lg:flex">
         <Logo href="/bacheca" size="sm" />
       </div>
-      <PlaceCard />
+      <PlaceCard info={info} />
       <MainButtons />
       <FeatureIcons adminSlot={adminSlot} />
-      <OnlineBox />
+      <OnlineBox place={info?.name ?? (roomId ? "In chat" : "Mappa")} placeKey={roomId ? `chat:${roomId}` : "mappa"} />
     </div>
   );
 }
