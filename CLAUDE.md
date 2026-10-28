@@ -1,6 +1,6 @@
 # Modern GDR — regole del progetto
 
-GDR (gioco di ruolo) play by chat moderno: chat di gioco, messaggi privati tra giocatori, mappe, forum, funzioni social.
+GDR (gioco di ruolo) play by chat moderno ambientato a Miami: chat di gioco, messaggi privati tra giocatori, mappe, forum, funzioni social.
 
 @AGENTS.md
 
@@ -16,6 +16,20 @@ GDR (gioco di ruolo) play by chat moderno: chat di gioco, messaggi privati tra g
 - `src/lib/supabase/proxy.ts` + `src/proxy.ts` — aggiornano la sessione a ogni richiesta.
 - `src/components/ui/` — componenti shadcn/ui (si aggiungono con `npx shadcn@latest add <nome>`).
 - `supabase/migrations/` — migrazioni SQL del database, una per file, con prefisso data (`YYYYMMDDHHMMSS_nome.sql`).
+- `src/config/site.ts` — nome del sito, tagline e voci di menu.
+- `src/app/(gioco)/` — area di gioco (bacheca, mappa, chat, messaggi, forum, social, scheda) con il layout comune.
+- `src/components/scenery/` — scenografia (cielo al tramonto, palme SVG).
+- `src/lib/auth.ts` — utente collegato: `getPlayer()` e `requirePlayer()` (porta al login o alla creazione del personaggio).
+- `src/lib/data.ts` — letture dal database (solo server). `src/lib/actions/` — Server Action (scritture).
+- `src/lib/types.ts` — tipi delle tabelle: aggiornarli quando cambia il database.
+
+## Design ("Golden Hour" a Miami)
+- Ambientazione: **una sola città, Miami (Florida)**, divisa in quartieri. Mood: tramonto, palme in silhouette, neon e pastelli anni '80, oceano.
+- Colori: usare i token del tema in `globals.css` (`night`, `dusk`, `violet`, `lavender`, `orchid`, `flamingo`, `peach`, `sand`, `mint`, `palm`), non colori a caso.
+- Font: `font-heading` (Bebas Neue) per i titoli, `font-script` (Pacifico) solo per il logo, Geist per il testo.
+- Pannelli con la classe `glass`; titoli di pagina con `PageHeader`; testo sfumato con `text-sunset`.
+- Mobile first: ogni pagina deve funzionare a 375px. Su mobile: barra in alto + barra in basso; su desktop: sidebar.
+- Nessun materiale di giochi esistenti (immagini, loghi, nomi, font di GTA o simili): solo grafica originale.
 
 ## Stile del codice
 - TypeScript rigoroso: niente `any`, tipi espliciti per props e dati dal database.
@@ -33,6 +47,10 @@ GDR (gioco di ruolo) play by chat moderno: chat di gioco, messaggi privati tra g
 - Nessuna tabella senza policy. Nessuna policy `using (true)` in scrittura.
 - I messaggi privati devono essere leggibili solo da mittente e destinatario.
 - Per sapere chi è l'utente sul server usare `supabase.auth.getClaims()` (o `getUser()`), mai `getSession()`.
+- Supabase concede di default tutti i permessi sulle tabelle: dove servono colonne non modificabili, fare `revoke all` e poi `grant` solo delle colonne ammesse.
+- Funzioni di supporto già presenti: `public.is_staff()` (master/admin) e `public.owns_character(id)`.
+- Ruoli: `player`, `master`, `admin` (colonna `profiles.role`), modificabili solo dalla dashboard/SQL Editor.
+- `supabase/setup-completo.sql` è l'unione delle migrazioni iniziali (01-09), usata una volta per creare il database.
 
 ## Chiavi e segreti
 - Le chiavi segrete **non vanno mai nel codice** né nei commit (niente service_role / secret key, password del database, token).
