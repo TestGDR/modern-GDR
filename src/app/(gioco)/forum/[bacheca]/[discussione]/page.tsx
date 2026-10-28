@@ -100,7 +100,7 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]/[discus
         {thread.is_locked && !staff ? (
           <p className="text-center text-sm text-muted-foreground">Discussione chiusa: non si può più rispondere.</p>
         ) : (
-          <ReplyForm threadId={thread.id} characterName={character.name} onGame={board.section.is_on_game} />
+          <ReplyForm threadId={thread.id} characterName={character?.name ?? null} onGame={board.section.is_on_game} />
         )}
       </div>
     </div>

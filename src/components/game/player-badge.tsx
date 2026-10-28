@@ -19,14 +19,15 @@ async function touchLastSeen(characterId: string, lastSeenAt: string | null) {
 /** Riquadro del giocatore in fondo alla sidebar */
 export async function PlayerBadge() {
   const { character, profile } = await requirePlayer();
-  await touchLastSeen(character.id, character.last_seen_at);
+  if (character) await touchLastSeen(character.id, character.last_seen_at);
+  const name = character?.name ?? "Nessun personaggio";
 
   return (
     <div className="m-3 flex items-center gap-3 rounded-2xl bg-white/5 p-3">
       <Link href="/scheda" className="flex min-w-0 flex-1 items-center gap-3">
-        <CharacterAvatar initials={initials(character.name)} online />
+        <CharacterAvatar initials={character ? initials(character.name) : "?"} online={!!character} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{character.name}</p>
+          <p className="truncate text-sm font-semibold">{name}</p>
           <p className="truncate text-xs text-muted-foreground">@{profile.username}</p>
         </div>
       </Link>

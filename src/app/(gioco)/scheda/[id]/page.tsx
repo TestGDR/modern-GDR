@@ -27,15 +27,18 @@ export default function CharacterPage({ params }: PageProps<"/scheda/[id]">) {
 async function Content({ params }: { params: PageProps<"/scheda/[id]">["params"] }) {
   const { id } = await params;
   const { character: mine } = await requirePlayer();
-  if (id === mine.id) redirect("/scheda");
+  if (id === mine?.id) redirect("/scheda");
   const character = await getCharacter(id);
   if (!character) notFound();
 
   return (
     <CharacterSheet character={character} now={new Date()}>
-      <Link href={`/messaggi/${character.id}`} className={cn(buttonVariants({ size: "lg" }), "h-11 w-fit rounded-full px-6")}>
-        <Send /> Scrivi a {character.name.split(" ")[0]}
-      </Link>
+      {/* Per scrivere serve un proprio personaggio */}
+      {mine && (
+        <Link href={`/messaggi/${character.id}`} className={cn(buttonVariants({ size: "lg" }), "h-11 w-fit rounded-full px-6")}>
+          <Send /> Scrivi a {character.name.split(" ")[0]}
+        </Link>
+      )}
     </CharacterSheet>
   );
 }

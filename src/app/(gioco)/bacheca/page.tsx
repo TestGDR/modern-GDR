@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ArrowRight, Clock, MapPin } from "lucide-react";
 import { CharacterAvatar } from "@/components/game/character-avatar";
 import { EmptyState, LoadingBlocks } from "@/components/game/loading";
+import { NeedsCharacter } from "@/components/game/needs-character";
 import { PageHeader } from "@/components/game/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requirePlayer } from "@/lib/auth";
@@ -28,7 +29,7 @@ export default function BachecaPage() {
 }
 
 async function Content() {
-  const { character } = await requirePlayer();
+  const { character, profile } = await requirePlayer();
   const [districts, activity, online, news] = await Promise.all([
     getDistrictsWithPlaces(),
     getPlaceActivity(),
@@ -50,7 +51,17 @@ async function Content() {
 
   return (
     <>
-      <PageHeader title={`Ciao, ${character.name.split(" ")[0]}`} subtitle="Ecco cosa succede a Miami stasera." />
+      <PageHeader
+        title={`Ciao, ${character ? character.name.split(" ")[0] : profile.username}`}
+        subtitle="Ecco cosa succede a Miami stasera."
+      />
+
+      {!character && (
+        <NeedsCharacter
+          className="glass mb-6 rounded-2xl"
+          text="Benvenuto a Miami! Puoi esplorare tutto, ma per giocare in chat, scrivere messaggi e usare il social ti serve un personaggio."
+        />
+      )}
 
       <div className="glass mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl px-5 py-4 text-sm">
         <span className="flex items-center gap-2">

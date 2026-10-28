@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { CharacterAvatar } from "@/components/game/character-avatar";
 import { LoadingBlocks } from "@/components/game/loading";
 import { MessagesShell } from "@/components/game/messages-shell";
+import { NeedsCharacter } from "@/components/game/needs-character";
 import { PrivateChat } from "@/components/game/private-chat";
 import { requirePlayer } from "@/lib/auth";
 import { getCharacter, getConversations, getMessagesWith } from "@/lib/data";
@@ -25,6 +26,9 @@ export default function ConversationPage({ params }: PageProps<"/messaggi/[id]">
 async function Content({ params }: { params: PageProps<"/messaggi/[id]">["params"] }) {
   const { id } = await params;
   const { character } = await requirePlayer();
+  if (!character) {
+    return <NeedsCharacter className="glass rounded-2xl" text="I messaggi privati si scambiano tra personaggi: crea il tuo per iniziare a scrivere." />;
+  }
   const other = await getCharacter(id);
   if (!other || other.id === character.id) notFound();
 

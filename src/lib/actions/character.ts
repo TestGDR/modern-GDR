@@ -27,7 +27,7 @@ function readDetails(formData: FormData) {
 export async function createCharacter(_prev: FormState, formData: FormData): Promise<FormState> {
   const player = await getPlayer();
   if (!player) redirect("/login");
-  if (player.character) redirect("/bacheca");
+  if (player.character) redirect("/scheda");
 
   const name = text(formData, "name", 40);
   if (!name || name.length < 3) return { error: "Il nome del personaggio deve avere almeno 3 caratteri." };
@@ -46,7 +46,7 @@ export async function createCharacter(_prev: FormState, formData: FormData): Pro
     if (error.code === "23505") return { error: "Esiste già un personaggio con questo nome." };
     return { error: `Non è stato possibile creare il personaggio: ${error.message}` };
   }
-  redirect("/bacheca");
+  redirect("/scheda");
 }
 
 export async function updateCharacter(_prev: FormState, formData: FormData): Promise<FormState> {

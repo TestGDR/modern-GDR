@@ -5,6 +5,7 @@ import { Send } from "lucide-react";
 import { CharacterAvatar } from "@/components/game/character-avatar";
 import { LoadingBlocks } from "@/components/game/loading";
 import { MessagesShell } from "@/components/game/messages-shell";
+import { NeedsCharacter } from "@/components/game/needs-character";
 import { requirePlayer } from "@/lib/auth";
 import { getAllCharacters, getConversations } from "@/lib/data";
 import { initials, isOnline } from "@/lib/format";
@@ -21,6 +22,7 @@ export default function MessaggiPage() {
 
 async function Content() {
   const { character } = await requirePlayer();
+  if (!character) return <NoCharacter />;
   const [conversations, everyone] = await Promise.all([getConversations(character.id), getAllCharacters()]);
   const others = everyone.filter((c) => c.id !== character.id);
   const now = new Date();
@@ -52,5 +54,14 @@ async function Content() {
         )}
       </div>
     </MessagesShell>
+  );
+}
+
+function NoCharacter() {
+  return (
+    <>
+      <h1 className="mb-6 font-heading text-4xl tracking-wide text-sunset sm:text-5xl">Messaggi</h1>
+      <NeedsCharacter className="glass rounded-2xl" text="I messaggi privati si scambiano tra personaggi: crea il tuo per iniziare a scrivere." />
+    </>
   );
 }

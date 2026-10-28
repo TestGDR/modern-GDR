@@ -7,6 +7,7 @@ import type { Character, Profile } from "@/lib/types";
 export type Player = {
   userId: string;
   profile: Profile;
+  /** null finché l'utente non crea il personaggio (dalla Scheda personaggio) */
   character: Character | null;
 };
 
@@ -29,11 +30,17 @@ export const getPlayer = cache(async (): Promise<Player | null> => {
   return { userId, profile, character };
 });
 
-/** Per le pagine di gioco: serve essere collegati e avere un personaggio. */
+/** Per le pagine di gioco: serve aver fatto l'accesso (il personaggio è facoltativo). */
 export async function requirePlayer() {
   const player = await getPlayer();
   if (!player) redirect("/login");
-  if (!player.character) redirect("/crea-personaggio");
+  return player;
+}
+
+/** Per le azioni che richiedono un personaggio (scrivere in chat, sul social…). */
+export async function requireCharacter() {
+  const player = await requirePlayer();
+  if (!player.character) redirect("/scheda");
   return { ...player, character: player.character };
 }
 

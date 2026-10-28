@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Pagine riservate a chi ha fatto l'accesso
-const PROTECTED = ["/bacheca", "/mappa", "/chat", "/messaggi", "/social", "/forum", "/scheda", "/crea-personaggio"];
+const PROTECTED = ["/bacheca", "/mappa", "/chat", "/messaggi", "/social", "/forum", "/scheda", "/nuova-password"];
 // Pagine che non hanno senso per chi è già collegato
 const GUEST_ONLY = ["/login", "/registrati"];
 

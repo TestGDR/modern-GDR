@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { requirePlayer } from "@/lib/auth";
+import { requireCharacter, requirePlayer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { FormState } from "@/lib/types";
 
@@ -10,7 +10,7 @@ function text(formData: FormData, key: string) {
 }
 
 export async function createPost(_prev: FormState, formData: FormData): Promise<FormState> {
-  const { character } = await requirePlayer();
+  const { character } = await requireCharacter();
   const body = text(formData, "body");
   const location = text(formData, "location");
   if (!body) return { error: "Scrivi qualcosa prima di pubblicare." };
@@ -28,7 +28,7 @@ export async function createPost(_prev: FormState, formData: FormData): Promise<
 }
 
 export async function toggleLike(formData: FormData) {
-  const { character } = await requirePlayer();
+  const { character } = await requireCharacter();
   const postId = text(formData, "post_id");
   const liked = text(formData, "liked") === "true";
 
@@ -42,7 +42,7 @@ export async function toggleLike(formData: FormData) {
 }
 
 export async function addComment(_prev: FormState, formData: FormData): Promise<FormState> {
-  const { character } = await requirePlayer();
+  const { character } = await requireCharacter();
   const postId = text(formData, "post_id");
   const body = text(formData, "body");
   if (!body) return { error: "Il commento è vuoto." };

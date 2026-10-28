@@ -70,7 +70,7 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]">["para
             <NewThreadForm
               boardId={board.id}
               boardSlug={board.slug}
-              characterName={character.name}
+              characterName={character?.name ?? null}
               onGame={board.section.is_on_game}
             />
           ) : (

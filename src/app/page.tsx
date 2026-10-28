@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { ChevronDown, Map, MessageCircle, MessagesSquare, Newspaper, Send } from "lucide-react";
+import { RegisteredBanner } from "@/components/auth/auth-forms";
 import { Logo } from "@/components/brand/logo";
 import { SunsetScene } from "@/components/scenery/sunset-sky";
 import { buttonVariants } from "@/components/ui/button";
@@ -44,7 +46,7 @@ export default function Home() {
                 "h-12 rounded-full px-8 text-base shadow-[0_8px_30px_rgb(255_121_176/0.45)]",
               )}
             >
-              Crea il tuo personaggio
+              Registrati
             </Link>
             <Link
               href="/login"
@@ -53,9 +55,13 @@ export default function Home() {
                 "h-12 rounded-full border-white/40 bg-white/10 px-8 text-base text-white backdrop-blur hover:bg-white/20",
               )}
             >
-              Ho già un account
+              Accedi
             </Link>
           </div>
+          {/* Compare solo dopo la registrazione (?registrato=1) */}
+          <Suspense>
+            <RegisteredBanner />
+          </Suspense>
         </div>
 
         <a href="#scopri" className="relative mx-auto mb-6 text-white/80 hover:text-white" aria-label="Scopri di più">

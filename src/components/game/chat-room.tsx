@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SendHorizontal } from "lucide-react";
 import { CharacterAvatar } from "@/components/game/character-avatar";
+import { NeedsCharacter } from "@/components/game/needs-character";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { ChatMessageWithCharacter } from "@/lib/data";
@@ -13,7 +14,8 @@ import type { ChatMessage } from "@/lib/types";
 type ChatRoomProps = {
   placeId: string;
   isOpen: boolean;
-  me: { id: string; name: string };
+  /** null se l'utente non ha ancora un personaggio: può solo leggere */
+  me: { id: string; name: string } | null;
   initialMessages: ChatMessageWithCharacter[];
 };
 
@@ -21,7 +23,7 @@ type ChatRoomProps = {
 export function ChatRoom({ placeId, isOpen, me, initialMessages }: ChatRoomProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [names, setNames] = useState<Record<string, string>>(() => {
-    const map: Record<string, string> = { [me.id]: me.name };
+    const map: Record<string, string> = me ? { [me.id]: me.name } : {};
     for (const m of initialMessages) if (m.character) map[m.character.id] = m.character.name;
     return map;
   });
@@ -77,7 +79,7 @@ export function ChatRoom({ placeId, isOpen, me, initialMessages }: ChatRoomProps
     e.preventDefault();
     const a = action.trim();
     const s = speech.trim();
-    if (!a && !s) return;
+    if (!me || (!a && !s)) return;
     setSending(true);
     setError(null);
     const supabase = createClient();
@@ -114,7 +116,7 @@ export function ChatRoom({ placeId, isOpen, me, initialMessages }: ChatRoomProps
               <CharacterAvatar initials={initials(name)} className="size-9" />
               <div className="min-w-0 flex-1">
                 <p className="flex items-baseline gap-2">
-                  <span className={`font-semibold ${m.character_id === me.id ? "text-flamingo" : "text-peach"}`}>{name}</span>
+                  <span className={`font-semibold ${m.character_id === me?.id ? "text-flamingo" : "text-peach"}`}>{name}</span>
                   <span className="text-xs text-muted-foreground">{formatTime(m.created_at)}</span>
                 </p>
                 {m.action && <p className="mt-1 text-[0.95rem] leading-relaxed whitespace-pre-line text-lavender italic">{m.action}</p>}
@@ -125,7 +127,9 @@ export function ChatRoom({ placeId, isOpen, me, initialMessages }: ChatRoomProps
         })}
       </ol>
 
-      {isOpen ? (
+      {!me ? (
+        <NeedsCharacter className="border-t border-border" text="Per partecipare alla scena ti serve un personaggio." />
+      ) : isOpen ? (
         <form onSubmit={send} className="flex flex-col gap-2 border-t border-border p-3 sm:p-4">
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Textarea

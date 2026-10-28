@@ -49,7 +49,7 @@ async function Room({ params }: { params: PageProps<"/chat/[luogo]">["params"] }
       <ChatRoom
         placeId={place.id}
         isOpen={place.is_open}
-        me={{ id: character.id, name: character.name }}
+        me={character ? { id: character.id, name: character.name } : null}
         initialMessages={messages}
       />
     </>

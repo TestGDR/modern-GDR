@@ -11,6 +11,10 @@ function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
+async function siteOrigin() {
+  return (await headers()).get("origin") ?? "";
+}
+
 export async function signUp(_prev: FormState, formData: FormData): Promise<FormState> {
   const username = text(formData, "username");
   const email = text(formData, "email");
@@ -24,14 +28,14 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
   if (!email.includes("@")) return fail("Inserisci un'email valida.");
   if (password.length < 8) return fail("La password deve avere almeno 8 caratteri.");
 
-  const origin = (await headers()).get("origin") ?? "";
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
+      // Lo username finisce anche nell'email di riepilogo ({{ .Data.username }})
       data: { username },
-      emailRedirectTo: `${origin}/auth/confirm?next=/crea-personaggio`,
+      emailRedirectTo: `${await siteOrigin()}/auth/confirm?next=/bacheca`,
     },
   });
 
@@ -54,12 +58,10 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     return fail(`Registrazione non riuscita: ${error.message}`);
   }
 
-  // Se la conferma email è disattivata, la sessione è già attiva
-  if (data.session) redirect("/crea-personaggio");
-
-  return {
-    success: `Ti abbiamo mandato un'email a ${email}. Apri il link per confermare l'account, poi crea il tuo personaggio.`,
-  };
+  // Dopo la registrazione si torna alla home per fare l'accesso.
+  // (Se la conferma email è disattivata Supabase apre già la sessione: la chiudiamo.)
+  if (data.session) await supabase.auth.signOut();
+  redirect("/?registrato=1");
 }
 
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -81,6 +83,7 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
     return fail(`Accesso non riuscito: ${error.message}`);
   }
 
+  // Si entra subito in gioco: il personaggio si crea dalla Scheda personaggio
   redirect("/bacheca");
 }
 
@@ -88,4 +91,40 @@ export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/");
+}
+
+/** Invia l'email per scegliere una nuova password */
+export async function requestPasswordReset(_prev: FormState, formData: FormData): Promise<FormState> {
+  const email = text(formData, "email");
+  if (!email.includes("@")) return { error: "Inserisci un'email valida.", values: { email } };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${await siteOrigin()}/auth/confirm?next=/nuova-password`,
+  });
+
+  if (error && (error.code === "over_email_send_rate_limit" || error.status === 429)) {
+    return { error: "Troppe richieste in poco tempo. Riprova tra qualche minuto.", values: { email } };
+  }
+  // Stessa risposta che l'email esista o no, per non rivelare chi è iscritto
+  return {
+    success: `Se esiste un account con ${email}, riceverai a breve un'email con il link per scegliere una nuova password.`,
+  };
+}
+
+/** Salva la nuova password (l'utente arriva qui dal link dell'email) */
+export async function updatePassword(_prev: FormState, formData: FormData): Promise<FormState> {
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+  if (password.length < 8) return { error: "La password deve avere almeno 8 caratteri." };
+  if (password !== confirm) return { error: "Le due password non coincidono." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    if (error.code === "same_password") return { error: "La nuova password deve essere diversa da quella vecchia." };
+    if (error.code === "weak_password") return { error: "Password troppo debole: usane una più lunga o più varia." };
+    return { error: `Password non aggiornata: ${error.message}` };
+  }
+  redirect("/bacheca");
 }

@@ -19,7 +19,13 @@ GDR (gioco di ruolo) play by chat moderno ambientato a Miami: chat di gioco, mes
 - `src/config/site.ts` — nome del sito, tagline e voci di menu.
 - `src/app/(gioco)/` — area di gioco (bacheca, mappa, chat, messaggi, forum, social, scheda) con il layout comune.
 - `src/components/scenery/` — scenografia (cielo al tramonto, palme SVG).
-- `src/lib/auth.ts` — utente collegato: `getPlayer()` e `requirePlayer()` (porta al login o alla creazione del personaggio).
+- `src/lib/auth.ts` — utente collegato: `getPlayer()`, `requirePlayer()` (serve l'accesso; il personaggio può essere null) e `requireCharacter()` (per le azioni che richiedono un personaggio).
+- `supabase/email-templates/` — modelli delle email di Supabase (da incollare in Authentication > Emails > Templates).
+
+## Percorso del giocatore
+- Registrazione → email di riepilogo con link di conferma → home (`/?registrato=1`) → accesso → bacheca.
+- Il personaggio è facoltativo: si crea da **Scheda personaggio** (`/scheda`). Senza personaggio si può leggere tutto; per scrivere in chat, messaggi e social compare l'invito `NeedsCharacter`.
+- Recupero password: `/recupera-password` → email → `/nuova-password`.
 - `src/lib/data.ts` — letture dal database (solo server). `src/lib/actions/` — Server Action (scritture).
 - `src/lib/types.ts` — tipi delle tabelle: aggiornarli quando cambia il database.
 
