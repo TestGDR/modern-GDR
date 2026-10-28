@@ -39,7 +39,7 @@ function Field({ id, label, ...props }: React.ComponentProps<"input"> & { id: st
   );
 }
 
-export function LoginForm() {
+export function LoginForm({ onForgotPassword }: { onForgotPassword?: () => void } = {}) {
   const [state, action, pending] = useActionState(signIn, initial);
   const confirmError = useSearchParams().get("errore") === "conferma";
 
@@ -51,9 +51,15 @@ export function LoginForm() {
       <FormMessage state={state} />
       <Field id="email" label="Email" type="email" autoComplete="email" placeholder="tu@email.com" defaultValue={state.values?.email} />
       <Field id="password" label="Password" type="password" autoComplete="current-password" />
-      <Link href="/recupera-password" className="-mt-2 self-end text-xs text-muted-foreground hover:text-flamingo">
-        Password dimenticata?
-      </Link>
+      {onForgotPassword ? (
+        <button type="button" onClick={onForgotPassword} className="-mt-2 self-end text-xs text-muted-foreground hover:text-flamingo">
+          Password dimenticata?
+        </button>
+      ) : (
+        <Link href="/recupera-password" className="-mt-2 self-end text-xs text-muted-foreground hover:text-flamingo">
+          Password dimenticata?
+        </Link>
+      )}
       <Button type="submit" size="lg" disabled={pending} className="h-11 rounded-full text-base">
         {pending ? "Accesso in corso…" : "Entra"}
       </Button>
@@ -61,11 +67,33 @@ export function LoginForm() {
   );
 }
 
-export function SignUpForm() {
+type SignUpFormProps = {
+  /** Nella finestra della home: niente cambio pagina, il riepilogo appare qui */
+  inModal?: boolean;
+  onGoToLogin?: () => void;
+};
+
+export function SignUpForm({ inModal, onGoToLogin }: SignUpFormProps = {}) {
   const [state, action, pending] = useActionState(signUp, initial);
+
+  if (state.success) {
+    return (
+      <div className="flex flex-col items-center gap-3 text-center">
+        <MailCheck className="size-12 text-mint" />
+        <p className="font-semibold">Registrazione completata!</p>
+        <p className="text-sm text-muted-foreground">{state.success}</p>
+        {onGoToLogin && (
+          <Button type="button" onClick={onGoToLogin} className="mt-2 h-11 w-full rounded-full text-base">
+            Accedi
+          </Button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <form action={action} className="flex flex-col gap-4">
+      {inModal && <input type="hidden" name="in_modal" value="1" />}
       <FormMessage state={state} />
       <Field
         id="username"

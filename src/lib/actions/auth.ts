@@ -63,6 +63,11 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
   // Dopo la registrazione si torna alla home per fare l'accesso.
   // (Se la conferma email è disattivata Supabase apre già la sessione: la chiudiamo.)
   if (data.session) await supabase.auth.signOut();
+
+  const confirmText = data.session
+    ? "Ora puoi accedere con la tua email e password."
+    : "Ti abbiamo mandato un'email: apri il link per confermare l'account, poi accedi.";
+  if (formData.get("in_modal") === "1") return { success: confirmText };
   redirect("/?registrato=1");
 }
 
