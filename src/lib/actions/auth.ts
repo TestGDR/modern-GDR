@@ -29,6 +29,8 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
   if (password.length < 8) return fail("La password deve avere almeno 8 caratteri.");
 
   const supabase = await createClient();
+  // Un nuovo account parte sempre da zero: chiude un'eventuale sessione rimasta aperta
+  await supabase.auth.signOut();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,

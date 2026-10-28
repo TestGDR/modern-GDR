@@ -3,8 +3,6 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Pagine riservate a chi ha fatto l'accesso
 const PROTECTED = ["/bacheca", "/mappa", "/chat", "/messaggi", "/social", "/forum", "/scheda", "/nuova-password"];
-// Pagine che non hanno senso per chi è già collegato
-const GUEST_ONLY = ["/login", "/registrati"];
 
 function matches(pathname: string, paths: string[]) {
   return paths.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -46,9 +44,6 @@ export async function updateSession(request: NextRequest) {
   // sul server (requirePlayer) e nel database (RLS).
   if (!loggedIn && matches(pathname, PROTECTED)) {
     return redirectKeepingCookies(request, supabaseResponse, "/login");
-  }
-  if (loggedIn && matches(pathname, GUEST_ONLY)) {
-    return redirectKeepingCookies(request, supabaseResponse, "/bacheca");
   }
 
   // Restituisci sempre supabaseResponse così com'è, per non perdere i cookie aggiornati.
