@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { GripHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +11,8 @@ type Gesture = { pointerX: number; pointerY: number; start: Rect; startH: number
 const MIN_W = 300;
 const MIN_H = 260;
 const MARGIN = 8;
+
+const noSubscribe = () => () => {};
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), Math.max(min, max));
 
@@ -49,6 +52,7 @@ export function FloatingWindow({
   className,
 }: FloatingWindowProps) {
   const [rect, setRect] = useState<Rect | null>(null);
+  const mounted = useSyncExternalStore(noSubscribe, () => true, () => false);
   const windowRef = useRef<HTMLDivElement>(null);
   const drag = useRef<Gesture | null>(null);
   const resize = useRef<Gesture | null>(null);
@@ -154,7 +158,7 @@ export function FloatingWindow({
       }
     : {};
 
-  return (
+  const content = (
     <div className="fixed inset-0 z-50">
       {/* Sfondo: un clic fuori chiude */}
       <div className="absolute inset-0 bg-night/45" onClick={onClose} aria-hidden="true" />
@@ -219,4 +223,7 @@ export function FloatingWindow({
       </div>
     </div>
   );
+  // Nel browser la finestra va in fondo alla pagina: cosi' resta sopra tutto
+  // anche se il pulsante che la apre sta in una barra laterale o in un cassetto
+  return mounted ? createPortal(content, document.body) : content;
 }

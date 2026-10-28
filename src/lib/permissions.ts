@@ -54,13 +54,13 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     id: "gioco",
     title: "Gioco e chat",
     items: [
-      { key: "chat.scrivere", label: "Scrivere in chat" },
+      { key: "chat.scrivere", label: "Scrivere in chat", description: "Entrare in giocata e scrivere con il proprio personaggio" },
       { key: "dadi.tirare", label: "Tirare i dadi" },
       { key: "dadi.nascosti", label: "Fare tiri nascosti da Master" },
-      { key: "luoghi.gestire", label: "Creare e modificare i luoghi del campus", description: "Quartieri e luoghi della mappa" },
-      { key: "scene.gestire", label: "Aprire e chiudere le scene" },
-      { key: "messaggi.modificare_propri", label: "Modificare o eliminare i propri messaggi" },
-      { key: "messaggi.modificare_altrui", label: "Modificare o eliminare i messaggi altrui" },
+      { key: "chat.narrazione", label: "Narrare come Master", description: "Messaggi «Narrazione master» e modalità master (limiti di caratteri)" },
+      { key: "chat.moderare", label: "Moderare le chat", description: "Entrare in tutte le chat, anche chiuse o su invito, eliminare messaggi, invitare e allontanare" },
+      { key: "staff.invisibile", label: "Diventare invisibile", description: "Leggere e scrivere nelle chat senza comparire tra i presenti" },
+      { key: "mondo.gestire", label: "Gestire il mondo", description: "Mappe, quartieri, chat e impostazioni della chat" },
     ],
   },
   {

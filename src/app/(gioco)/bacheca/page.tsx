@@ -8,7 +8,7 @@ import { NeedsCharacter } from "@/components/game/needs-character";
 import { PageHeader } from "@/components/game/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { activeCharacter, can, requirePlayer } from "@/lib/auth";
-import { getDistrictsWithPlaces, getNews, getOnlineCharacters, getPendingCharacters, getPlaceActivity } from "@/lib/data";
+import { getNews, getOnlineCharacters, getPendingCharacters, getRoomActivity, getWorld } from "@/lib/data";
 import { formatDateTime, initials } from "@/lib/format";
 import { requestTime } from "@/lib/request-time";
 
@@ -34,14 +34,18 @@ async function Content() {
   const { profile } = player;
   const character = activeCharacter(player);
   const pendingSheets = can(player, "personaggi.approvare") ? await getPendingCharacters() : [];
-  const [districts, activity, online, news] = await Promise.all([
-    getDistrictsWithPlaces(),
-    getPlaceActivity(),
+  const [world, activity, online, news] = await Promise.all([
+    getWorld(),
+    getRoomActivity(),
     getOnlineCharacters(),
     getNews(),
   ]);
 
-  const places = districts.flatMap((d) => d.places.map((p) => ({ ...p, district: d })));
+  const activeMaps = new Set(world.maps.filter((m) => m.active).map((m) => m.id));
+  const places = world.rooms.flatMap((r) => {
+    const district = world.districts.find((d) => d.id === r.location_id);
+    return district && activeMaps.has(district.map_id) && r.access === "pubblica" ? [{ ...r, district }] : [];
+  });
   const hotPlaces = places
     .map((p) => ({ ...p, active: activity.get(p.id) ?? 0 }))
     .sort((a, b) => b.active - a.active)
@@ -106,7 +110,7 @@ async function Content() {
               {hotPlaces.map((place) => (
                 <Link
                   key={place.id}
-                  href={`/chat/${place.slug}`}
+                  href={`/chat/${place.id}`}
                   className={`group relative overflow-hidden rounded-xl bg-gradient-to-br p-4 ${place.district.gradient}`}
                 >
                   <div className="absolute inset-0 bg-night/35 transition-colors group-hover:bg-night/20" />

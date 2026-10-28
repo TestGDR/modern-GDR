@@ -38,7 +38,7 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     options: {
       // Diventa profiles.username e finisce nell'email di riepilogo ({{ .Data.username }})
       data: { username: name },
-      emailRedirectTo: `${await siteOrigin()}/auth/confirm?next=/bacheca`,
+      emailRedirectTo: `${await siteOrigin()}/auth/confirm?next=/mappa`,
     },
   });
 
@@ -103,8 +103,8 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
     return fail(`Accesso non riuscito: ${error.message}`);
   }
 
-  // Si entra subito in gioco: la scheda si completa da Scheda personaggio
-  redirect("/bacheca");
+  // Si entra in gioco dalla mappa: la scheda si completa da Scheda personaggio
+  redirect("/mappa");
 }
 
 export async function signOut() {
@@ -146,5 +146,5 @@ export async function updatePassword(_prev: FormState, formData: FormData): Prom
     if (error.code === "weak_password") return { error: "Password troppo debole: usane una più lunga o più varia." };
     return { error: `Password non aggiornata: ${error.message}` };
   }
-  redirect("/bacheca");
+  redirect("/mappa");
 }

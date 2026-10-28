@@ -2,22 +2,25 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { ONLINE_WINDOW_MS } from "@/lib/format";
 import { requestTime } from "@/lib/request-time";
+import { DEFAULT_CHAT_SETTINGS, HISTORY_SIZE, freshSince } from "@/lib/chat";
 import type {
   Attribute,
   Character,
   CharacterSummary,
-  ChatMessage,
+  ChatSettings,
   CityNews,
   CreationOption,
   District,
-  DistrictWithPlaces,
   ForumBoard,
   ForumPost,
   ForumSection,
   ForumThread,
+  GameMap,
   GameSetting,
-  Place,
+  Message,
   PrivateMessage,
+  Room,
+  RoomGroup,
   SheetOption,
   Skill,
   SocialComment,
@@ -32,62 +35,122 @@ export function isUuid(value: string) {
   return UUID_RE.test(value);
 }
 
-/* ---------------------------- Mappa e luoghi ---------------------------- */
+/* ---------------------------- Mondo: mappe e chat ---------------------------- */
 
-export async function getDistrictsWithPlaces() {
+export type World = {
+  maps: GameMap[];
+  districts: District[];
+  groups: RoomGroup[];
+  rooms: Room[];
+};
+
+/**
+ * Mappe, quartieri, gruppi e chat. I giocatori ricevono solo quelli delle
+ * mappe attive (lo decide la RLS); chi gestisce il mondo li riceve tutti.
+ */
+export async function getWorld(): Promise<World> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("districts")
-    .select("*, places(*)")
-    .order("sort_order")
-    .order("sort_order", { referencedTable: "places" })
-    .overrideTypes<DistrictWithPlaces[], { merge: false }>();
-  return data ?? [];
+  const [maps, districts, groups, rooms] = await Promise.all([
+    supabase.from("maps").select("*").order("sort_order").order("name").overrideTypes<GameMap[], { merge: false }>(),
+    supabase.from("locations").select("*").order("sort_order").order("name").overrideTypes<District[], { merge: false }>(),
+    supabase.from("room_groups").select("*").order("sort_order").order("name").overrideTypes<RoomGroup[], { merge: false }>(),
+    supabase.from("rooms").select("*").order("sort_order").order("name").overrideTypes<Room[], { merge: false }>(),
+  ]);
+  return {
+    maps: maps.data ?? [],
+    districts: districts.data ?? [],
+    groups: groups.data ?? [],
+    rooms: rooms.data ?? [],
+  };
 }
 
-export async function getPlaceBySlug(slug: string) {
+/** Per ogni chat, quanti personaggi sono in giocata */
+export async function getRoomActivity() {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("places")
-    .select("*, district:districts(*)")
-    .eq("slug", slug)
-    .maybeSingle<Place & { district: District }>();
-  return data;
+  const { data } = await supabase.rpc("room_activity");
+  const rows = (data ?? []) as { room_id: string; n: number }[];
+  return new Map(rows.map((r) => [r.room_id, r.n]));
 }
 
-/** Per ogni luogo, quanti personaggi hanno scritto negli ultimi 30 minuti */
-export async function getPlaceActivity() {
-  const supabase = await createClient();
-  const since = new Date((await requestTime()).getTime() - 30 * 60 * 1000).toISOString();
-  const { data } = await supabase
-    .from("chat_messages")
-    .select("place_id, character_id")
-    .gte("created_at", since)
-    .overrideTypes<Pick<ChatMessage, "place_id" | "character_id">[], { merge: false }>();
-
-  const byPlace = new Map<string, Set<string>>();
-  for (const row of data ?? []) {
-    if (!byPlace.has(row.place_id)) byPlace.set(row.place_id, new Set());
-    byPlace.get(row.place_id)!.add(row.character_id);
-  }
-  return new Map([...byPlace].map(([placeId, chars]) => [placeId, chars.size]));
-}
-
-/* ------------------------------- Chat ------------------------------- */
-
-export type ChatMessageWithCharacter = ChatMessage & { character: { id: string; name: string } | null };
-
-export async function getChatMessages(placeId: string, limit = 60) {
+/** Impostazioni della chat (Gestione → Chat) */
+export async function getChatSettings(): Promise<ChatSettings> {
   const supabase = await createClient();
   const { data } = await supabase
-    .from("chat_messages")
-    .select("*, character:characters(id, name)")
-    .eq("place_id", placeId)
-    .order("created_at", { ascending: false })
-    .limit(limit)
-    .overrideTypes<ChatMessageWithCharacter[], { merge: false }>();
-  return (data ?? []).reverse();
+    .from("chat_settings")
+    .select("max_length, ttl_minutes, idle_minutes")
+    .maybeSingle<ChatSettings>();
+  return data ?? DEFAULT_CHAT_SETTINGS;
 }
+
+export type ChatPresent = { character_id: string; name: string; avatar_url: string | null };
+
+/** Tutto quello che serve per aprire una chat */
+export async function getChatRoom(id: string, characterId: string | null) {
+  if (!isUuid(id)) return null;
+  const supabase = await createClient();
+  const { data: room } = await supabase
+    .from("rooms")
+    .select("*, district:locations(*)")
+    .eq("id", id)
+    .maybeSingle<Room & { district: District }>();
+  if (!room) return null;
+
+  const [settings, now] = await Promise.all([getChatSettings(), requestTime()]);
+  const since = freshSince(now.getTime(), settings.ttl_minutes);
+  const [canEnter, present, hidden, messages, guests, busy, invisible] = await Promise.all([
+    supabase.rpc("can_enter_room", { r: id }),
+    supabase.rpc("chat_present", { p_room: id }),
+    supabase.rpc("chat_hidden_count", { p_room: id }),
+    // Li legge solo chi è in giocata (lo decide la RLS)
+    supabase
+      .from("messages")
+      .select("*")
+      .eq("room_id", id)
+      .gt("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(HISTORY_SIZE)
+      .overrideTypes<Message[], { merge: false }>(),
+    room.access === "su_invito"
+      ? supabase
+          .from("room_guests")
+          .select("character:characters(id, name)")
+          .eq("room_id", id)
+          .order("created_at")
+          .overrideTypes<{ character: { id: string; name: string } | null }[], { merge: false }>()
+      : Promise.resolve({ data: [] as { character: { id: string; name: string } | null }[] }),
+    // Giocata in corso in un'altra chat: prima va chiusa quella
+    characterId
+      ? supabase
+          .from("chat_presence")
+          .select("room_id, room:rooms(name)")
+          .eq("character_id", characterId)
+          .neq("room_id", id)
+          .gt("last_active_at", new Date(now.getTime() - settings.idle_minutes * 60_000).toISOString())
+          .limit(1)
+          .maybeSingle<{ room_id: string; room: { name: string } | null }>()
+      : Promise.resolve({ data: null }),
+    supabase.rpc("i_am_invisible"),
+  ]);
+
+  const visible = (messages.data ?? [])
+    .filter((m) => !room.cleared_at || m.created_at > room.cleared_at)
+    .reverse();
+
+  return {
+    room,
+    settings,
+    canEnter: canEnter.data === true,
+    present: (present.data ?? []) as ChatPresent[],
+    hiddenCount: (hidden.data as number | null) ?? 0,
+    messages: visible,
+    snapshotAt: now.toISOString(),
+    guests: (guests.data ?? []).flatMap((g) => (g.character ? [g.character] : [])),
+    busyIn: busy.data ? { id: busy.data.room_id, name: busy.data.room?.name ?? "un'altra chat" } : null,
+    invisible: invisible.data === true,
+  };
+}
+
+export type ChatRoomData = NonNullable<Awaited<ReturnType<typeof getChatRoom>>>;
 
 /* ---------------------------- Personaggi ---------------------------- */
 
@@ -119,18 +182,19 @@ export async function getCharacter(id: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("characters")
-    .select("*, district:districts(name, slug, gradient)")
+    .select("*, district:locations(name, gradient)")
     .eq("id", id)
-    .maybeSingle<Character & { district: Pick<District, "name" | "slug" | "gradient"> | null }>();
+    .maybeSingle<Character & { district: Pick<District, "name" | "gradient"> | null }>();
   return data;
 }
 
 export async function getDistricts() {
   const supabase = await createClient();
   const { data } = await supabase
-    .from("districts")
+    .from("locations")
     .select("*")
     .order("sort_order")
+    .order("name")
     .overrideTypes<District[], { merge: false }>();
   return data ?? [];
 }

@@ -1,4 +1,17 @@
-import { BookOpenCheck, Gauge, Layers, ListChecks, ScrollText, Settings2, ShieldCheck, Sparkles, Users, type LucideIcon } from "lucide-react";
+import {
+  BookOpenCheck,
+  Gauge,
+  Layers,
+  ListChecks,
+  Map as MapIcon,
+  MessagesSquare,
+  ScrollText,
+  Settings2,
+  ShieldCheck,
+  Sparkles,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
 // Sezioni del pannello di gestione e permesso necessario per ognuna.
 // Chi non ha il permesso non vede la sezione e la pagina risponde "non trovata".
@@ -17,6 +30,8 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { href: "/gestione/abilita", title: "Abilità", description: "Elenco delle abilità e caratteristica collegata", icon: Sparkles, permissions: ["regole.gestire"] },
   { href: "/gestione/scelte", title: "Vantaggi, svantaggi e tratti", description: "Anche il tenore di vita: costi in PX ed effetti", icon: ListChecks, permissions: ["regole.gestire"] },
   { href: "/gestione/elenchi", title: "Elenchi della scheda", description: "Indirizzi di studio, anni di corso, squadre e club", icon: BookOpenCheck, permissions: ["elenchi.gestire"] },
+  { href: "/gestione/mondo", title: "Mondo", description: "Mappe, quartieri e chat: immagini, punti e gruppi", icon: MapIcon, permissions: ["mondo.gestire"] },
+  { href: "/gestione/chat", title: "Chat", description: "Lunghezza dei messaggi, durata e uscita automatica", icon: MessagesSquare, permissions: ["mondo.gestire"] },
   { href: "/gestione/impostazioni", title: "Impostazioni del sistema", description: "Punti, età, PX, massimali e anno di gioco", icon: Settings2, permissions: ["impostazioni.gestire"] },
   { href: "/gestione/livelli", title: "Livelli e permessi", description: "Livelli utente, rango e azioni consentite", icon: ShieldCheck, permissions: ["livelli.gestire"] },
   { href: "/gestione/utenti", title: "Utenti", description: "Cerca gli utenti e cambia il loro livello", icon: Users, permissions: ["livelli.assegnare", "utenti.vedere_modificare"] },
@@ -34,4 +49,9 @@ export const ENTITY_LABELS: Record<string, string> = {
   sheet_options: "Elenco della scheda",
   creation_options: "Vantaggio/svantaggio/tratto",
   profiles: "Livello di un utente",
+  maps: "Mappa",
+  locations: "Quartiere",
+  room_groups: "Gruppo di chat",
+  rooms: "Chat",
+  chat_settings: "Impostazioni della chat",
 };

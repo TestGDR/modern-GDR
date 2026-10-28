@@ -128,6 +128,29 @@
   html {
     @apply font-sans;
   }
+
+  /* Barre di scorrimento sottili, nei colori del tramonto (non grigie) */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--orchid) 55%, transparent) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: linear-gradient(180deg, var(--orchid), var(--flamingo));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, var(--flamingo), var(--peach));
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
 }
 
 @layer utilities {

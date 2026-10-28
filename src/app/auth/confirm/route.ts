@@ -9,9 +9,9 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
-  const nextParam = searchParams.get("next") ?? "/bacheca";
+  const nextParam = searchParams.get("next") ?? "/mappa";
   // Solo percorsi interni, per evitare redirect verso altri siti
-  const next = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/bacheca";
+  const next = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/mappa";
 
   const supabase = await createClient();
   let ok = false;

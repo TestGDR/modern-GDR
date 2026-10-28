@@ -23,11 +23,15 @@ GDR (gioco di ruolo) play by chat moderno ambientato a Miami: chat di gioco, mes
 - `src/lib/auth.ts` — utente collegato: `getPlayer()`, `requirePlayer()` (serve l'accesso; il personaggio può essere null) e `requireCharacter()` (per le azioni che richiedono un personaggio).
 - `supabase/email-templates/` — modelli delle email di Supabase (da incollare in Authentication > Emails > Templates).
 - Scheda personaggio in finestra: `src/app/(gioco)/@modal/(.)scheda` intercetta `/scheda` e `/scheda/[id]` e li apre in una finestra 800×550 (`SheetModal`, trascinabile e ridimensionabile). Aprendo l'indirizzo direttamente si vede la pagina intera. Il contenuto è condiviso in `src/components/game/sheet-content.tsx`.
+- Anche social, forum, messaggi e gestione si aprono in finestra: in `@modal/(.)social`, `(.)forum`, `(.)messaggi`, `(.)gestione` ci sono pagine che avvolgono quelle vere in `PageModal` (`src/components/game/page-modal.tsx`, elenco in `MODAL_PREFIXES`). Una nuova sottopagina di queste sezioni va aggiunta anche lì. Chiudendo la finestra si torna alla pagina che c'era sotto.
 - Lo slot `@modal` si chiude cambiando pagina grazie a `ModalGate` (controlla l'indirizzo). **Non** aggiungere un `[...catchAll]` in `@modal`: essendo nel gruppo `(gioco)` alla radice, renderebbe irraggiungibili `/login`, `/registrati` ecc.
 - Ora corrente nei componenti del server: usare `requestTime()` (`src/lib/request-time.ts`), mai `Date.now()`/`new Date()` diretti (Cache Components).
+- **Mondo e chat** (logica copiata dal Westeros, documento "Funzioni generiche"): `maps` → `locations` (i quartieri, tipo `District`, punto x/y in %) → `rooms` (le chat, accesso `pubblica`/`su_invito`) con `room_groups`; messaggi in `messages`, presenti in `chat_presence`, regole in `chat_settings`. Mappa: `src/components/game/map-view.tsx` (senza immagine si vede `miami-illustration.tsx`). Chat: `src/components/game/chat-room.tsx` + `chat-parts.tsx`, azioni in `src/lib/actions/chat.ts`, regole condivise in `src/lib/chat.ts`. Pannello: `/gestione/mondo` (`world-manager.tsx`, azioni in `src/lib/actions/world.ts`) e `/gestione/chat`.
+- In chat si scrive solo dopo "Entra in giocata" (`join_chat`); tiri di dado solo con `roll_dice()` (li calcola il database). Le immagini del mondo le carica il browser nell'archivio Storage `mondo` (policy `mondo.gestire`), niente chiave segreta.
+- Ogni componente con dati in tempo reale usa anche `useResync` (`src/lib/use-resync.ts`).
 
 ## Percorso del giocatore
-- Registrazione (nome del personaggio + email + password) → email di conferma → accesso con **nome del personaggio + password** → bacheca.
+- Registrazione (nome del personaggio + email + password) → email di conferma → accesso con **nome del personaggio + password** → **mappa** (la pagina iniziale del gioco). Il pulsante "Aggiorna" della barra laterale ricarica la chat se si è in chat, altrimenti riporta alla mappa.
 - Il nome scelto in registrazione (`profiles.username`) è il nome del personaggio: non si cambia. Unico senza distinguere maiuscole/minuscole.
 - Creazione del personaggio da **Scheda personaggio**: "Crea personaggio" crea la bozza, poi la procedura in 6 passaggi (`src/components/creation/creation-wizard.tsx`): Anagrafica, Caratteristiche, Scelte, Abilità, Background, Riepilogo. Ogni modifica si salva da sola (`saveCreation`); si riprende dall'ultimo passaggio (`characters.creation_step`).
 - L'invio passa da `submit_character()` nel database, che ricontrolla tutto (punti, massimali, abilità ≤ caratteristica, PX, tenore). Approva/rifiuta con `review_character()` (permesso `personaggi.approvare`). Le regole di calcolo condivise sono in `src/lib/interlock.ts`, i numeri vengono da `game_settings`.
@@ -41,7 +45,7 @@ GDR (gioco di ruolo) play by chat moderno ambientato a Miami: chat di gioco, mes
 - Colori: usare i token del tema in `globals.css` (`night`, `dusk`, `violet`, `lavender`, `orchid`, `flamingo`, `peach`, `sand`, `mint`, `palm`), non colori a caso.
 - Font: `font-heading` (Bebas Neue) per i titoli, `font-script` (Pacifico) solo per il logo, Geist per il testo.
 - Pannelli con la classe `glass`; titoli di pagina con `PageHeader`; testo sfumato con `text-sunset`.
-- Mobile first: ogni pagina deve funzionare a 375px. Su mobile: barra in alto + barra in basso; su desktop: sidebar.
+- Mobile first: ogni pagina deve funzionare a 375px. Struttura (`src/app/(gioco)/layout.tsx`): barra laterale (`game-sidebar.tsx`: immagine della chat con info luogo e meteo, Aggiorna/Mappa/Esci, icone Calendario/Social/Forum/Scheda/Ticket/Gestione, presenti online) e barra in alto (`top-bar.tsx`: Guida e Ambientazione, ritratto 80x80 del PG, Messaggi OFF e ON). Su mobile la barra laterale è un cassetto aperto dal pulsante menu.
 - Nessun materiale di giochi esistenti (immagini, loghi, nomi, font di GTA o simili): solo grafica originale.
 
 ## Stile del codice

@@ -78,28 +78,96 @@ export type GameSetting = {
   sort_order: number;
 };
 
+/** Mappa di gioco (Miami, in futuro p. es. il campus) */
+export type GameMap = {
+  id: string;
+  name: string;
+  description: string;
+  /** Senza immagine si vede la Miami disegnata */
+  image_url: string | null;
+  sort_order: number;
+  active: boolean;
+};
+
+/** Quartiere (tabella locations): un punto sulla mappa, x/y in percentuale */
 export type District = {
   id: string;
-  slug: string;
+  map_id: string;
   name: string;
   tagline: string | null;
-  map_x: number;
-  map_y: number;
+  description: string;
+  x: number;
+  y: number;
+  /** Classi Tailwind della sfumatura (es. "from-violet via-flamingo to-sand") */
   gradient: string;
   sort_order: number;
 };
 
-export type Place = {
+/** Gruppo di chat dentro un quartiere ("Locali", "Case"…) */
+export type RoomGroup = {
   id: string;
-  district_id: string;
-  slug: string;
+  location_id: string;
   name: string;
-  description: string | null;
-  is_open: boolean;
   sort_order: number;
 };
 
-export type DistrictWithPlaces = District & { places: Place[] };
+export type RoomAccess = "pubblica" | "su_invito";
+
+/** Chat di gioco dentro un quartiere */
+export type Room = {
+  id: string;
+  location_id: string;
+  group_id: string | null;
+  name: string;
+  description: string;
+  image_url: string | null;
+  is_open: boolean;
+  access: RoomAccess;
+  /** Chat su invito: il personaggio che invita e allontana */
+  owner_character_id: string | null;
+  cleared_at: string | null;
+  master_min: number | null;
+  master_max: number | null;
+  master_by: string | null;
+  sort_order: number;
+};
+
+export type MessageKind = "azione" | "fuori_gioco" | "master" | "dado" | "sistema" | "sussurro";
+
+/** Dettagli di un tiro Interlock */
+export type RollData = {
+  die: number;
+  extra: number;
+  attribute: string;
+  attribute_value: number;
+  skill: string | null;
+  skill_level: number | null;
+  modifiers: number;
+  total: number;
+};
+
+/** Messaggio della chat di gioco */
+export type Message = {
+  id: number;
+  room_id: string;
+  character_id: string;
+  author_id: string | null;
+  character_name: string;
+  kind: MessageKind;
+  content: string;
+  recipient: string | null;
+  recipient_id: string | null;
+  roll_data: RollData | null;
+  edited_at: string | null;
+  created_at: string;
+};
+
+/** Impostazioni della chat (Gestione → Chat) */
+export type ChatSettings = {
+  max_length: number;
+  ttl_minutes: number;
+  idle_minutes: number;
+};
 
 export type Character = {
   id: string;
@@ -139,16 +207,6 @@ export type Character = {
 
 /** Versione ridotta del personaggio, usata in elenchi e messaggi */
 export type CharacterSummary = Pick<Character, "id" | "name" | "occupation" | "last_seen_at">;
-
-export type ChatMessage = {
-  id: number;
-  place_id: string;
-  character_id: string;
-  author_id: string;
-  action: string | null;
-  speech: string | null;
-  created_at: string;
-};
 
 export type PrivateMessage = {
   id: number;

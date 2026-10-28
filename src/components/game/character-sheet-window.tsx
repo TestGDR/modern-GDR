@@ -24,6 +24,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { FormMessage } from "@/components/auth/auth-forms";
+import { useCloseModal } from "@/components/game/page-modal";
 import { Palm } from "@/components/scenery/palm";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +39,7 @@ import type { Character, District, FormState } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export type SheetCharacter = Character & {
-  district: Pick<District, "name" | "slug" | "gradient"> | null;
+  district: Pick<District, "name" | "gradient"> | null;
 };
 
 type TextField = "known_facts" | "relationships" | "skills" | "traits" | "appearance" | "bio" | "equipment";
@@ -651,8 +652,10 @@ export type SheetVariant = "page" | "modal";
  */
 export function SheetFrame({ title, variant, children }: { title: string; variant: SheetVariant; children: React.ReactNode }) {
   const router = useRouter();
-  const close = () => (window.history.length > 1 ? router.back() : router.push("/bacheca"));
+  const closeModal = useCloseModal();
   const inModal = variant === "modal";
+  // In finestra si torna alla pagina sotto; a pagina intera si va alla mappa
+  const close = () => (inModal ? closeModal() : router.push("/mappa"));
 
   return (
     <div
