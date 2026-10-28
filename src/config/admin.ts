@@ -5,6 +5,7 @@ import {
   LifeBuoy,
   ListChecks,
   Map as MapIcon,
+  MessageSquareText,
   MessagesSquare,
   ScrollText,
   Settings2,
@@ -33,6 +34,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { href: "/gestione/elenchi", title: "Elenchi della scheda", description: "Indirizzi di studio, anni di corso, squadre e club", icon: BookOpenCheck, permissions: ["elenchi.gestire"] },
   { href: "/gestione/mondo", title: "Mondo", description: "Mappe, quartieri e chat: immagini, punti e gruppi", icon: MapIcon, permissions: ["mondo.gestire"] },
   { href: "/gestione/chat", title: "Chat", description: "Lunghezza dei messaggi, durata e uscita automatica", icon: MessagesSquare, permissions: ["mondo.gestire"] },
+  { href: "/gestione/forum", title: "Forum", description: "Sezioni e bacheche del forum", icon: MessageSquareText, permissions: ["forum.sezioni"] },
   { href: "/gestione/ticket", title: "Sezioni dei ticket", description: "Categorie dei ticket e istruzioni per chi scrive", icon: LifeBuoy, permissions: ["ticket.categorie"] },
   { href: "/gestione/impostazioni", title: "Impostazioni del sistema", description: "Punti, età, PX, massimali e anno di gioco", icon: Settings2, permissions: ["impostazioni.gestire"] },
   { href: "/gestione/livelli", title: "Livelli e permessi", description: "Livelli utente, rango e azioni consentite", icon: ShieldCheck, permissions: ["livelli.gestire"] },
@@ -57,4 +59,7 @@ export const ENTITY_LABELS: Record<string, string> = {
   rooms: "Chat",
   chat_settings: "Impostazioni della chat",
   ticket_sections: "Sezione dei ticket",
+  forum_sections: "Sezione del forum",
+  forum_boards: "Bacheca del forum",
+  gossip_settings: "Impostazioni dei pettegolezzi",
 };

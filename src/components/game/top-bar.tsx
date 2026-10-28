@@ -4,6 +4,7 @@ import { ComingSoon, WindowButton } from "@/components/game/info-window";
 import { MenuButton } from "@/components/game/game-sidebar";
 import { MessageButtons } from "@/components/game/message-buttons";
 import { NewsButton } from "@/components/game/news-panel";
+import { CommunityButtons } from "@/components/game/community";
 import { barButtonClass as barBtn, sidebarIconClass } from "@/components/game/sidebar-styles";
 import { activeCharacter, can, getPlayer, requirePlayer } from "@/lib/auth";
 import { initials } from "@/lib/format";
@@ -95,6 +96,20 @@ export async function PlayerNews() {
   const player = await getPlayer();
   if (!player) return null;
   return <NewsButton canPublish={can(player, "annunci.globali")} />;
+}
+
+/** Assenze, ricerca di gioco e pettegolezzi, con i permessi dello staff */
+export async function PlayerCommunity() {
+  const player = await getPlayer();
+  if (!player) return null;
+  return (
+    <CommunityButtons
+      canAbsences={can(player, "assenze.gestire")}
+      canRequests={can(player, "ricerca.moderare")}
+      canGossip={can(player, "pettegolezzi.gestire")}
+      characterId={activeCharacter(player)?.id ?? null}
+    />
+  );
 }
 
 /** Icona Gestione nella barra laterale: solo per chi può accedere al pannello */

@@ -241,6 +241,13 @@ export async function getBoardStats() {
   return stats;
 }
 
+/** Discussioni con messaggi nuovi per l'utente collegato */
+export async function getForumUnread() {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("forum_unread");
+  return (data ?? []) as { thread_id: string; board_id: string }[];
+}
+
 export async function getBoard(slug: string) {
   const supabase = await createClient();
   const { data } = await supabase
@@ -264,6 +271,7 @@ export async function getThreads(boardId: string) {
     .select("*, author:profiles(username), character:characters(name), forum_posts(count)")
     .eq("board_id", boardId)
     .order("is_pinned", { ascending: false })
+    .order("is_important", { ascending: false })
     .order("updated_at", { ascending: false })
     .limit(100)
     .overrideTypes<ThreadListItem[], { merge: false }>();

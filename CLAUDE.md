@@ -36,6 +36,8 @@ GDR (gioco di ruolo) play by chat moderno ambientato a Miami: chat di gioco, mes
 - **Ticket** (fase 5b): `ticket_sections` (permesso `ticket.categorie`, Gestione → Sezioni dei ticket), `tickets`, `ticket_participants` (utenti), `ticket_messages`, `ticket_staff_reads`; si scrive solo con le funzioni `open_ticket`, `reply_ticket`, `roll_ticket_dice`, `set_ticket_status`, `delete_ticket` (staff: `ticket.gestire`). Pagina `/ticket` (`tickets-app.tsx`), icona con contatore `ticket-icon.tsx`. Ogni risposta avvisa gli altri con un messaggio di SISTEMA.
 - **Tiro Interlock**: un'unica funzione `interlock_roll()` nel database, usata da `roll_dice` (chat) e `roll_ticket_dice`.
 - Il "(N)" nel titolo della scheda del browser somma più fonti con `setTitleCount` (`src/lib/title-count.ts`).
+- **Comunità** (fase 6), pulsanti sotto i presenti online (`community.tsx`): **Assenze** (`absences`, avviso SISTEMA a tutti, staff `assenze.gestire`), **Cerco gioco** (`play_requests` con inizio e fine, pulizia ogni 5 minuti con pg_cron `purge_ended_play_requests`, staff `ricerca.moderare`), **Pettegolezzi** (`gossip_*`: tiro di fine giocata nel database, ticket nella sezione nascosta "Pettegolezzi", approvazione con `pettegolezzi.gestire`; il numero del dado lo vede solo lo staff).
+- **Forum** (fase 6): permessi `forum.moderare` (fissa, chiude, importante), `forum.sezioni` (Gestione → Forum), `forum.segnalare` (post segnalato a tutti, avviso una volta). Non letti con `forum_unread()` / `forum_mark_read()`; icona `forum-icon.tsx`. `contenuti.moderare` ora vale solo per il social.
 - **Contatori dei messaggi**: `message-buttons.tsx` (numero sull'icona, classe `blink-call`, suono ripetuto ogni 15 s, "(N)" nel titolo).
 
 ## Percorso del giocatore

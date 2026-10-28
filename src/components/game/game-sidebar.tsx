@@ -12,7 +12,6 @@ import {
   LogOut,
   Map as MapIcon,
   Menu,
-  MessagesSquare,
   Newspaper,
   RefreshCw,
   Users,
@@ -23,6 +22,7 @@ import { CharacterAvatar } from "@/components/game/character-avatar";
 import { ComingSoon, WindowButton } from "@/components/game/info-window";
 import { isModalPath } from "@/components/game/page-modal";
 import { TicketIcon } from "@/components/game/ticket-icon";
+import { ForumIcon } from "@/components/game/forum-icon";
 import { usePresence } from "@/components/game/presence";
 import { sidebarIconClass } from "@/components/game/sidebar-styles";
 import { FloatingWindow } from "@/components/floating-window";
@@ -209,9 +209,7 @@ function FeatureIcons({ adminSlot }: { adminSlot: React.ReactNode }) {
       <Link href="/social" className={iconCls}>
         <Newspaper /> Social
       </Link>
-      <Link href="/forum" className={iconCls}>
-        <MessagesSquare /> Forum
-      </Link>
+      <ForumIcon />
       <Link href="/scheda" className={iconCls}>
         <CircleUserRound /> Scheda
       </Link>
@@ -333,7 +331,16 @@ function PrefsLoader() {
 }
 
 /** Barra laterale del gioco */
-export function GameSidebar({ adminSlot, newsSlot }: { adminSlot: React.ReactNode; newsSlot: React.ReactNode }) {
+export function GameSidebar({
+  adminSlot,
+  newsSlot,
+  communitySlot,
+}: {
+  adminSlot: React.ReactNode;
+  newsSlot: React.ReactNode;
+  /** Assenze, ricerca di gioco, pettegolezzi */
+  communitySlot: React.ReactNode;
+}) {
   const { roomId, info } = useCurrentRoom();
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -346,6 +353,7 @@ export function GameSidebar({ adminSlot, newsSlot }: { adminSlot: React.ReactNod
       <MainButtons />
       <FeatureIcons adminSlot={adminSlot} />
       <OnlineBox place={info?.name ?? (roomId ? "In chat" : "Mappa")} placeKey={roomId ? `chat:${roomId}` : "mappa"} />
+      {communitySlot}
     </div>
   );
 }

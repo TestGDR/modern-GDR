@@ -70,16 +70,36 @@ export async function replyToThread(_prev: FormState, formData: FormData): Promi
   return { success: "Risposta pubblicata." };
 }
 
-/** Solo staff: fissa/sblocca e chiude/riapre (lo controlla anche il database) */
+/** Chi modera il forum: fissa, chiude, rende importante (lo controlla anche il database) */
 export async function toggleThreadFlag(formData: FormData) {
   const player = await getPlayer();
   if (!player) redirect("/login");
   const threadId = text(formData, "thread_id");
   const flag = text(formData, "flag");
   const value = text(formData, "value") === "true";
-  if (flag !== "is_pinned" && flag !== "is_locked") return;
+  if (flag !== "is_pinned" && flag !== "is_locked" && flag !== "is_important") return;
 
   const supabase = await createClient();
   await supabase.from("forum_threads").update({ [flag]: value }).eq("id", threadId);
+  refresh();
+}
+
+/** Staff (forum.segnalare): segnala un post a tutti, o toglie la segnalazione */
+export async function highlightPost(formData: FormData) {
+  const player = await getPlayer();
+  if (!player) redirect("/login");
+  const postId = Number(text(formData, "post_id"));
+  if (!Number.isInteger(postId)) return;
+  const supabase = await createClient();
+  await supabase.rpc("forum_highlight_post", { p_post: postId, p_on: text(formData, "value") === "true" });
+  refresh();
+}
+
+/** Segna tutto il forum come letto */
+export async function markForumRead() {
+  const player = await getPlayer();
+  if (!player) redirect("/login");
+  const supabase = await createClient();
+  await supabase.rpc("forum_mark_read", { p_thread: null });
   refresh();
 }

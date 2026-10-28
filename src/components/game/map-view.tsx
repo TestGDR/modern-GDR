@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Lock, MapPin } from "lucide-react";
+import { Lock, MapPin } from "lucide-react";
 import { FloatingWindow } from "@/components/floating-window";
 import { MiamiIllustration } from "@/components/game/miami-illustration";
 import type { District, GameMap, Room, RoomGroup } from "@/lib/types";
@@ -70,9 +70,14 @@ export function MapView({ maps, districts, groups, rooms, activity, initialDistr
         </div>
       )}
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <div className="glass h-fit rounded-3xl p-3 sm:p-4">
-          <div className="relative mx-auto w-full max-w-xl overflow-hidden rounded-2xl">
+      <div className="glass rounded-3xl p-3 sm:p-4">
+        <div
+          className={cn(
+            "relative mx-auto w-full overflow-hidden rounded-2xl",
+            // grande: tutta la larghezza (la Miami disegnata è verticale, l'area centrale scorre)
+            map.image_url ? "max-w-6xl" : "max-w-3xl",
+          )}
+        >
             {map.image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={map.image_url} alt={map.name} className="block w-full select-none" draggable={false} />
@@ -82,33 +87,8 @@ export function MapView({ maps, districts, groups, rooms, activity, initialDistr
             {here.map((d) => (
               <MapDot key={d.id} district={d} people={people(d.id)} onOpen={() => setOpenId(d.id)} />
             ))}
-          </div>
-          {map.description && <p className="mt-3 text-center text-sm text-muted-foreground">{map.description}</p>}
         </div>
-
-        {/* Elenco dei quartieri: comodo sul telefono e per chi non usa la mappa */}
-        <ul className="grid h-fit grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
-          {here.map((d) => {
-            const n = people(d.id);
-            return (
-              <li key={d.id}>
-                <button
-                  type="button"
-                  onClick={() => setOpenId(d.id)}
-                  className={cn("group relative flex w-full items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r px-4 py-3 text-left", d.gradient)}
-                >
-                  <span className="absolute inset-0 bg-night/45 transition-colors group-hover:bg-night/25" />
-                  <span className="relative min-w-0 flex-1">
-                    <span className="block font-heading text-2xl leading-none tracking-wide text-white">{d.name}</span>
-                    {d.tagline && <span className="block truncate text-xs text-white/80">{d.tagline}</span>}
-                  </span>
-                  {n > 0 && <span className="relative shrink-0 rounded-full bg-mint/25 px-2 py-0.5 text-xs text-white">{n} in gioco</span>}
-                  <ChevronRight className="relative size-4 shrink-0 text-white/80" />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        {map.description && <p className="mt-3 text-center text-sm text-muted-foreground">{map.description}</p>}
       </div>
 
       {open && (
@@ -151,11 +131,12 @@ function MapDot({ district: d, people, onOpen }: { district: District; people: n
       <span className="relative block size-4">
         <span className="absolute inset-0 animate-ping rounded-full bg-flamingo/50" />
         <span className="absolute inset-0 rounded-full border-2 border-white bg-flamingo shadow-[0_0_10px_var(--flamingo)] transition group-hover:scale-125" />
-        {people > 0 && <span className="absolute -top-1 -right-1 size-2 rounded-full bg-mint ring-2 ring-night" />}
+        {people > 0 && <span className="absolute -top-1 -right-1 size-2 rounded-full bg-mint ring-2 ring-night" title={`${people} in gioco`} />}
       </span>
       <span
         className={cn(
-          "pointer-events-none absolute top-6 z-10 rounded-md bg-night/90 px-2 py-0.5 font-heading text-sm tracking-wide whitespace-nowrap text-white opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100",
+          // nome sempre visibile (non c'è più l'elenco a fianco); al passaggio si illumina
+          "pointer-events-none absolute top-6 z-10 rounded-md bg-night/80 px-1.5 py-0.5 font-heading text-[0.7rem] tracking-wide whitespace-nowrap text-white/90 transition group-hover:bg-flamingo group-hover:text-white group-focus-visible:bg-flamingo sm:text-sm",
           // vicino ai bordi il nome si allinea al punto invece di uscire dalla mappa
           x < 15 ? "left-0" : x > 85 ? "right-0" : "left-1/2 -translate-x-1/2",
         )}

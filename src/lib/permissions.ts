@@ -73,6 +73,18 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     ],
   },
   {
+    id: "comunita",
+    title: "Comunità",
+    items: [
+      { key: "forum.moderare", label: "Moderare il forum", description: "Fissare, chiudere e rendere importanti le discussioni, modificare ed eliminare i post altrui" },
+      { key: "forum.sezioni", label: "Gestire sezioni e bacheche del forum" },
+      { key: "forum.segnalare", label: "Segnalare un post a tutti", description: "A tutti compare un avviso con il link al post" },
+      { key: "assenze.gestire", label: "Gestire le assenze", description: "Togliere le assenze di chiunque" },
+      { key: "ricerca.moderare", label: "Moderare la ricerca di gioco", description: "Togliere le richieste di chiunque" },
+      { key: "pettegolezzi.gestire", label: "Gestire i pettegolezzi", description: "Vedere i tiri, approvare, modificare, rifiutare ed eliminare le voci, cambiare dado e soglia" },
+    ],
+  },
+  {
     id: "trama",
     title: "Trama",
     items: [
@@ -95,7 +107,7 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     items: [
       { key: "elenchi.gestire", label: "Gestire gli elenchi della scheda", description: "Indirizzi di studio, anni di corso, squadre e club" },
       { key: "annunci.globali", label: "Pubblicare notizie e scrivere a tutti", description: "Notizie dello staff, messaggi a tutti (ON e OFF) e bacheche riservate del forum" },
-      { key: "contenuti.moderare", label: "Moderare forum e social", description: "Fissare e chiudere discussioni, eliminare post e commenti altrui" },
+      { key: "contenuti.moderare", label: "Moderare il social", description: "Eliminare post e commenti altrui sul social" },
     ],
   },
 ];

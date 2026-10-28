@@ -248,6 +248,8 @@ export type ForumThread = {
   title: string;
   is_pinned: boolean;
   is_locked: boolean;
+  /** Discussione importante: evidenziata nell'elenco */
+  is_important: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -260,6 +262,9 @@ export type ForumPost = {
   body: string;
   created_at: string;
   edited_at: string | null;
+  /** Post segnalato a tutti dallo staff */
+  highlighted_at: string | null;
+  highlighted_by: string | null;
 };
 
 export type SocialPost = {

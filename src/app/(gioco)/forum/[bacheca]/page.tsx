@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Lock, Pin } from "lucide-react";
+import { ArrowLeft, Lock, Pin, Star } from "lucide-react";
 import { NewThreadForm } from "@/components/game/forum-forms";
 import { EmptyState, LoadingBlocks } from "@/components/game/loading";
 import { PageHeader } from "@/components/game/page-header";
 import { activeCharacter, can, requirePlayer } from "@/lib/auth";
-import { getBoard, getThreads } from "@/lib/data";
+import { getBoard, getForumUnread, getThreads } from "@/lib/data";
 import { formatDateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Forum" };
 
@@ -26,9 +27,10 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]">["para
   const character = activeCharacter(player);
   const board = await getBoard(bacheca);
   if (!board) notFound();
-  const threads = await getThreads(board.id);
+  const [threads, unread] = await Promise.all([getThreads(board.id), getForumUnread()]);
+  const unreadIds = new Set(unread.map((u) => u.thread_id));
   // Le bacheche riservate (es. Regolamento) sono per chi pubblica annunci
-  const canPost = !board.staff_only || can(player, "annunci.pubblicare");
+  const canPost = !board.staff_only || can(player, "annunci.globali");
 
   return (
     <>
@@ -44,11 +46,16 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]">["para
             <Link
               key={t.id}
               href={`/forum/${board.slug}/${t.id}`}
-              className="glass flex items-center gap-4 rounded-2xl px-5 py-4 transition-colors hover:bg-white/10"
+              className={cn(
+                "glass flex items-center gap-4 rounded-2xl px-5 py-4 transition-colors hover:bg-white/10",
+                t.is_important && "border-peach/50 shadow-[0_0_16px_rgb(255_176_138/0.15)]",
+              )}
             >
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-2 font-medium">
-                  {t.is_pinned && <Pin className="size-4 shrink-0 text-peach" aria-label="In evidenza" />}
+                  {unreadIds.has(t.id) && <span className="size-2.5 shrink-0 rounded-full bg-flamingo" aria-label="Messaggi nuovi" />}
+                  {t.is_pinned && <Pin className="size-4 shrink-0 text-peach" aria-label="Fissata in alto" />}
+                  {t.is_important && <Star className="size-4 shrink-0 fill-peach text-peach" aria-label="Importante" />}
                   {t.is_locked && <Lock className="size-4 shrink-0 text-muted-foreground" aria-label="Chiusa" />}
                   <span className="truncate">{t.title}</span>
                 </p>
