@@ -16,7 +16,8 @@ import { requestTime } from "@/lib/request-time";
  * - in attesa o approvata → scheda
  */
 export async function OwnSheet({ variant }: { variant: SheetVariant }) {
-  const { character: mine, profile } = await requirePlayer();
+  const player = await requirePlayer();
+  const { character: mine, profile } = player;
   if (!mine) return <NewCharacterSheet name={profile.username} variant={variant} />;
 
   const [character, build, rules] = await Promise.all([getCharacter(mine.id), getCharacterBuild(mine.id), getRulesData()]);
@@ -45,6 +46,7 @@ export async function OwnSheet({ variant }: { variant: SheetVariant }) {
       variant={variant}
       build={build}
       rules={rules}
+      canReview={can(player, "personaggi.approvare")}
     />
   );
 }
