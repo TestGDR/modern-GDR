@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Pagine riservate a chi ha fatto l'accesso
-const PROTECTED = ["/bacheca", "/mappa", "/chat", "/messaggi", "/social", "/forum", "/scheda", "/nuova-password"];
+const PROTECTED = ["/bacheca", "/mappa", "/chat", "/messaggi", "/social", "/forum", "/scheda", "/gestione", "/nuova-password"];
 
 function matches(pathname: string, paths: string[]) {
   return paths.some((p) => pathname === p || pathname.startsWith(`${p}/`));
