@@ -13,6 +13,7 @@ import { requirePlayer } from "@/lib/auth";
 import { getFeed, type FeedPost } from "@/lib/data";
 import { gradientFor, initials, timeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { requestTime } from "@/lib/request-time";
 
 export const metadata: Metadata = { title: "Social" };
 
@@ -30,7 +31,7 @@ export default function SocialPage() {
 async function Content() {
   const { character, userId } = await requirePlayer();
   const posts = await getFeed();
-  const now = new Date();
+  const now = await requestTime();
 
   return (
     <>

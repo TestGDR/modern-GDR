@@ -1,13 +1,57 @@
 // Tipi delle righe del database Supabase (vedi supabase/migrations/).
 // Se cambi una tabella, aggiorna anche questi tipi.
 
-export type UserRole = "player" | "master" | "admin";
+/** Livello utente (Amministratore, Master, Moderatore, Giocatore, Ospite…) */
+export type UserLevel = {
+  id: string;
+  name: string;
+  description: string;
+  /** Colore del badge: se presente, il livello si mostra accanto al nome */
+  color: string | null;
+  rank: number;
+  /** Chiavi dei permessi spuntati (registro in src/lib/permissions.ts) */
+  permissions: string[];
+  /** Amministratore: ha sempre tutti i permessi */
+  is_admin: boolean;
+  max_characters: number;
+};
 
 export type Profile = {
   id: string;
   username: string;
-  role: UserRole;
+  level_id: string;
   created_at: string;
+};
+
+export type CharacterStatus = "bozza" | "in_attesa" | "approvata" | "rifiutata";
+
+/** Caratteristica del sistema Interlock (INT, RIF, VIG, EMP, PRE…) */
+export type Attribute = {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  sort_order: number;
+  active: boolean;
+};
+
+export type Skill = {
+  id: string;
+  attribute_id: string;
+  name: string;
+  description: string;
+  category: "Studio" | "Sport" | "Arti" | "Sociale" | "Pratico" | null;
+  sort_order: number;
+  active: boolean;
+};
+
+export type GameSetting = {
+  key: string;
+  value: number | number[] | string;
+  kind: "number" | "numbers" | "level";
+  label: string;
+  description: string;
+  sort_order: number;
 };
 
 export type District = {
@@ -43,12 +87,25 @@ export type Character = {
   quote: string | null;
   bio: string | null;
   avatar_url: string | null;
+  /** Immagine grande della sezione Principale */
+  cover_url: string | null;
+  appearance: string | null;
+  traits: string | null;
+  skills: string | null;
+  /** "Si sa che": ciò che in città si sa del personaggio */
+  known_facts: string | null;
+  relationships: string | null;
+  equipment: string | null;
   physique: number;
   cunning: number;
   charisma: number;
   driving: number;
   last_seen_at: string | null;
   created_at: string;
+  status: CharacterStatus;
+  rejection_reason: string | null;
+  /** PX non spesi */
+  px: number;
 };
 
 /** Versione ridotta del personaggio, usata in elenchi e messaggi */

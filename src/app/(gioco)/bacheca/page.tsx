@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requirePlayer } from "@/lib/auth";
 import { getDistrictsWithPlaces, getNews, getOnlineCharacters, getPlaceActivity } from "@/lib/data";
 import { formatDateTime, initials } from "@/lib/format";
+import { requestTime } from "@/lib/request-time";
 
 export const metadata: Metadata = { title: "Bacheca" };
 
@@ -47,7 +48,7 @@ async function Content() {
     hour: "2-digit",
     minute: "2-digit",
     timeZone: "America/New_York",
-  }).format(new Date());
+  }).format(await requestTime());
 
   return (
     <>

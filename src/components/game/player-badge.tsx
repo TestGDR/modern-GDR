@@ -6,14 +6,16 @@ import { requirePlayer } from "@/lib/auth";
 import { signOut } from "@/lib/actions/auth";
 import { initials } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
+import { requestTime } from "@/lib/request-time";
 
 const TOUCH_EVERY_MS = 2 * 60 * 1000;
 
 /** Segna il personaggio come online (al massimo ogni 2 minuti) */
 async function touchLastSeen(characterId: string, lastSeenAt: string | null) {
-  if (lastSeenAt && Date.now() - new Date(lastSeenAt).getTime() < TOUCH_EVERY_MS) return;
+  const now = await requestTime();
+  if (lastSeenAt && now.getTime() - new Date(lastSeenAt).getTime() < TOUCH_EVERY_MS) return;
   const supabase = await createClient();
-  await supabase.from("characters").update({ last_seen_at: new Date().toISOString() }).eq("id", characterId);
+  await supabase.from("characters").update({ last_seen_at: now.toISOString() }).eq("id", characterId);
 }
 
 /** Riquadro del giocatore in fondo alla sidebar */

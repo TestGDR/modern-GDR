@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { createCharacter, updateCharacter } from "@/lib/actions/character";
+import { createCharacter } from "@/lib/actions/character";
 import { STAT_MAX, STAT_MIN, STATS, STATS_BUDGET, type StatKey } from "@/lib/character-stats";
 import type { Character, District, FormState } from "@/lib/types";
 
@@ -107,19 +107,6 @@ export function CreateCharacterForm({ districts, name }: { districts: District[]
 
       <Button type="submit" size="lg" disabled={pending} className="h-11 rounded-full text-base">
         {pending ? "Creazione in corso…" : "Entra a Miami"}
-      </Button>
-    </form>
-  );
-}
-
-export function EditCharacterForm({ districts, character }: { districts: District[]; character: Character }) {
-  const [state, action, pending] = useActionState(updateCharacter, initial);
-  return (
-    <form action={action} className="flex flex-col gap-4">
-      <FormMessage state={state} />
-      <DetailFields districts={districts} character={character} />
-      <Button type="submit" disabled={pending} className="self-end rounded-full px-6">
-        {pending ? "Salvataggio…" : "Salva"}
       </Button>
     </form>
   );

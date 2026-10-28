@@ -21,6 +21,9 @@ GDR (gioco di ruolo) play by chat moderno ambientato a Miami: chat di gioco, mes
 - `src/components/scenery/` — scenografia (cielo al tramonto, palme SVG).
 - `src/lib/auth.ts` — utente collegato: `getPlayer()`, `requirePlayer()` (serve l'accesso; il personaggio può essere null) e `requireCharacter()` (per le azioni che richiedono un personaggio).
 - `supabase/email-templates/` — modelli delle email di Supabase (da incollare in Authentication > Emails > Templates).
+- Scheda personaggio in finestra: `src/app/(gioco)/@modal/(.)scheda` intercetta `/scheda` e `/scheda/[id]` e li apre in una finestra 800×550 (`SheetModal`, trascinabile e ridimensionabile). Aprendo l'indirizzo direttamente si vede la pagina intera. Il contenuto è condiviso in `src/components/game/sheet-content.tsx`.
+- Lo slot `@modal` si chiude cambiando pagina grazie a `ModalGate` (controlla l'indirizzo). **Non** aggiungere un `[...catchAll]` in `@modal`: essendo nel gruppo `(gioco)` alla radice, renderebbe irraggiungibili `/login`, `/registrati` ecc.
+- Ora corrente nei componenti del server: usare `requestTime()` (`src/lib/request-time.ts`), mai `Date.now()`/`new Date()` diretti (Cache Components).
 
 ## Percorso del giocatore
 - Registrazione (nome del personaggio + email + password) → email di conferma → accesso con **nome del personaggio + password** → bacheca.
@@ -55,8 +58,13 @@ GDR (gioco di ruolo) play by chat moderno ambientato a Miami: chat di gioco, mes
 - I messaggi privati devono essere leggibili solo da mittente e destinatario.
 - Per sapere chi è l'utente sul server usare `supabase.auth.getClaims()` (o `getUser()`), mai `getSession()`.
 - Supabase concede di default tutti i permessi sulle tabelle: dove servono colonne non modificabili, fare `revoke all` e poi `grant` solo delle colonne ammesse.
-- Funzioni di supporto già presenti: `public.is_staff()` (master/admin) e `public.owns_character(id)`.
-- Ruoli: `player`, `master`, `admin` (colonna `profiles.role`), modificabili solo dalla dashboard/SQL Editor.
+- **Livelli e permessi** (al posto dei vecchi ruoli): ogni utente ha un livello (`profiles.level_id` → `user_levels`) con rango e permessi spuntati. Il registro dei permessi è in `src/lib/permissions.ts` (unico elenco: il pannello genera le caselle da lì).
+- Nel database si controlla con `public.has_permission('chiave')` (l'Amministratore li ha tutti); nel codice con `can(player, "chiave")` di `src/lib/auth.ts`, solo per mostrare/nascondere: la sicurezza è nelle policy. Nuove policy: permessi specifici, **non** `is_staff()` (resta solo per compatibilità).
+- Protezioni dei livelli: rango (non si gestiscono livelli/utenti di rango ≥ al proprio), un solo Amministratore non eliminabile, almeno un amministratore sempre, assegnazione con `assign_level()`, eliminazione con `delete_level()`. Dall'SQL Editor (nessun utente collegato) i controlli del pannello non si applicano.
+- Sistema Interlock: `attributes` (caratteristiche), `skills` (abilità, una caratteristica ciascuna), `game_settings` (parametri), `sheet_options` (indirizzi, anni, club), `creation_options` (vantaggi, svantaggi, tratti, tenore). Valori dei PG in `character_attributes`, `character_skills`, `character_options`. Niente valori di gioco scritti nel codice: si leggono da queste tabelle.
+- Stato della scheda: `bozza` → `in_attesa` → `approvata`/`rifiutata`. Le bozze le vedono solo il proprietario e chi ha `personaggi.vedere_tutti`.
+- Le modifiche alle tabelle del pannello finiscono da sole in `admin_log`.
+- Altre funzioni: `public.owns_character(id)`, `public.my_rank()`, `public.is_admin_user()`, `public.setting_int(chiave)`.
 - `supabase/setup-completo.sql` è l'unione delle migrazioni iniziali (01-09), usata una volta per creare il database.
 
 ## Chiavi e segreti

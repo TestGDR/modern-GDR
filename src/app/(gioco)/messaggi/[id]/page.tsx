@@ -12,6 +12,7 @@ import { requirePlayer } from "@/lib/auth";
 import { getCharacter, getConversations, getMessagesWith } from "@/lib/data";
 import { initials, isOnline } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
+import { requestTime } from "@/lib/request-time";
 
 export const metadata: Metadata = { title: "Messaggi" };
 
@@ -32,11 +33,12 @@ async function Content({ params }: { params: PageProps<"/messaggi/[id]">["params
   const other = await getCharacter(id);
   if (!other || other.id === character.id) notFound();
 
+  const now = await requestTime();
   // Aprendo la conversazione, i messaggi ricevuti diventano "letti"
   const supabase = await createClient();
   await supabase
     .from("private_messages")
-    .update({ read_at: new Date().toISOString() })
+    .update({ read_at: now.toISOString() })
     .eq("recipient_id", character.id)
     .eq("sender_id", other.id)
     .is("read_at", null);
@@ -45,7 +47,6 @@ async function Content({ params }: { params: PageProps<"/messaggi/[id]">["params
     getConversations(character.id),
     getMessagesWith(character.id, other.id),
   ]);
-  const now = new Date();
 
   return (
     <MessagesShell conversations={conversations} myCharacterId={character.id} activeId={other.id} now={now}>

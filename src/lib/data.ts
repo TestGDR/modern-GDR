@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { ONLINE_WINDOW_MS } from "@/lib/format";
+import { requestTime } from "@/lib/request-time";
 import type {
   Character,
   CharacterSummary,
@@ -52,7 +53,7 @@ export async function getPlaceBySlug(slug: string) {
 /** Per ogni luogo, quanti personaggi hanno scritto negli ultimi 30 minuti */
 export async function getPlaceActivity() {
   const supabase = await createClient();
-  const since = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  const since = new Date((await requestTime()).getTime() - 30 * 60 * 1000).toISOString();
   const { data } = await supabase
     .from("chat_messages")
     .select("place_id, character_id")
@@ -87,7 +88,7 @@ export async function getChatMessages(placeId: string, limit = 60) {
 
 export async function getOnlineCharacters() {
   const supabase = await createClient();
-  const since = new Date(Date.now() - ONLINE_WINDOW_MS).toISOString();
+  const since = new Date((await requestTime()).getTime() - ONLINE_WINDOW_MS).toISOString();
   const { data } = await supabase
     .from("characters")
     .select("id, name, occupation, last_seen_at")
@@ -113,9 +114,9 @@ export async function getCharacter(id: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("characters")
-    .select("*, district:districts(name)")
+    .select("*, district:districts(name, slug, gradient)")
     .eq("id", id)
-    .maybeSingle<Character & { district: { name: string } | null }>();
+    .maybeSingle<Character & { district: Pick<District, "name" | "slug" | "gradient"> | null }>();
   return data;
 }
 
@@ -271,7 +272,7 @@ export async function getThread(id: string) {
 }
 
 export type PostWithAuthor = ForumPost & {
-  author: { username: string; role: string } | null;
+  author: { username: string; level: { name: string; color: string | null } | null } | null;
   character: { id: string; name: string } | null;
 };
 
@@ -279,7 +280,7 @@ export async function getPosts(threadId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("forum_posts")
-    .select("*, author:profiles(username, role), character:characters(id, name)")
+    .select("*, author:profiles(username, level:user_levels(name, color)), character:characters(id, name)")
     .eq("thread_id", threadId)
     .order("created_at")
     .limit(500)

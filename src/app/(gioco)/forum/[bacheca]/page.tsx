@@ -6,7 +6,7 @@ import { ArrowLeft, Lock, Pin } from "lucide-react";
 import { NewThreadForm } from "@/components/game/forum-forms";
 import { EmptyState, LoadingBlocks } from "@/components/game/loading";
 import { PageHeader } from "@/components/game/page-header";
-import { isStaff, requirePlayer } from "@/lib/auth";
+import { can, requirePlayer } from "@/lib/auth";
 import { getBoard, getThreads } from "@/lib/data";
 import { formatDateTime } from "@/lib/format";
 
@@ -22,11 +22,13 @@ export default function BoardPage({ params }: PageProps<"/forum/[bacheca]">) {
 
 async function Content({ params }: { params: PageProps<"/forum/[bacheca]">["params"] }) {
   const { bacheca } = await params;
-  const { character, profile } = await requirePlayer();
+  const player = await requirePlayer();
+  const { character } = player;
   const board = await getBoard(bacheca);
   if (!board) notFound();
   const threads = await getThreads(board.id);
-  const canPost = !board.staff_only || isStaff(profile);
+  // Le bacheche riservate (es. Regolamento) sono per chi pubblica annunci
+  const canPost = !board.staff_only || can(player, "annunci.pubblicare");
 
   return (
     <>

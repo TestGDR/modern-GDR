@@ -9,7 +9,7 @@ import { LoadingBlocks } from "@/components/game/loading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toggleThreadFlag } from "@/lib/actions/forum";
-import { isStaff, requirePlayer } from "@/lib/auth";
+import { can, requirePlayer } from "@/lib/auth";
 import { getBoard, getPosts, getThread } from "@/lib/data";
 import { formatDateTime, initials } from "@/lib/format";
 
@@ -25,11 +25,12 @@ export default function ThreadPage({ params }: PageProps<"/forum/[bacheca]/[disc
 
 async function Content({ params }: { params: PageProps<"/forum/[bacheca]/[discussione]">["params"] }) {
   const { bacheca, discussione } = await params;
-  const { character, profile } = await requirePlayer();
+  const player = await requirePlayer();
+  const { character } = player;
   const [thread, board] = await Promise.all([getThread(discussione), getBoard(bacheca)]);
   if (!thread || !board || thread.board_id !== board.id) notFound();
   const posts = await getPosts(thread.id);
-  const staff = isStaff(profile);
+  const staff = can(player, "contenuti.moderare");
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -68,7 +69,7 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]/[discus
       <ol className="flex flex-col gap-4">
         {posts.map((post) => {
           const name = post.character?.name ?? `@${post.author?.username ?? "utente"}`;
-          const postStaff = post.author?.role === "master" || post.author?.role === "admin";
+          const level = post.author?.level;
           return (
             <li key={post.id} className="glass rounded-2xl p-5">
               <div className="mb-3 flex items-center gap-3">
@@ -82,7 +83,10 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]/[discus
                     ) : (
                       name
                     )}
-                    {postStaff && <Badge className="bg-flamingo/20 text-flamingo">Staff</Badge>}
+                    {/* Badge del livello, se il livello ha un colore (es. Master, Moderatore) */}
+                    {level?.color && (
+                      <Badge style={{ backgroundColor: `${level.color}33`, color: level.color }}>{level.name}</Badge>
+                    )}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {formatDateTime(post.created_at)}

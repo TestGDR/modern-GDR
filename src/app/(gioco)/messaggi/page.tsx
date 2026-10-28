@@ -9,6 +9,7 @@ import { NeedsCharacter } from "@/components/game/needs-character";
 import { requirePlayer } from "@/lib/auth";
 import { getAllCharacters, getConversations } from "@/lib/data";
 import { initials, isOnline } from "@/lib/format";
+import { requestTime } from "@/lib/request-time";
 
 export const metadata: Metadata = { title: "Messaggi" };
 
@@ -25,7 +26,7 @@ async function Content() {
   if (!character) return <NoCharacter />;
   const [conversations, everyone] = await Promise.all([getConversations(character.id), getAllCharacters()]);
   const others = everyone.filter((c) => c.id !== character.id);
-  const now = new Date();
+  const now = await requestTime();
 
   return (
     <MessagesShell conversations={conversations} myCharacterId={character.id} now={now}>

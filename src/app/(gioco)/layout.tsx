@@ -4,6 +4,7 @@ import { CircleUserRound, MessagesSquare } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { MobileNav, MobileNavFallback, SidebarNav, SidebarNavFallback } from "@/components/game/game-nav";
 import { MobileSignOut, PlayerBadge } from "@/components/game/player-badge";
+import { ModalGate } from "@/components/game/sheet-modal";
 import { DuskBackdrop } from "@/components/scenery/sunset-sky";
 import { buttonVariants } from "@/components/ui/button";
 
@@ -11,7 +12,7 @@ import { buttonVariants } from "@/components/ui/button";
 // - desktop: sidebar fissa a sinistra
 // - mobile: barra in alto + barra di navigazione in basso
 // Il layout è statico; i dati del giocatore arrivano dentro <Suspense>.
-export default function GameLayout({ children }: { children: React.ReactNode }) {
+export default function GameLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   return (
     <div className="relative flex min-h-dvh flex-1">
       <DuskBackdrop />
@@ -50,6 +51,11 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
           {children}
         </div>
       </main>
+
+      {/* Finestre aperte sopra la pagina (es. la scheda del personaggio) */}
+      <Suspense fallback={null}>
+        <ModalGate>{modal}</ModalGate>
+      </Suspense>
 
       <Suspense fallback={<MobileNavFallback />}>
         <MobileNav />
