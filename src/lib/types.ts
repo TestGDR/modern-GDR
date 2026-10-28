@@ -281,12 +281,49 @@ export type SocialComment = {
   created_at: string;
 };
 
-export type CityNews = {
+/** Notizia dello staff (solo OFF) */
+export type News = {
   id: string;
   title: string;
-  body: string | null;
-  district_id: string | null;
-  published_at: string;
+  body: string;
+  author_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TicketStatus = "attesa" | "in_carico" | "sospeso" | "chiuso";
+
+export type TicketSection = {
+  id: string;
+  name: string;
+  instructions: string;
+  sort_order: number;
+  active: boolean;
+};
+
+export type Ticket = {
+  id: string;
+  title: string;
+  section_id: string | null;
+  opened_by: string | null;
+  opener_name: string;
+  status: TicketStatus;
+  assigned_to: string | null;
+  assigned_name: string | null;
+  created_at: string;
+  last_message_at: string;
+  last_author_name: string;
+};
+
+export type TicketMessage = {
+  id: number;
+  ticket_id: string;
+  author_id: string | null;
+  author_name: string;
+  from_staff: boolean;
+  body: string;
+  roll_data: RollData | null;
+  created_at: string;
 };
 
 /** Risultato standard delle Server Action usate nei moduli */

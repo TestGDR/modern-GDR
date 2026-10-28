@@ -8,7 +8,6 @@ import type {
   Character,
   CharacterSummary,
   ChatSettings,
-  CityNews,
   CreationOption,
   District,
   ForumBoard,
@@ -18,6 +17,7 @@ import type {
   GameMap,
   GameSetting,
   Message,
+  News,
   Room,
   RoomGroup,
   SheetOption,
@@ -203,11 +203,11 @@ export async function getDistricts() {
 export async function getNews(limit = 5) {
   const supabase = await createClient();
   const { data } = await supabase
-    .from("city_news")
-    .select("id, title, body, district_id, published_at")
-    .order("published_at", { ascending: false })
+    .from("news")
+    .select("*")
+    .order("created_at", { ascending: false })
     .limit(limit)
-    .overrideTypes<CityNews[], { merge: false }>();
+    .overrideTypes<News[], { merge: false }>();
   return data ?? [];
 }
 

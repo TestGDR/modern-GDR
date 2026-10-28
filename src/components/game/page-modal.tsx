@@ -7,7 +7,7 @@ import { FloatingWindow } from "@/components/floating-window";
 // Pagine che, cliccate dentro il gioco, si aprono in una finestra sopra la
 // pagina in cui si è (rotte intercettate in src/app/(gioco)/@modal).
 // Aprendo l'indirizzo direttamente si vede invece la pagina intera.
-export const MODAL_PREFIXES = ["/scheda", "/social", "/forum", "/messaggi", "/gestione"];
+export const MODAL_PREFIXES = ["/scheda", "/social", "/forum", "/messaggi", "/ticket", "/gestione"];
 
 export function isModalPath(pathname: string) {
   return MODAL_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

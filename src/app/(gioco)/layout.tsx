@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { GameSidebar, SidebarFrame, SidebarShell } from "@/components/game/game-sidebar";
 import { ModalGate } from "@/components/game/page-modal";
 import { MessageButtonsFallback } from "@/components/game/message-buttons";
-import { AdminSidebarIcon, PlayerMessages, PlayerPortrait, PortraitFallback, TopBar } from "@/components/game/top-bar";
+import { AdminSidebarIcon, PlayerMessages, PlayerNews, PlayerPortrait, PortraitFallback, TopBar } from "@/components/game/top-bar";
 import { DuskBackdrop } from "@/components/scenery/sunset-sky";
 
 // Struttura dell'area di gioco:
@@ -22,6 +22,11 @@ export default function GameLayout({ children, modal }: { children: React.ReactN
               adminSlot={
                 <Suspense>
                   <AdminSidebarIcon />
+                </Suspense>
+              }
+              newsSlot={
+                <Suspense>
+                  <PlayerNews />
                 </Suspense>
               }
             />

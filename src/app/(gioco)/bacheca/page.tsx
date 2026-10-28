@@ -140,7 +140,7 @@ async function Content() {
                     <li key={n.id} className="py-3 first:pt-0 last:pb-0">
                       <div className="flex items-start justify-between gap-4">
                         <p className="text-sm font-medium">{n.title}</p>
-                        <span className="shrink-0 text-xs text-muted-foreground">{formatDateTime(n.published_at)}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground">{formatDateTime(n.created_at)}</span>
                       </div>
                       {n.body && <p className="mt-1 text-sm text-muted-foreground">{n.body}</p>}
                     </li>

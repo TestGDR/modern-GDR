@@ -3,6 +3,7 @@ import { BookOpen, Palmtree, ShieldCheck } from "lucide-react";
 import { ComingSoon, WindowButton } from "@/components/game/info-window";
 import { MenuButton } from "@/components/game/game-sidebar";
 import { MessageButtons } from "@/components/game/message-buttons";
+import { NewsButton } from "@/components/game/news-panel";
 import { barButtonClass as barBtn, sidebarIconClass } from "@/components/game/sidebar-styles";
 import { activeCharacter, can, getPlayer, requirePlayer } from "@/lib/auth";
 import { initials } from "@/lib/format";
@@ -87,6 +88,13 @@ export function TopBar({ portrait, messages }: { portrait: React.ReactNode; mess
       </div>
     </header>
   );
+}
+
+/** Notizie dello staff: chi ha il permesso le scrive dalla stessa finestra */
+export async function PlayerNews() {
+  const player = await getPlayer();
+  if (!player) return null;
+  return <NewsButton canPublish={can(player, "annunci.globali")} />;
 }
 
 /** Icona Gestione nella barra laterale: solo per chi può accedere al pannello */

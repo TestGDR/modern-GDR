@@ -9,7 +9,6 @@ import {
   CloudSun,
   EyeOff,
   Info,
-  LifeBuoy,
   LogOut,
   Map as MapIcon,
   Menu,
@@ -23,6 +22,7 @@ import { Logo } from "@/components/brand/logo";
 import { CharacterAvatar } from "@/components/game/character-avatar";
 import { ComingSoon, WindowButton } from "@/components/game/info-window";
 import { isModalPath } from "@/components/game/page-modal";
+import { TicketIcon } from "@/components/game/ticket-icon";
 import { usePresence } from "@/components/game/presence";
 import { sidebarIconClass } from "@/components/game/sidebar-styles";
 import { FloatingWindow } from "@/components/floating-window";
@@ -215,11 +215,7 @@ function FeatureIcons({ adminSlot }: { adminSlot: React.ReactNode }) {
       <Link href="/scheda" className={iconCls}>
         <CircleUserRound /> Scheda
       </Link>
-      <WindowButton label="Ticket" icon={<LifeBuoy />} className={iconCls}>
-        <ComingSoon>
-          <p>Le richieste allo staff: problemi tecnici, scheda e approvazione, regole, segnalazioni, eventi e trame. Ogni ticket funziona come una chat con lo staff.</p>
-        </ComingSoon>
-      </WindowButton>
+      <TicketIcon />
       {adminSlot}
     </div>
   );
@@ -337,7 +333,7 @@ function PrefsLoader() {
 }
 
 /** Barra laterale del gioco */
-export function GameSidebar({ adminSlot }: { adminSlot: React.ReactNode }) {
+export function GameSidebar({ adminSlot, newsSlot }: { adminSlot: React.ReactNode; newsSlot: React.ReactNode }) {
   const { roomId, info } = useCurrentRoom();
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -345,6 +341,7 @@ export function GameSidebar({ adminSlot }: { adminSlot: React.ReactNode }) {
       <div className="hidden justify-center lg:flex">
         <Logo href="/bacheca" size="sm" />
       </div>
+      {newsSlot}
       <PlaceCard info={info} />
       <MainButtons />
       <FeatureIcons adminSlot={adminSlot} />

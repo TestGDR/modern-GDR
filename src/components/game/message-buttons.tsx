@@ -7,6 +7,7 @@ import { Mail, Send } from "lucide-react";
 import { barButtonClass } from "@/components/game/sidebar-styles";
 import { everyEvenInBackground, playEvent } from "@/lib/notify-sound";
 import { createClient } from "@/lib/supabase/client";
+import { setTitleCount } from "@/lib/title-count";
 import { useResync } from "@/lib/use-resync";
 import { cn } from "@/lib/utils";
 
@@ -60,11 +61,10 @@ function useUnread(userId: string | null) {
     return everyEvenInBackground(() => playEvent(counts.on > 0 ? "on" : "off"), 15_000);
   }, [counts]);
 
-  // Numero dei non letti nel titolo della scheda, es. "(2) Mappa · Modern GDR"
+  // Numero dei non letti nel titolo della scheda (sommato ai ticket)
   const total = counts.on + counts.off;
   useEffect(() => {
-    const base = document.title.replace(/^\(\d+\) /, "");
-    document.title = total > 0 ? `(${total}) ${base}` : base;
+    setTitleCount("messaggi", total);
   }, [total, pathname]);
 
   return counts;
