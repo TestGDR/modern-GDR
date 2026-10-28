@@ -27,19 +27,34 @@ export const getPlayer = cache(async (): Promise<Player | null> => {
   const userId = claimsData?.claims?.sub;
   if (!userId) return null;
 
-  const [{ data: profile }, { data: character }] = await Promise.all([
+  const [{ data: profile }, { data: characters }] = await Promise.all([
     supabase
       .from("profiles")
       .select("*, level:user_levels(*)")
       .eq("id", userId)
       .single<Profile & { level: UserLevel }>(),
-    supabase.from("characters").select("*").eq("owner_id", userId).maybeSingle<Character>(),
+    // Un account può avere più schede (es. una rifiutata e una nuova): si prendono tutte
+    supabase.from("characters").select("*").eq("owner_id", userId).order("created_at", { ascending: false }).limit(20).overrideTypes<Character[], { merge: false }>(),
   ]);
   if (!profile) return null;
 
   const { level, ...rest } = profile;
-  return { userId, profile: rest, level, character };
+  return { userId, profile: rest, level, character: pickCharacter(characters ?? []) };
 });
+
+/**
+ * Il personaggio dell'account: prima quello approvato, poi quello in attesa,
+ * poi la bozza o il rifiutato più recente (le schede arrivano dalla più nuova).
+ */
+function pickCharacter(list: Character[]) {
+  return (
+    list.find((c) => c.status === "approvata") ??
+    list.find((c) => c.status === "in_attesa") ??
+    list.find((c) => c.status === "bozza") ??
+    list[0] ??
+    null
+  );
+}
 
 /** Per le pagine di gioco: serve aver fatto l'accesso (il personaggio è facoltativo). */
 export async function requirePlayer() {
