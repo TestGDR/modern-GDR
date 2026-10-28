@@ -1,68 +1,78 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Send } from "lucide-react";
-import { CharacterAvatar } from "@/components/game/character-avatar";
 import { LoadingBlocks } from "@/components/game/loading";
-import { MessagesShell } from "@/components/game/messages-shell";
+import { MessagesApp, type Contact } from "@/components/game/messages-app";
 import { NeedsCharacter } from "@/components/game/needs-character";
-import { activeCharacter, requirePlayer } from "@/lib/auth";
-import { getAllCharacters, getConversations } from "@/lib/data";
-import { initials, isOnline } from "@/lib/format";
-import { requestTime } from "@/lib/request-time";
+import { activeCharacter, can, requirePlayer } from "@/lib/auth";
+import { isUuid } from "@/lib/data";
+import { createClient } from "@/lib/supabase/server";
+import type { Channel } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Messaggi" };
 
-export default function MessaggiPage() {
+// /messaggi?canale=on|off&a=<utente>: i messaggi del canale, eventualmente
+// con la conversazione con quell'utente già aperta
+export default function MessaggiPage({ searchParams }: PageProps<"/messaggi">) {
   return (
     <Suspense fallback={<LoadingBlocks />}>
-      <Content />
+      <Content searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function Content() {
-  const character = activeCharacter(await requirePlayer());
-  if (!character) return <NoCharacter />;
-  const [conversations, everyone] = await Promise.all([getConversations(character.id), getAllCharacters()]);
-  const others = everyone.filter((c) => c.id !== character.id);
-  const now = await requestTime();
+async function Content({ searchParams }: { searchParams: PageProps<"/messaggi">["searchParams"] }) {
+  const params = await searchParams;
+  const channel: Channel = params.canale === "off" ? "off" : "on";
+  const to = typeof params.a === "string" && isUuid(params.a) ? params.a : null;
+  const player = await requirePlayer();
+  const character = activeCharacter(player);
 
-  return (
-    <MessagesShell conversations={conversations} myCharacterId={character.id} now={now}>
-      <div className="glass flex flex-1 flex-col rounded-2xl p-6">
-        <div className="mb-6 text-center">
-          <Send className="mx-auto mb-3 size-10 text-flamingo" />
-          <p className="font-heading text-2xl tracking-wide">Nuovo messaggio</p>
-          <p className="text-sm text-muted-foreground">Scegli a chi scrivere. I messaggi privati li leggete solo voi due.</p>
-        </div>
-        {others.length === 0 ? (
-          <p className="text-center text-sm text-muted-foreground">Non ci sono ancora altri personaggi a Miami.</p>
-        ) : (
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {others.map((c) => (
-              <li key={c.id}>
-                <Link href={`/messaggi/${c.id}`} className="flex items-center gap-3 rounded-xl bg-white/5 p-3 hover:bg-white/10">
-                  <CharacterAvatar initials={initials(c.name)} online={isOnline(c.last_seen_at, now)} />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{c.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">{c.occupation ?? "—"}</p>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </MessagesShell>
+  // Il proprio nome e quello di chi si apre subito (nome del personaggio se approvato)
+  const supabase = await createClient();
+  const ids = to && to !== player.userId ? [player.userId, to] : [player.userId];
+  const { data } = await supabase.rpc("player_cards", { p_users: ids });
+  const cards = ((data ?? []) as { user_id: string; name: string; avatar_url: string | null }[]).map(
+    (r): Contact => ({ id: r.user_id, name: r.name, avatar: r.avatar_url }),
   );
-}
+  const me = cards.find((c) => c.id === player.userId) ?? { id: player.userId, name: player.profile.username, avatar: null };
+  const initialTo = to ? (cards.find((c) => c.id === to && c.id !== player.userId) ?? null) : null;
 
-function NoCharacter() {
+  const tab = (c: Channel, label: string) => (
+    <Link
+      href={`/messaggi?canale=${c}`}
+      aria-current={channel === c ? "page" : undefined}
+      className={cn(
+        "rounded-full px-4 py-1.5 text-sm font-medium",
+        channel === c ? "bg-flamingo/20 text-white shadow-[inset_0_0_0_1px_var(--flamingo)]" : "text-muted-foreground hover:bg-white/5",
+      )}
+    >
+      {label}
+    </Link>
+  );
+
   return (
-    <>
-      <h1 className="mb-6 font-heading text-4xl tracking-wide text-sunset sm:text-5xl">Messaggi</h1>
-      <NeedsCharacter className="glass rounded-2xl" text="I messaggi privati si scambiano tra personaggi: completa la scheda del tuo per iniziare a scrivere." />
-    </>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <h1 className="mr-2 font-heading text-3xl tracking-wide">Messaggi</h1>
+        {tab("on", "ON · tra personaggi")}
+        {tab("off", "OFF · tra giocatori")}
+      </div>
+      {channel === "on" && !character ? (
+        <NeedsCharacter
+          className="glass rounded-2xl"
+          text="I messaggi ON sono tra personaggi: servono una scheda approvata. Intanto puoi scrivere a giocatori e staff nei messaggi OFF."
+        />
+      ) : (
+        <MessagesApp
+          key={`${channel}:${to ?? ""}`}
+          channel={channel}
+          me={me}
+          initialTo={initialTo}
+          canBroadcast={can(player, "annunci.globali") || can(player, "messaggi.tutti")}
+        />
+      )}
+    </div>
   );
 }

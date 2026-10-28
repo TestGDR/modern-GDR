@@ -50,7 +50,7 @@ export async function PlayerPortrait() {
 /** Messaggi OFF e ON con i contatori del proprio personaggio */
 export async function PlayerMessages() {
   const player = await getPlayer();
-  return <MessageButtons characterId={player ? (activeCharacter(player)?.id ?? null) : null} />;
+  return <MessageButtons userId={player?.userId ?? null} />;
 }
 
 /** Segnaposto del ritratto mentre arriva dal database */

@@ -156,7 +156,7 @@ export function CharacterSheetWindow({
                 </IconButton>
               </>
             ) : (
-              <Link href={`/messaggi/${character.id}`} className={cn(buttonVariants({ variant: "outline" }), "rounded-full")}>
+              <Link href={`/messaggi?canale=on&a=${character.owner_id}`} className={cn(buttonVariants({ variant: "outline" }), "rounded-full")}>
                 <Send /> Scrivi
               </Link>
             )}
@@ -180,7 +180,7 @@ export function CharacterSheetWindow({
               </span>
             )}
             {!isOwner && (
-              <Link href={`/messaggi/${character.id}`} className={cn(buttonVariants({ size: "sm" }), "rounded-full @2xl:hidden")}>
+              <Link href={`/messaggi?canale=on&a=${character.owner_id}`} className={cn(buttonVariants({ size: "sm" }), "rounded-full @2xl:hidden")}>
                 <Send /> Scrivi
               </Link>
             )}

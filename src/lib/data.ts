@@ -18,7 +18,6 @@ import type {
   GameMap,
   GameSetting,
   Message,
-  PrivateMessage,
   Room,
   RoomGroup,
   SheetOption,
@@ -209,64 +208,6 @@ export async function getNews(limit = 5) {
     .order("published_at", { ascending: false })
     .limit(limit)
     .overrideTypes<CityNews[], { merge: false }>();
-  return data ?? [];
-}
-
-/* -------------------------- Messaggi privati -------------------------- */
-
-export type ConversationSummary = {
-  other: CharacterSummary;
-  last: PrivateMessage;
-  unread: number;
-};
-
-/** Le conversazioni del mio personaggio, dalla più recente */
-export async function getConversations(myCharacterId: string) {
-  const supabase = await createClient();
-  // La RLS restituisce solo i messaggi di cui sono mittente o destinatario
-  const { data: messages } = await supabase
-    .from("private_messages")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(500)
-    .overrideTypes<PrivateMessage[], { merge: false }>();
-
-  const byOther = new Map<string, { last: PrivateMessage; unread: number }>();
-  for (const m of messages ?? []) {
-    const otherId = m.sender_id === myCharacterId ? m.recipient_id : m.sender_id;
-    const entry = byOther.get(otherId) ?? { last: m, unread: 0 };
-    if (m.recipient_id === myCharacterId && !m.read_at) entry.unread++;
-    byOther.set(otherId, entry);
-  }
-  if (byOther.size === 0) return [];
-
-  const { data: others } = await supabase
-    .from("characters")
-    .select("id, name, occupation, last_seen_at")
-    .in("id", [...byOther.keys()])
-    .overrideTypes<CharacterSummary[], { merge: false }>();
-  const othersById = new Map((others ?? []).map((c) => [c.id, c]));
-
-  const result: ConversationSummary[] = [];
-  for (const [otherId, entry] of byOther) {
-    const other = othersById.get(otherId);
-    if (other) result.push({ other, ...entry });
-  }
-  return result;
-}
-
-export async function getMessagesWith(myCharacterId: string, otherId: string) {
-  if (!isUuid(otherId)) return [];
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("private_messages")
-    .select("*")
-    .or(
-      `and(sender_id.eq.${myCharacterId},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${myCharacterId})`,
-    )
-    .order("created_at", { ascending: true })
-    .limit(300)
-    .overrideTypes<PrivateMessage[], { merge: false }>();
   return data ?? [];
 }
 

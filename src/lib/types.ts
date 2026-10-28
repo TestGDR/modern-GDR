@@ -208,8 +208,13 @@ export type Character = {
 /** Versione ridotta del personaggio, usata in elenchi e messaggi */
 export type CharacterSummary = Pick<Character, "id" | "name" | "occupation" | "last_seen_at">;
 
+/** Canale dei messaggi: ON tra personaggi, OFF tra giocatori */
+export type Channel = "on" | "off";
+
+/** Messaggio diretto tra due utenti */
 export type PrivateMessage = {
   id: number;
+  kind: Channel;
   sender_id: string;
   recipient_id: string;
   body: string;
