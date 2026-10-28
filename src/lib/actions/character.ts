@@ -29,8 +29,8 @@ export async function createCharacter(_prev: FormState, formData: FormData): Pro
   if (!player) redirect("/login");
   if (player.character) redirect("/scheda");
 
-  const name = text(formData, "name", 40);
-  if (!name || name.length < 3) return { error: "Il nome del personaggio deve avere almeno 3 caratteri." };
+  // Il nome del personaggio è quello scelto in registrazione (profiles.username)
+  const name = player.profile.username;
 
   const stats = Object.fromEntries(STAT_KEYS.map((k) => [k, Number(formData.get(k))]));
   const valid = STAT_KEYS.every((k) => Number.isInteger(stats[k]) && stats[k] >= STAT_MIN && stats[k] <= STAT_MAX);

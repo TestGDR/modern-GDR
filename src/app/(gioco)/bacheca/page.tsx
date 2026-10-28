@@ -59,7 +59,7 @@ async function Content() {
       {!character && (
         <NeedsCharacter
           className="glass mb-6 rounded-2xl"
-          text="Benvenuto a Miami! Puoi esplorare tutto, ma per giocare in chat, scrivere messaggi e usare il social ti serve un personaggio."
+          text="Benvenuto a Miami! Puoi esplorare tutto; per giocare in chat, scrivere messaggi e usare il social completa prima la scheda del tuo personaggio."
         />
       )}
 

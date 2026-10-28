@@ -10,7 +10,7 @@ export function NeedsCharacter({ text, className }: { text: string; className?: 
       <UserRoundPlus className="size-8 shrink-0 text-flamingo" />
       <p className="flex-1 text-sm text-muted-foreground">{text}</p>
       <Link href="/scheda" className={cn(buttonVariants(), "rounded-full px-5")}>
-        Crea il personaggio
+        Completa la scheda
       </Link>
     </div>
   );

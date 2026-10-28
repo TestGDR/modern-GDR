@@ -2,10 +2,10 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { isValidName, NAME_MAX, NAME_MIN, normalizeName } from "@/lib/character-name";
+import { findEmailByName } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { FormState } from "@/lib/types";
-
-const USERNAME_RE = /^[a-zA-Z0-9_.]{3,24}$/;
 
 function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -16,14 +16,15 @@ async function siteOrigin() {
 }
 
 export async function signUp(_prev: FormState, formData: FormData): Promise<FormState> {
-  const username = text(formData, "username");
+  // Il nome scelto in registrazione è il nome del personaggio, ed è quello con cui si accede
+  const name = normalizeName(text(formData, "name"));
   const email = text(formData, "email");
   const password = String(formData.get("password") ?? "");
-  // In caso di errore, nome utente ed email restano nel modulo
-  const fail = (error: string): FormState => ({ error, values: { username, email } });
+  // In caso di errore, nome ed email restano nel modulo
+  const fail = (error: string): FormState => ({ error, values: { name, email } });
 
-  if (!USERNAME_RE.test(username)) {
-    return fail("Il nome utente deve avere 3-24 caratteri: lettere, numeri, punto o trattino basso.");
+  if (!isValidName(name)) {
+    return fail(`Il nome del personaggio deve avere da ${NAME_MIN} a ${NAME_MAX} caratteri: lettere, spazi, apostrofo o trattino.`);
   }
   if (!email.includes("@")) return fail("Inserisci un'email valida.");
   if (password.length < 8) return fail("La password deve avere almeno 8 caratteri.");
@@ -35,15 +36,15 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     email,
     password,
     options: {
-      // Lo username finisce anche nell'email di riepilogo ({{ .Data.username }})
-      data: { username },
+      // Diventa profiles.username e finisce nell'email di riepilogo ({{ .Data.username }})
+      data: { username: name },
       emailRedirectTo: `${await siteOrigin()}/auth/confirm?next=/bacheca`,
     },
   });
 
   if (error) {
     if (error.message.toLowerCase().includes("database error")) {
-      return fail("Questo nome utente è già in uso. Scegline un altro.");
+      return fail("Esiste già un personaggio con questo nome. Scegline un altro.");
     }
     if (error.code === "user_already_exists") {
       return fail("Esiste già un account con questa email. Prova ad accedere.");
@@ -65,17 +66,29 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
   if (data.session) await supabase.auth.signOut();
 
   const confirmText = data.session
-    ? "Ora puoi accedere con la tua email e password."
-    : "Ti abbiamo mandato un'email: apri il link per confermare l'account, poi accedi.";
+    ? "Ora puoi accedere con il nome del personaggio e la password."
+    : "Ti abbiamo mandato un'email: apri il link per confermare l'account, poi accedi con il nome del personaggio.";
   if (formData.get("in_modal") === "1") return { success: confirmText };
   redirect("/?registrato=1");
 }
 
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
-  const email = text(formData, "email");
+  const login = normalizeName(text(formData, "name"));
   const password = String(formData.get("password") ?? "");
-  const fail = (error: string): FormState => ({ error, values: { email } });
-  if (!email || !password) return fail("Inserisci email e password.");
+  const fail = (error: string): FormState => ({ error, values: { name: login } });
+  if (!login || !password) return fail("Inserisci il nome del personaggio e la password.");
+
+  // Si accede col nome del personaggio; per comodità funziona anche l'email
+  let email: string | null = login.includes("@") ? login : null;
+  if (!email) {
+    try {
+      email = await findEmailByName(login);
+    } catch {
+      return fail("Accesso non disponibile: manca la configurazione del server (chiave segreta di Supabase).");
+    }
+  }
+  // Stesso messaggio se il nome non esiste o se la password è sbagliata
+  if (!email) return fail("Nome del personaggio o password non corretti.");
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -85,12 +98,12 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
       return fail("Devi prima confermare l'email: controlla la posta (anche lo spam).");
     }
     if (error.code === "invalid_credentials") {
-      return fail("Email o password non corretti.");
+      return fail("Nome del personaggio o password non corretti.");
     }
     return fail(`Accesso non riuscito: ${error.message}`);
   }
 
-  // Si entra subito in gioco: il personaggio si crea dalla Scheda personaggio
+  // Si entra subito in gioco: la scheda si completa da Scheda personaggio
   redirect("/bacheca");
 }
 

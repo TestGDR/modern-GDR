@@ -29,11 +29,11 @@ async function Content() {
   if (!mine) {
     return (
       <div className="glass mx-auto w-full max-w-xl rounded-3xl p-6 sm:p-8">
-        <h2 className="font-heading text-3xl tracking-wide text-peach">Crea il tuo personaggio</h2>
+        <h2 className="font-heading text-3xl tracking-wide text-peach">Completa la tua scheda</h2>
         <p className="mb-6 text-sm text-muted-foreground">
-          Ciao <span className="font-semibold text-foreground">{profile.username}</span>, chi sarai a Miami?
+          Racconta chi è <span className="font-semibold text-foreground">{profile.username}</span>: età, lavoro, quartiere, storia e caratteristiche.
         </p>
-        <CreateCharacterForm districts={districts} />
+        <CreateCharacterForm districts={districts} name={profile.username} />
       </div>
     );
   }

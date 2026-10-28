@@ -54,7 +54,7 @@ function DetailFields({ districts, character }: DetailsProps) {
   );
 }
 
-export function CreateCharacterForm({ districts }: { districts: District[] }) {
+export function CreateCharacterForm({ districts, name }: { districts: District[]; name: string }) {
   const [state, action, pending] = useActionState(createCharacter, initial);
   const [stats, setStats] = useState<Record<StatKey, number>>({ physique: 5, cunning: 5, charisma: 5, driving: 5 });
   const used = Object.values(stats).reduce((a, b) => a + b, 0);
@@ -71,9 +71,10 @@ export function CreateCharacterForm({ districts }: { districts: District[] }) {
   return (
     <form action={action} className="flex flex-col gap-5">
       <FormMessage state={state} />
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="name">Nome e cognome del personaggio</Label>
-        <Input id="name" name="name" required minLength={3} maxLength={40} placeholder="Es. Lena Moreno" className="h-10 bg-night/40" />
+      {/* Il nome è quello scelto in registrazione: non si cambia */}
+      <div className="rounded-xl bg-white/5 px-4 py-3">
+        <p className="text-xs text-muted-foreground">Nome del personaggio</p>
+        <p className="font-heading text-2xl tracking-wide">{name}</p>
       </div>
 
       <DetailFields districts={districts} />

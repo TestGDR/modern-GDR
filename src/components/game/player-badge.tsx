@@ -20,15 +20,15 @@ async function touchLastSeen(characterId: string, lastSeenAt: string | null) {
 export async function PlayerBadge() {
   const { character, profile } = await requirePlayer();
   if (character) await touchLastSeen(character.id, character.last_seen_at);
-  const name = character?.name ?? "Nessun personaggio";
+  const name = character?.name ?? profile.username;
 
   return (
     <div className="m-3 flex items-center gap-3 rounded-2xl bg-white/5 p-3">
       <Link href="/scheda" className="flex min-w-0 flex-1 items-center gap-3">
-        <CharacterAvatar initials={character ? initials(character.name) : "?"} online={!!character} />
+        <CharacterAvatar initials={initials(name)} online={!!character} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{name}</p>
-          <p className="truncate text-xs text-muted-foreground">@{profile.username}</p>
+          <p className="truncate text-xs text-muted-foreground">{character ? "In gioco" : "Scheda da completare"}</p>
         </div>
       </Link>
       <form action={signOut}>

@@ -40,7 +40,7 @@ async function Content() {
           <NewPostForm firstName={character.name.split(" ")[0]} />
         </div>
       ) : (
-        <NeedsCharacter className="glass mb-6 rounded-2xl" text="Per pubblicare, mettere mi piace e commentare ti serve un personaggio." />
+        <NeedsCharacter className="glass mb-6 rounded-2xl" text="Per pubblicare, mettere mi piace e commentare completa prima la scheda del tuo personaggio." />
       )}
 
       {posts.length === 0 && <EmptyState title="Ancora nessun post">Pubblica tu il primo.</EmptyState>}

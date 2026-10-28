@@ -61,7 +61,7 @@ function NoCharacter() {
   return (
     <>
       <h1 className="mb-6 font-heading text-4xl tracking-wide text-sunset sm:text-5xl">Messaggi</h1>
-      <NeedsCharacter className="glass rounded-2xl" text="I messaggi privati si scambiano tra personaggi: crea il tuo per iniziare a scrivere." />
+      <NeedsCharacter className="glass rounded-2xl" text="I messaggi privati si scambiano tra personaggi: completa la scheda del tuo per iniziare a scrivere." />
     </>
   );
 }

@@ -23,8 +23,9 @@ GDR (gioco di ruolo) play by chat moderno ambientato a Miami: chat di gioco, mes
 - `supabase/email-templates/` — modelli delle email di Supabase (da incollare in Authentication > Emails > Templates).
 
 ## Percorso del giocatore
-- Registrazione → email di riepilogo con link di conferma → home (`/?registrato=1`) → accesso → bacheca.
-- Il personaggio è facoltativo: si crea da **Scheda personaggio** (`/scheda`). Senza personaggio si può leggere tutto; per scrivere in chat, messaggi e social compare l'invito `NeedsCharacter`.
+- Registrazione (nome del personaggio + email + password) → email di conferma → accesso con **nome del personaggio + password** → bacheca.
+- Il nome scelto in registrazione (`profiles.username`) è il nome del personaggio: non si cambia. Unico senza distinguere maiuscole/minuscole.
+- La scheda (età, lavoro, storia, caratteristiche) si completa da **Scheda personaggio** (`/scheda`). Senza personaggio si può leggere tutto; per scrivere in chat, messaggi e social compare l'invito `NeedsCharacter`.
 - Recupero password: `/recupera-password` → email → `/nuova-password`.
 - `src/lib/data.ts` — letture dal database (solo server). `src/lib/actions/` — Server Action (scritture).
 - `src/lib/types.ts` — tipi delle tabelle: aggiornarli quando cambia il database.
@@ -60,7 +61,8 @@ GDR (gioco di ruolo) play by chat moderno ambientato a Miami: chat di gioco, mes
 
 ## Chiavi e segreti
 - Le chiavi segrete **non vanno mai nel codice** né nei commit (niente service_role / secret key, password del database, token).
-- Nel codice si usano solo le variabili `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, lette da `.env.local`.
+- Nel codice si usano le variabili `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, più `SUPABASE_SECRET_KEY` (solo server), lette da `.env.local` e dalle Environment Variables di Vercel.
+- `SUPABASE_SECRET_KEY` si usa solo in `src/lib/supabase/admin.ts` (`server-only`), per trovare l'email dal nome del personaggio al login. Nessun altro uso senza motivo.
 - `.env.local` è nel `.gitignore` e non va mai committato. `.env.example` contiene solo i nomi delle variabili, senza valori.
 - Se serve una chiave segreta lato server, va in una variabile senza prefisso `NEXT_PUBLIC_` e mai usata in codice client.
 

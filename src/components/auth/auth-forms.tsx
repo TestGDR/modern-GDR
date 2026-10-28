@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { requestPasswordReset, signIn, signUp, updatePassword } from "@/lib/actions/auth";
+import { NAME_MAX, NAME_MIN } from "@/lib/character-name";
 import type { FormState } from "@/lib/types";
 
 const initial: FormState = {};
@@ -49,7 +50,7 @@ export function LoginForm({ onForgotPassword }: { onForgotPassword?: () => void 
         <FormMessage state={{ error: "Il link non è valido o è scaduto. Prova ad accedere o richiedi un nuovo link." }} />
       )}
       <FormMessage state={state} />
-      <Field id="email" label="Email" type="email" autoComplete="email" placeholder="tu@email.com" defaultValue={state.values?.email} />
+      <Field id="name" label="Nome del personaggio" autoComplete="username" placeholder="Es. Lena Moreno" defaultValue={state.values?.name} />
       <Field id="password" label="Password" type="password" autoComplete="current-password" />
       {onForgotPassword ? (
         <button type="button" onClick={onForgotPassword} className="-mt-2 self-end text-xs text-muted-foreground hover:text-flamingo">
@@ -96,19 +97,19 @@ export function SignUpForm({ inModal, onGoToLogin }: SignUpFormProps = {}) {
       {inModal && <input type="hidden" name="in_modal" value="1" />}
       <FormMessage state={state} />
       <Field
-        id="username"
-        label="Nome utente (fuori dal gioco)"
+        id="name"
+        label="Nome e cognome del personaggio"
         autoComplete="username"
-        defaultValue={state.values?.username}
-        minLength={3}
-        maxLength={24}
-        pattern="[a-zA-Z0-9_.]{3,24}"
-        title="3-24 caratteri: lettere, numeri, punto o trattino basso"
+        placeholder="Es. Lena Moreno"
+        defaultValue={state.values?.name}
+        minLength={NAME_MIN}
+        maxLength={NAME_MAX}
       />
       <Field id="email" label="Email" type="email" autoComplete="email" placeholder="tu@email.com" defaultValue={state.values?.email} />
       <Field id="password" label="Password (almeno 8 caratteri)" type="password" autoComplete="new-password" minLength={8} />
       <p className="text-xs text-muted-foreground">
-        Riceverai un&apos;email di riepilogo con il link per confermare l&apos;account. Il personaggio lo crei dopo, dalla Scheda personaggio.
+        Con questo nome entrerai in gioco e accederai al sito. Riceverai un&apos;email per confermare l&apos;account; il resto della
+        scheda lo completi poi da Scheda personaggio.
       </p>
       <Button type="submit" size="lg" disabled={pending} className="mt-2 h-11 rounded-full text-base">
         {pending ? "Registrazione in corso…" : "Registrati"}

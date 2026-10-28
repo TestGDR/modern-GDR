@@ -128,7 +128,7 @@ export function ChatRoom({ placeId, isOpen, me, initialMessages }: ChatRoomProps
       </ol>
 
       {!me ? (
-        <NeedsCharacter className="border-t border-border" text="Per partecipare alla scena ti serve un personaggio." />
+        <NeedsCharacter className="border-t border-border" text="Per partecipare alla scena completa prima la scheda del tuo personaggio." />
       ) : isOpen ? (
         <form onSubmit={send} className="flex flex-col gap-2 border-t border-border p-3 sm:p-4">
           {error && <p className="text-sm text-destructive">{error}</p>}

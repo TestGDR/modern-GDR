@@ -27,7 +27,7 @@ async function Content({ params }: { params: PageProps<"/messaggi/[id]">["params
   const { id } = await params;
   const { character } = await requirePlayer();
   if (!character) {
-    return <NeedsCharacter className="glass rounded-2xl" text="I messaggi privati si scambiano tra personaggi: crea il tuo per iniziare a scrivere." />;
+    return <NeedsCharacter className="glass rounded-2xl" text="I messaggi privati si scambiano tra personaggi: completa la scheda del tuo per iniziare a scrivere." />;
   }
   const other = await getCharacter(id);
   if (!other || other.id === character.id) notFound();
