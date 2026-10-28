@@ -161,7 +161,8 @@ export function FloatingWindow({
   const content = (
     <div className="fixed inset-0 z-50">
       {/* Sfondo: un clic fuori chiude */}
-      <div className="absolute inset-0 bg-night/45" onClick={onClose} aria-hidden="true" />
+      {/* Niente sfondo scuro: la pagina sotto resta visibile; cliccando fuori la finestra si chiude */}
+      <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
 
       <div
         ref={windowRef}
@@ -171,7 +172,7 @@ export function FloatingWindow({
         tabIndex={-1}
         style={style}
         className={cn(
-          "absolute flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-night/75 shadow-2xl outline-none backdrop-blur-2xl backdrop-saturate-150 animate-in fade-in-0 zoom-in-95 sm:bg-night/65",
+          "absolute flex flex-col overflow-hidden rounded-3xl border border-white/20 bg-night/80 shadow-[0_24px_70px_rgb(0_0_0/0.6)] outline-none backdrop-blur-2xl backdrop-saturate-150 animate-in fade-in-0 zoom-in-95 sm:bg-night/65",
           className,
         )}
         {...chromelessDrag}
