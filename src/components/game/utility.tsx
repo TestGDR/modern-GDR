@@ -127,7 +127,7 @@ function Portrait({ person, size = "size-11" }: { person: Pick<UtilityPerson, "n
 export type RegistryEntry = {
   user_id: string;
   username: string;
-  /** Solo se la scheda è approvata */
+  /** Null se non ha ancora creato il personaggio */
   character_id: string | null;
   status: CharacterStatus | null;
   avatar_url: string | null;
@@ -150,7 +150,7 @@ export function Registry({ people }: { people: RegistryEntry[] }) {
     (p) => p.username,
     (p) => `${p.username} ${p.occupation ?? ""} ${p.face_claim ?? ""}`,
   );
-  const active = people.filter((p) => p.character_id).length;
+  const active = people.filter((p) => p.status === "approvata").length;
   return (
     <div className="flex flex-col gap-4">
       <IndexBar {...idx} placeholder="Cerca per nome, lavoro o prestavolto…" />
@@ -169,7 +169,7 @@ export function Registry({ people }: { people: RegistryEntry[] }) {
                     <span className="block font-medium break-words">{p.username}</span>
                     {p.occupation && <span className="block truncate text-xs text-muted-foreground">{p.occupation}</span>}
                     {p.face_claim && <span className="block truncate text-xs text-lavender">{p.face_claim}</span>}
-                    {!p.character_id && <span className="block text-xs text-muted-foreground italic">{STATUS_NOTE[p.status ?? "none"]}</span>}
+                    {p.status !== "approvata" && <span className="block text-xs text-muted-foreground italic">{STATUS_NOTE[p.status ?? "none"]}</span>}
                   </span>
                 </>
               );

@@ -134,5 +134,5 @@ export function usePresence(info: PresenceInfo) {
     supabase.rpc("touch_online", { p_info: JSON.parse(payload), p_action: true }).then(refresh);
   }, [supabase, payload, refresh]);
 
-  return { players, me: userId };
+  return { players, me: userId, refresh };
 }

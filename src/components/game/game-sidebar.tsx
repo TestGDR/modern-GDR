@@ -8,6 +8,7 @@ import {
   CalendarDays,
   CircleUserRound,
   CloudSun,
+  Eye,
   EyeOff,
   Info,
   LogOut,
@@ -32,6 +33,7 @@ import { AVAILABILITY, readAvailability, writeAvailability, type Availability } 
 import { initials } from "@/lib/format";
 import { applyPrefs, cachedPrefs, loadPrefs } from "@/lib/prefs";
 import { createClient } from "@/lib/supabase/client";
+import { setInvisible } from "@/lib/actions/chat";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------ Cassetto su mobile ------------------------------ */
@@ -226,9 +228,37 @@ function FeatureIcons({ adminSlot }: { adminSlot: React.ReactNode }) {
 /** Presenti online; cliccando si apre l'elenco esteso (con la propria disponibilità) */
 function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
   const [availability, setAvailability] = useState<Availability>(readAvailability);
-  const { players, me } = usePresence({ availability, place, placeKey });
+  const { players, me, refresh } = usePresence({ availability, place, placeKey });
   const [open, setOpen] = useState(false);
   const list = players ?? [];
+  const router = useRouter();
+  // Invisibilità (solo staff con il permesso): interruttore nella finestra dei presenti
+  const [canInvisible, setCanInvisible] = useState(false);
+  const [invisibleBusy, setInvisibleBusy] = useState(false);
+  const [invisibleError, setInvisibleError] = useState<string | null>(null);
+  const amInvisible = list.find((c) => c.userId === me)?.invisible ?? false;
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    createClient()
+      .rpc("has_permission", { perm: "staff.invisibile" })
+      .then(({ data }) => {
+        if (alive) setCanInvisible(data === true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [open]);
+
+  async function toggleInvisible() {
+    setInvisibleBusy(true);
+    setInvisibleError(null);
+    const res = await setInvisible(!amInvisible);
+    setInvisibleBusy(false);
+    if (res.error) return setInvisibleError(res.error);
+    await refresh();
+    router.refresh();
+  }
 
   function choose(a: Availability) {
     writeAvailability(a);
@@ -272,7 +302,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
                   {inner}
                 </Link>
               ) : (
-                <span key={c.userId} title="Non ha ancora una scheda approvata" className="flex items-center gap-2 truncate px-1 py-0.5 text-xs text-muted-foreground">
+                <span key={c.userId} title="Non ha ancora creato il personaggio" className="flex items-center gap-2 truncate px-1 py-0.5 text-xs text-muted-foreground">
                   {inner}
                 </span>
               );
@@ -304,6 +334,30 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
               </button>
             ))}
           </div>
+          {canInvisible && (
+            <div className="mb-4 flex flex-col gap-1">
+              <label className="flex w-fit cursor-pointer items-center gap-2 text-sm">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={amInvisible}
+                  disabled={invisibleBusy}
+                  onClick={toggleInvisible}
+                  className={cn("relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50", amInvisible ? "bg-lavender/70" : "bg-white/15")}
+                >
+                  <span className={cn("absolute top-0.5 size-5 rounded-full bg-white transition-all", amInvisible ? "left-5.5" : "left-0.5")} />
+                </button>
+                {amInvisible ? <EyeOff className="size-4 text-lavender" /> : <Eye className="size-4 text-muted-foreground" />}
+                {amInvisible ? "Invisibile" : "Visibile"}
+              </label>
+              <p className="text-xs text-muted-foreground">
+                {amInvisible
+                  ? "Gli altri giocatori non ti vedono tra i presenti né in chat."
+                  : "Diventando invisibile esci dalla giocata in cui sei: gli altri non ti vedono tra i presenti né in chat."}
+              </p>
+              {invisibleError && <p className="text-xs text-destructive">{invisibleError}</p>}
+            </div>
+          )}
           {list.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nessuno online in questo momento.</p>
           ) : (
@@ -340,7 +394,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
                         {row}
                       </Link>
                     ) : (
-                      <div className="flex items-center gap-3 rounded-xl p-2" title="Non ha ancora una scheda approvata">{row}</div>
+                      <div className="flex items-center gap-3 rounded-xl p-2" title="Non ha ancora creato il personaggio">{row}</div>
                     )}
                   </li>
                 );
