@@ -14,6 +14,9 @@ const MARGIN = 8;
 
 const noSubscribe = () => () => {};
 
+// Ordine delle finestre: quella aperta o cliccata per ultima va davanti alle altre
+let topLayer = 50;
+
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), Math.max(min, max));
 
 type FloatingWindowProps = {
@@ -37,7 +40,8 @@ type FloatingWindowProps = {
 /**
  * Finestra modale che si sposta trascinandola dalla parte alta
  * e si ridimensiona dall'angolo in basso a destra (mouse e touch).
- * Si chiude con la X, con Esc o cliccando fuori.
+ * Si chiude con la X o con Esc (Esc chiude quella davanti). Più finestre
+ * possono stare aperte insieme: quella cliccata viene davanti.
  * All'apertura è centrata con il CSS (funziona anche se arriva dal server);
  * la posizione in pixel si calcola al primo spostamento.
  */
@@ -54,6 +58,7 @@ export function FloatingWindow({
   const [rect, setRect] = useState<Rect | null>(null);
   const mounted = useSyncExternalStore(noSubscribe, () => true, () => false);
   const windowRef = useRef<HTMLDivElement>(null);
+  const layerRef = useRef<HTMLDivElement>(null);
   const drag = useRef<Gesture | null>(null);
   const resize = useRef<Gesture | null>(null);
 
@@ -62,28 +67,31 @@ export function FloatingWindow({
     closeRef.current = onClose;
   }, [onClose]);
 
-  // Esc chiude; il focus entra nella finestra all'apertura
+  // Si apre davanti a tutte; cliccandola torna davanti
+  const bringToFront = () => {
+    if (layerRef.current) layerRef.current.style.zIndex = String(++topLayer);
+  };
+  useEffect(() => {
+    if (layerRef.current) layerRef.current.style.zIndex = String(++topLayer);
+  }, [mounted]);
+
+  // Esc chiude solo la finestra davanti; il focus entra nella finestra all'apertura
   useEffect(() => {
     windowRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeRef.current();
+      if (e.key !== "Escape") return;
+      // la finestra davanti è quella con il livello più alto tra quelle aperte
+      const layers = [...document.querySelectorAll<HTMLElement>("[data-window-layer]")].map((el) => Number(el.style.zIndex || 0));
+      if (Number(layerRef.current?.style.zIndex || 0) < Math.max(0, ...layers)) return;
+      // un Esc chiude una sola finestra: le altre non lo ricevono
+      e.stopImmediatePropagation();
+      closeRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // Un clic fuori chiude; un clic su un'altra finestra aperta invece no
-  // (niente strato invisibile sopra lo schermo: le X delle altre finestre restano cliccabili)
-  useEffect(() => {
-    const onDown = (e: PointerEvent) => {
-      const target = e.target as Element | null;
-      if (!target || windowRef.current?.contains(target)) return;
-      if (target.closest('[role="dialog"], [role="alertdialog"]')) return;
-      closeRef.current();
-    };
-    document.addEventListener("pointerdown", onDown);
-    return () => document.removeEventListener("pointerdown", onDown);
-  }, []);
+  // Più finestre restano aperte insieme: si chiudono solo con la X o con Esc
 
   /** Posizione attuale: quella salvata o, la prima volta, quella misurata sullo schermo */
   function currentRect(): Rect {
@@ -177,8 +185,8 @@ export function FloatingWindow({
     : {};
 
   const content = (
-    <div className="pointer-events-none fixed inset-0 z-50">
-      {/* Niente sfondo: la pagina sotto resta visibile e cliccabile; un clic fuori chiude la finestra */}
+    <div ref={layerRef} data-window-layer className="pointer-events-none fixed inset-0 z-50">
+      {/* Niente sfondo: la pagina sotto resta visibile e cliccabile */}
 
       <div
         ref={windowRef}
@@ -191,6 +199,7 @@ export function FloatingWindow({
           "pointer-events-auto absolute flex flex-col overflow-hidden rounded-3xl border border-white/20 bg-dusk/85 shadow-[0_24px_70px_rgb(20_10_40/0.55)] outline-none backdrop-blur-2xl backdrop-saturate-150 animate-in fade-in-0 zoom-in-95 sm:bg-dusk/75",
           className,
         )}
+        onPointerDownCapture={bringToFront}
         {...chromelessDrag}
       >
         {chromeless ? (

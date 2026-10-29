@@ -324,7 +324,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
     return (
       <li key={c.userId}>
         {c.characterId ? (
-          <Link href={`/scheda/${c.characterId}`} onClick={() => setOpen(false)} title={`Apri la scheda di ${c.name}`} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/5">
+          <Link href={`/scheda/${c.characterId}`} title={`Apri la scheda di ${c.name}`} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/5">
             {row}
           </Link>
         ) : (

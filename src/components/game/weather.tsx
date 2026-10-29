@@ -22,21 +22,23 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Meteo reale di Miami da Open-Meteo (gratuito, senza chiavi), letto dal browser.
-// Si tiene in memoria per 30 minuti: tutti i componenti usano la stessa lettura.
+// Meteo reale di Miami da Open-Meteo (gratuito, senza chiavi), letto dal browser,
+// ALLINEATO ALL'ORA ITALIANA: si gioca con l'orologio italiano, quindi alle 21 in
+// Italia si mostra il meteo che Miami ha (o avrà) alle sue 21. Si usano le
+// previsioni orarie di Miami. Si tiene in memoria per 30 minuti.
 
 const FORECAST =
   "https://api.open-meteo.com/v1/forecast?latitude=25.7743&longitude=-80.1937" +
-  "&current=temperature_2m,apparent_temperature,relative_humidity_2m,is_day,weather_code,wind_speed_10m,wind_direction_10m" +
-  "&hourly=temperature_2m,weather_code,precipitation_probability,is_day" +
+  "&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,precipitation_probability,is_day,wind_speed_10m,wind_direction_10m" +
   "&daily=sunrise,sunset,uv_index_max,temperature_2m_max,temperature_2m_min" +
-  "&timezone=America%2FNew_York&forecast_days=2";
-const MARINE = "https://marine-api.open-meteo.com/v1/marine?latitude=25.78&longitude=-80.12&current=wave_height,sea_surface_temperature&timezone=America%2FNew_York";
+  "&timezone=America%2FNew_York&forecast_days=3";
+const MARINE = "https://marine-api.open-meteo.com/v1/marine?latitude=25.78&longitude=-80.12&hourly=wave_height,sea_surface_temperature&timezone=America%2FNew_York&forecast_days=3";
 const TTL = 30 * 60 * 1000;
-const STORE = "gdr_meteo_miami";
+const STORE = "gdr_meteo_miami_ora_italiana";
 
 export type Weather = {
   at: number;
+  /** Ora di gioco (ora italiana), "2026-10-29T21:00" */
   time: string;
   temp: number;
   feels: number;
@@ -56,18 +58,39 @@ export type Weather = {
 };
 
 type Forecast = {
-  current: { time: string; temperature_2m: number; apparent_temperature: number; relative_humidity_2m: number; is_day: number; weather_code: number; wind_speed_10m: number; wind_direction_10m: number };
-  hourly: { time: string[]; temperature_2m: number[]; weather_code: number[]; precipitation_probability: number[]; is_day: number[] };
-  daily: { sunrise: string[]; sunset: string[]; uv_index_max: number[]; temperature_2m_max: number[]; temperature_2m_min: number[] };
+  hourly: {
+    time: string[];
+    temperature_2m: number[];
+    apparent_temperature: number[];
+    relative_humidity_2m: number[];
+    weather_code: number[];
+    precipitation_probability: number[];
+    is_day: number[];
+    wind_speed_10m: number[];
+    wind_direction_10m: number[];
+  };
+  daily: { time?: string[]; sunrise: string[]; sunset: string[]; uv_index_max: number[]; temperature_2m_max: number[]; temperature_2m_min: number[] };
 };
+type Marine = { hourly?: { time: string[]; wave_height: (number | null)[]; sea_surface_temperature: (number | null)[] } };
 
 let pending: Promise<Weather | null> | null = null;
+
+/** Ora italiana adesso, come "2026-10-29T21" (si cerca la stessa ora nelle previsioni di Miami) */
+function italianHour() {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" })
+      .formatToParts(new Date())
+      .map((p) => [p.type, p.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}`;
+}
 
 function readStore(): Weather | null {
   try {
     const raw = localStorage.getItem(STORE);
     const w = raw ? (JSON.parse(raw) as Weather) : null;
-    return w && Date.now() - w.at < TTL ? w : null;
+    // valido 30 minuti e solo se è ancora la stessa ora italiana
+    return w && Date.now() - w.at < TTL && w.time.slice(0, 13) === italianHour() ? w : null;
   } catch {
     return null;
   }
@@ -78,35 +101,41 @@ async function fetchWeather(): Promise<Weather | null> {
     const [f, m] = await Promise.all([
       fetch(FORECAST).then((r) => (r.ok ? (r.json() as Promise<Forecast>) : null)),
       fetch(MARINE)
-        .then((r) => (r.ok ? (r.json() as Promise<{ current?: { wave_height?: number; sea_surface_temperature?: number } }>) : null))
+        .then((r) => (r.ok ? (r.json() as Promise<Marine>) : null))
         .catch(() => null),
     ]);
     if (!f) return null;
-    const c = f.current;
-    const start = Math.max(0, f.hourly.time.findIndex((t) => t >= c.time.slice(0, 13)));
+    const h = f.hourly;
+    const target = italianHour();
+    // l'ora di Miami con lo stesso orologio dell'Italia (di solito 5-6 ore più avanti)
+    let i = h.time.findIndex((t) => t.startsWith(target));
+    if (i < 0) i = Math.max(0, h.time.findIndex((t) => t >= target));
+    const day = target.slice(0, 10);
+    const d = Math.max(0, (f.daily.time ?? []).indexOf(day));
+    const mi = m?.hourly ? m.hourly.time.findIndex((t) => t.startsWith(h.time[i].slice(0, 13))) : -1;
     const w: Weather = {
       at: Date.now(),
-      time: c.time,
-      temp: c.temperature_2m,
-      feels: c.apparent_temperature,
-      humidity: c.relative_humidity_2m,
-      isDay: c.is_day === 1,
-      code: c.weather_code,
-      wind: c.wind_speed_10m,
-      windDir: c.wind_direction_10m,
-      max: f.daily.temperature_2m_max[0],
-      min: f.daily.temperature_2m_min[0],
-      uv: f.daily.uv_index_max[0],
-      sunrise: f.daily.sunrise[0],
-      sunset: f.daily.sunset[0],
-      sea: m?.current?.sea_surface_temperature ?? null,
-      waves: m?.current?.wave_height ?? null,
-      hours: f.hourly.time.slice(start + 1, start + 7).map((t, i) => ({
+      time: h.time[i],
+      temp: h.temperature_2m[i],
+      feels: h.apparent_temperature[i],
+      humidity: h.relative_humidity_2m[i],
+      isDay: h.is_day[i] === 1,
+      code: h.weather_code[i],
+      wind: h.wind_speed_10m[i],
+      windDir: h.wind_direction_10m[i],
+      max: f.daily.temperature_2m_max[d],
+      min: f.daily.temperature_2m_min[d],
+      uv: f.daily.uv_index_max[d],
+      sunrise: f.daily.sunrise[d],
+      sunset: f.daily.sunset[d],
+      sea: mi >= 0 ? (m?.hourly?.sea_surface_temperature[mi] ?? null) : null,
+      waves: mi >= 0 ? (m?.hourly?.wave_height[mi] ?? null) : null,
+      hours: h.time.slice(i + 1, i + 7).map((t, k) => ({
         time: t,
-        temp: f.hourly.temperature_2m[start + 1 + i],
-        code: f.hourly.weather_code[start + 1 + i],
-        rain: f.hourly.precipitation_probability[start + 1 + i] ?? 0,
-        isDay: f.hourly.is_day[start + 1 + i] === 1,
+        temp: h.temperature_2m[i + 1 + k],
+        code: h.weather_code[i + 1 + k],
+        rain: h.precipitation_probability[i + 1 + k] ?? 0,
+        isDay: h.is_day[i + 1 + k] === 1,
       })),
     };
     try {
@@ -197,7 +226,7 @@ export function WeatherDetails({ weather }: { weather: Weather | null }) {
           <p className="font-heading text-5xl leading-none tracking-wide">{Math.round(weather.temp)}°C</p>
           <p className="text-sm">{d.label}</p>
           <p className="text-xs text-muted-foreground">
-            Max {Math.round(weather.max)}° · min {Math.round(weather.min)}° · ore {hhmm(weather.time)} a Miami
+            Max {Math.round(weather.max)}° · min {Math.round(weather.min)}° · ore {hhmm(weather.time)}
           </p>
         </div>
       </div>
@@ -228,7 +257,7 @@ export function WeatherDetails({ weather }: { weather: Weather | null }) {
           </ul>
         </div>
       )}
-      <p className="text-[0.7rem] text-muted-foreground">Meteo reale di Miami (Florida) da Open-Meteo, aggiornato ogni 30 minuti. Gli orari sono quelli di Miami.</p>
+      <p className="text-[0.7rem] text-muted-foreground">Meteo reale di Miami (Florida) da Open-Meteo, allineato all&apos;ora italiana: si mostra il tempo che fa a Miami alla stessa ora che segna l&apos;orologio in Italia. Si aggiorna ogni 30 minuti.</p>
     </div>
   );
 }
