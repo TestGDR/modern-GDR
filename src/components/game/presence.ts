@@ -21,10 +21,12 @@ export type OnlinePlayer = {
   availability: Availability;
   place: string;
   placeKey: string;
+  /** Messaggio OFF scritto dal giocatore */
+  note: string;
   invisible: boolean;
 };
 
-export type PresenceInfo = { availability: Availability; place: string; placeKey: string };
+export type PresenceInfo = { availability: Availability; place: string; placeKey: string; note?: string };
 
 const HEARTBEAT_MS = 60_000;
 const POLL_MS = 20_000;
@@ -71,6 +73,7 @@ export function usePresence(info: PresenceInfo) {
           availability: isAvailability(r.info?.availability) ? r.info.availability : "disponibile",
           place: r.info?.place ?? "",
           placeKey: r.info?.placeKey ?? "",
+          note: r.info?.note ?? "",
           invisible: r.invisible,
         }))
         .sort(byAvailabilityThenName),

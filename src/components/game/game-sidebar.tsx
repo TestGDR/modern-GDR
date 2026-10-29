@@ -14,6 +14,7 @@ import {
   LogOut,
   Map as MapIcon,
   Menu,
+  MessagesSquare,
   Newspaper,
   RefreshCw,
   Users,
@@ -29,7 +30,7 @@ import { usePresence } from "@/components/game/presence";
 import { sidebarIconClass } from "@/components/game/sidebar-styles";
 import { FloatingWindow } from "@/components/floating-window";
 import { signOut } from "@/lib/actions/auth";
-import { AVAILABILITY, readAvailability, writeAvailability, type Availability } from "@/lib/availability";
+import { AVAILABILITY, readAvailability, readPresenceNote, writeAvailability, writePresenceNote, type Availability } from "@/lib/availability";
 import { initials } from "@/lib/format";
 import { applyPrefs, cachedPrefs, loadPrefs } from "@/lib/prefs";
 import { createClient } from "@/lib/supabase/client";
@@ -224,12 +225,16 @@ function FeatureIcons() {
   );
 }
 
-/** Presenti online; cliccando si apre l'elenco esteso (con la propria disponibilità) */
+/** Presenti: a sinistra solo chi è nel mio stesso posto (la mia chat o la mappa); cliccando si apre l'elenco esteso */
 function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
   const [availability, setAvailability] = useState<Availability>(readAvailability);
-  const { players, me, refresh } = usePresence({ availability, place, placeKey });
+  // messaggio OFF personale, mostrato sotto il nome nei presenti estesi
+  const [note, setNote] = useState<string>(readPresenceNote);
+  const [noteDraft, setNoteDraft] = useState(note);
+  const { players, me, refresh } = usePresence({ availability, place, placeKey, note });
   const [open, setOpen] = useState(false);
   const list = players ?? [];
+  const here = list.filter((c) => c.placeKey === placeKey);
   const router = useRouter();
   // Invisibilità (solo staff con il permesso): interruttore nella finestra dei presenti
   const [canInvisible, setCanInvisible] = useState(false);
@@ -264,6 +269,24 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
     setAvailability(a);
   }
 
+  function saveNote() {
+    const clean = noteDraft.trim().slice(0, 80);
+    setNoteDraft(clean);
+    if (clean === note) return;
+    writePresenceNote(clean);
+    setNote(clean);
+  }
+
+  // Gruppi per posto: prima il mio, poi le chat in ordine di nome, la mappa in fondo
+  const groups = [...new Set(list.map((c) => c.placeKey))]
+    .map((key) => {
+      const members = list.filter((c) => c.placeKey === key);
+      const chatId = key.startsWith("chat:") ? key.slice(5) : null;
+      return { key, chatId, name: chatId ? members[0]?.place || "Chat" : "Mappa", members };
+    })
+    .sort((a, b) => (a.key === placeKey ? -1 : b.key === placeKey ? 1 : !a.chatId ? 1 : !b.chatId ? -1 : a.name.localeCompare(b.name, "it")));
+
+  const title = placeKey === "mappa" ? "Presenti in mappa" : "Presenti in chat";
   return (
     <>
       {/* Telefono: solo l'icona con il numero, che apre l'elenco */}
@@ -278,14 +301,16 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
       </button>
       <div className="hidden max-h-[250px] flex-col gap-2 rounded-2xl bg-white/5 p-3 lg:flex">
         {/* Il titolo apre l'elenco esteso; il nome apre la scheda */}
-        <button type="button" onClick={() => setOpen(true)} className="flex items-center gap-2 rounded-lg text-left text-sm font-medium transition-colors hover:text-mint">
+        <button type="button" onClick={() => setOpen(true)} className="flex items-center gap-2 rounded-lg text-left text-sm font-medium transition-colors hover:text-mint" title="Tutti i presenti online">
           <Users className="size-4 text-mint" />
-          Presenti online
-          <span className="ml-auto rounded-full bg-mint/15 px-2 py-0.5 text-xs text-mint">{players ? list.length : "…"}</span>
+          {title}
+          <span className="ml-auto rounded-full bg-mint/15 px-2 py-0.5 text-xs text-mint" title={`${list.length} online in tutto`}>
+            {players ? here.length : "…"}
+          </span>
         </button>
-        {list.length > 0 ? (
+        {here.length > 0 ? (
           <span className="-mr-1 flex min-h-0 flex-col gap-0.5 overflow-y-auto pr-1">
-            {list.map((c) => {
+            {here.map((c) => {
               const inner = (
                 <>
                   <span className={cn("size-2 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} title={AVAILABILITY[c.availability].label} />
@@ -310,12 +335,12 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
             })}
           </span>
         ) : (
-          <span className="text-xs text-muted-foreground">{players ? "Nessuno online in questo momento." : "Caricamento…"}</span>
+          <span className="text-xs text-muted-foreground">{players ? "Nessuno qui in questo momento." : "Caricamento…"}</span>
         )}
       </div>
       {open && (
-        <FloatingWindow label="Presenti online" onClose={() => setOpen(false)} initialWidth={480} header={<h2 className="pb-4 font-heading text-3xl tracking-wide">Presenti online</h2>}>
-          <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+        <FloatingWindow label="Presenti online" onClose={() => setOpen(false)} initialWidth={600} header={<h2 className="pb-4 font-heading text-3xl tracking-wide">Presenti online</h2>}>
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
             <span className="text-muted-foreground">La tua disponibilità:</span>
             {(Object.keys(AVAILABILITY) as Availability[]).map((a) => (
               <button
@@ -330,6 +355,28 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
               </button>
             ))}
           </div>
+          {/* messaggio OFF: lo vedono tutti sotto il nome */}
+          <form
+            className="mb-4 flex items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              saveNote();
+            }}
+          >
+            <span className="shrink-0 rounded-full bg-lavender/20 px-2 py-0.5 text-[0.65rem] font-bold text-lavender">OFF</span>
+            <input
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              onBlur={saveNote}
+              maxLength={80}
+              placeholder="Messaggio OFF, es. «Rispondo tra 10 minuti»"
+              className="h-9 min-w-0 flex-1 rounded-lg border border-input bg-night/40 px-3 text-sm outline-none focus-visible:border-ring"
+              aria-label="Messaggio OFF"
+            />
+            <button type="submit" className="h-9 shrink-0 rounded-full bg-white/10 px-3 text-xs hover:bg-white/15">
+              Salva
+            </button>
+          </form>
           {canInvisible && (
             <div className="mb-4 flex flex-col gap-1">
               <label className="flex w-fit cursor-pointer items-center gap-2 text-sm">
@@ -357,45 +404,66 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
           {list.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nessuno online in questo momento.</p>
           ) : (
-            <ul className="flex flex-col gap-1">
-              {list.map((c) => {
-                const row = (
-                  <>
-                    {c.avatar ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={c.avatar} alt="" className="size-10 shrink-0 rounded-full object-cover ring-2 ring-white/10" />
-                    ) : (
-                      <CharacterAvatar initials={initials(c.name)} />
-                    )}
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2">
-                        <span className={cn("size-2 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} title={AVAILABILITY[c.availability].label} />
-                        <span className="truncate font-medium">{c.name}</span>
-                        {c.userId === me && <span className="text-xs text-muted-foreground">(tu)</span>}
-                        {c.invisible && <EyeOff className="size-3.5 shrink-0 text-muted-foreground" aria-label="Invisibile" />}
-                      </span>
-                      <span className="block truncate text-xs text-muted-foreground">{[c.place || "Mappa", AVAILABILITY[c.availability].label].join(" · ")}</span>
-                    </span>
-                    {c.levelColor && (
-                      <span className="shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold" style={{ backgroundColor: `${c.levelColor}33`, color: c.levelColor }}>
-                        {c.levelName}
-                      </span>
-                    )}
-                  </>
-                );
-                return (
-                  <li key={c.userId}>
-                    {c.characterId ? (
-                      <Link href={`/scheda/${c.characterId}`} onClick={() => setOpen(false)} title={`Apri la scheda di ${c.name}`} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/5">
-                        {row}
-                      </Link>
-                    ) : (
-                      <div className="flex items-center gap-3 rounded-xl p-2" title="Non ha ancora creato il personaggio">{row}</div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="flex flex-col gap-4">
+              {groups.map((g) => (
+                <section key={g.key}>
+                  {/* nome del posto: cliccando si entra in quella chat (o si va alla mappa) */}
+                  <Link
+                    href={g.chatId ? `/chat/${g.chatId}` : "/mappa"}
+                    onClick={() => setOpen(false)}
+                    title={g.chatId ? `Entra in ${g.name}` : "Vai alla mappa"}
+                    className="mb-1 flex w-fit items-center gap-2 rounded-lg px-1 font-heading text-lg tracking-[0.12em] text-peach uppercase hover:text-flamingo hover:underline"
+                  >
+                    {g.chatId ? <MessagesSquare className="size-4" /> : <MapIcon className="size-4" />}
+                    {g.name}
+                    <span className="font-sans text-xs tracking-normal text-muted-foreground normal-case">({g.members.length})</span>
+                    {g.key === placeKey && <span className="font-sans text-[0.65rem] tracking-normal text-mint normal-case">· sei qui</span>}
+                  </Link>
+                  <ul className="flex flex-col gap-1">
+                    {g.members.map((c) => {
+                      const row = (
+                        <>
+                          {c.avatar ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={c.avatar} alt="" className="size-10 shrink-0 rounded-full object-cover ring-2 ring-white/10" />
+                          ) : (
+                            <CharacterAvatar initials={initials(c.name)} />
+                          )}
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-2">
+                              <span className={cn("size-2 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} title={AVAILABILITY[c.availability].label} />
+                              <span className="truncate font-medium">{c.name}</span>
+                              {c.userId === me && <span className="text-xs text-muted-foreground">(tu)</span>}
+                              {c.invisible && <EyeOff className="size-3.5 shrink-0 text-muted-foreground" aria-label="Invisibile" />}
+                            </span>
+                            <span className="block truncate text-xs text-muted-foreground">{AVAILABILITY[c.availability].label}</span>
+                            {c.note && <span className="block text-xs break-words text-lavender italic">OFF: {c.note}</span>}
+                          </span>
+                          {c.levelColor && (
+                            <span className="shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold" style={{ backgroundColor: `${c.levelColor}33`, color: c.levelColor }}>
+                              {c.levelName}
+                            </span>
+                          )}
+                        </>
+                      );
+                      return (
+                        <li key={c.userId}>
+                          {c.characterId ? (
+                            <Link href={`/scheda/${c.characterId}`} onClick={() => setOpen(false)} title={`Apri la scheda di ${c.name}`} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/5">
+                              {row}
+                            </Link>
+                          ) : (
+                            <div className="flex items-center gap-3 rounded-xl p-2" title="Non ha ancora creato il personaggio">
+                              {row}
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              ))}
+            </div>
           )}
         </FloatingWindow>
       )}
