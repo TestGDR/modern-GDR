@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { formatTime, initials } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import { useResync } from "@/lib/use-resync";
+import { useStickToBottom } from "@/lib/use-stick-bottom";
 import type { Channel, PrivateMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -608,13 +609,11 @@ function ConversationIcon({ c }: { c: Pick<Conversation, "kind" | "name" | "avat
 const fullDate = (iso: string) => new Date(iso).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Rome" });
 
 function Thread({ bubbles }: { bubbles: Bubble[] }) {
-  const end = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    end.current?.scrollIntoView({ block: "end" });
-  }, [bubbles.length]);
+  // sempre puntata sull'ultimo messaggio arrivato
+  const { ref: scrollRef, onScroll: onThreadScroll, onLoadCapture: onImageLoad } = useStickToBottom<HTMLDivElement>(`${bubbles[0]?.id ?? ""}:${bubbles.at(-1)?.id ?? ""}:${bubbles.length}`);
   if (bubbles.length === 0) return <p className="m-auto p-6 text-sm text-muted-foreground">Nessun messaggio: scrivi tu il primo.</p>;
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
+    <div ref={scrollRef} onScroll={onThreadScroll} onLoadCapture={onImageLoad} className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
       <div className="flex flex-col gap-2">
         {bubbles.map((b, i) => {
           const day = fullDate(b.at);
@@ -651,7 +650,6 @@ function Thread({ bubbles }: { bubbles: Bubble[] }) {
             </Fragment>
           );
         })}
-        <div ref={end} />
       </div>
     </div>
   );

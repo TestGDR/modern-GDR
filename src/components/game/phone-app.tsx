@@ -40,6 +40,7 @@ import {
 } from "@/lib/phone";
 import { createClient } from "@/lib/supabase/client";
 import { useResync } from "@/lib/use-resync";
+import { useStickToBottom } from "@/lib/use-stick-bottom";
 import { cn } from "@/lib/utils";
 
 // Telefono del personaggio (al posto dei messaggi ON): numeri, chat a due e
@@ -622,14 +623,14 @@ function ThreadView({
   const [mode, setMode] = useState<"testo" | "vocale">("testo");
   const [sending, setSending] = useState(false);
   const [panel, setPanel] = useState<"none" | "members">("none");
-  const bottom = useRef<HTMLDivElement>(null);
   const lastId = messages[messages.length - 1]?.id;
+  // sempre puntata sull'ultimo messaggio arrivato
+  const { ref: scrollRef, onScroll: onThreadScroll, onLoadCapture: onImageLoad } = useStickToBottom<HTMLDivElement>(`${thread.id}:${lastId ?? ""}`);
 
-  // Letto, e in fondo alla conversazione a ogni messaggio nuovo
+  // Letto a ogni messaggio nuovo
   useEffect(() => {
     // la richiesta parte solo con .then(): senza, il "letto" non arrivava mai al database
     supabase.rpc("phone_mark_read", { p_thread: thread.id, p_from: me.id }).then(() => onRead());
-    bottom.current?.scrollIntoView({ block: "end" });
   }, [supabase, thread.id, me.id, lastId, onRead]);
 
   const inCall = call?.status === "attiva" && (call.caller_number_id === me.id || call.callee_number_id === me.id);
@@ -693,7 +694,7 @@ function ThreadView({
         <GroupPanel thread={thread} me={me} members={members} profiles={profiles} contacts={contacts} nameOf={nameOf} rpc={rpc} onChanged={onChanged} onLeft={onBack} />
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+      <div ref={scrollRef} onScroll={onThreadScroll} onLoadCapture={onImageLoad} className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         <ul className="flex flex-col gap-1.5">
           {messages.map((m, i) => {
             const prev = messages[i - 1];
@@ -740,7 +741,6 @@ function ThreadView({
           })}
           {messages.length === 0 && <li className="py-6 text-center text-sm text-muted-foreground">Scrivi il primo messaggio.</li>}
         </ul>
-        <div ref={bottom} />
       </div>
 
       <form
