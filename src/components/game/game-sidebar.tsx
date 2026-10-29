@@ -140,9 +140,10 @@ function PlaceCard({ info }: { info: RoomInfo | null }) {
 
   return (
     <div className={cn("relative aspect-[4/3] overflow-hidden rounded-2xl bg-gradient-to-br", gradient)}>
-      {info?.image_url && (
+      {/* in chat l'immagine della chat; sulla mappa (fuori dalle chat) il banner di Miami */}
+      {(info?.image_url || !info) && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={info.image_url} alt="" className="absolute inset-0 size-full object-cover" />
+        <img src={info?.image_url || "/images/banner-miami.webp"} alt="" className="absolute inset-0 size-full object-cover" />
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-night/85 via-night/10 to-transparent" />
       <div className="absolute top-2 right-2 flex gap-1.5">
