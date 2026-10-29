@@ -180,6 +180,12 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
     };
   }, [supabase, current, loadAll]);
 
+  // Conversazione aperta e letta: il contatore della lista si azzera subito
+  const markLocalRead = useCallback(() => {
+    const now = new Date().toISOString();
+    setMembers((prev) => prev.map((m) => (m.thread_id === openThread && m.number_id === current ? { ...m, last_read_at: now } : m)));
+  }, [openThread, current]);
+
   // ----- nomi -----
   const contactByDigits = useMemo(() => new Map(contacts.map((c) => [c.digits, c])), [contacts]);
   const nameOf = useCallback(
@@ -317,6 +323,7 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
             rpc={rpc}
             onBack={() => setOpenThread(null)}
             onChanged={loadAll}
+            onRead={markLocalRead}
           />
         ) : screen === "chats" ? (
           <ChatList
@@ -560,6 +567,7 @@ function ThreadView({
   rpc,
   onBack,
   onChanged,
+  onRead,
 }: {
   supabase: Supabase;
   thread: PhoneThread;
@@ -575,6 +583,8 @@ function ThreadView({
   rpc: Rpc;
   onBack: () => void;
   onChanged: () => void;
+  /** Conversazione segnata come letta: aggiorna i contatori */
+  onRead: () => void;
 }) {
   const [text, setText] = useState("");
   const [mode, setMode] = useState<"testo" | "vocale">("testo");
@@ -585,9 +595,10 @@ function ThreadView({
 
   // Letto, e in fondo alla conversazione a ogni messaggio nuovo
   useEffect(() => {
-    supabase.rpc("phone_mark_read", { p_thread: thread.id, p_from: me.id });
+    // la richiesta parte solo con .then(): senza, il "letto" non arrivava mai al database
+    supabase.rpc("phone_mark_read", { p_thread: thread.id, p_from: me.id }).then(() => onRead());
     bottom.current?.scrollIntoView({ block: "end" });
-  }, [supabase, thread.id, me.id, lastId]);
+  }, [supabase, thread.id, me.id, lastId, onRead]);
 
   const inCall = call?.status === "attiva" && (call.caller_number_id === me.id || call.callee_number_id === me.id);
   const callMode = inCall ? (call.video ? "videochiamata" : "chiamata") : null;
