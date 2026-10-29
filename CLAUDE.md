@@ -88,7 +88,7 @@ GDR (gioco di ruolo) play by chat moderno ambientato a Miami: chat di gioco, mes
   1. `alter table ... enable row level security;`
   2. le policy di accesso per select / insert / update / delete, basate su `auth.uid()`.
 - Nessuna tabella senza policy. Nessuna policy `using (true)` in scrittura.
-- I messaggi privati (OFF e telefono) li leggono solo i partecipanti; in più lo staff con `messaggi.log` (Gestione → Log), come deciso dall'utente: le pagine Messaggi e Telefono lo dicono ai giocatori. Nessun altro.
+- I messaggi privati (OFF e telefono) li leggono solo i partecipanti; in più lo staff con `messaggi.log` (Gestione → Log), come deciso dall'utente (l'avviso nella pagina Messaggi OFF è stato tolto su sua richiesta). Nessun altro.
 - Per sapere chi è l'utente sul server usare `supabase.auth.getClaims()` (o `getUser()`), mai `getSession()`.
 - Supabase concede di default tutti i permessi sulle tabelle: dove servono colonne non modificabili, fare `revoke all` e poi `grant` solo delle colonne ammesse.
 - **Livelli e permessi** (al posto dei vecchi ruoli): ogni utente ha un livello (`profiles.level_id` → `user_levels`) con rango e permessi spuntati. Il registro dei permessi è in `src/lib/permissions.ts` (unico elenco: il pannello genera le caselle da lì).

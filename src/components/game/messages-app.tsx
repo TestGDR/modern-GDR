@@ -465,7 +465,7 @@ export function MessagesApp({
   const showList = !active && panel !== "new-group";
 
   return (
-    <div className="flex h-[min(72dvh,640px)] min-h-[420px] overflow-hidden rounded-2xl border border-border bg-night/40">
+    <div className="flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-night/40">
       {/* Conversazioni */}
       <aside className={cn("w-full flex-col border-border md:flex md:w-72 md:shrink-0 md:border-r", showList ? "flex" : "hidden")}>
         <div className="flex items-center gap-2 border-b border-border px-3 py-2">

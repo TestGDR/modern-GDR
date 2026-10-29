@@ -36,8 +36,9 @@ async function Content({ searchParams }: { searchParams: PageProps<"/messaggi">[
   const initialTo = to ? (cards.find((c) => c.id === to && c.id !== player.userId) ?? null) : null;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
+    // occupa tutta la finestra: scorrono solo l'elenco delle chat e la conversazione
+    <div className="flex h-full min-h-[420px] flex-col gap-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
         <h1 className="mr-2 font-heading text-3xl tracking-wide">Messaggi OFF</h1>
         <span className="text-sm text-muted-foreground">Tra giocatori, fuori gioco. Per i messaggi tra personaggi usa il Telefono.</span>
       </div>
@@ -48,9 +49,6 @@ async function Content({ searchParams }: { searchParams: PageProps<"/messaggi">[
         initialTo={initialTo}
         canBroadcast={can(player, "annunci.globali") || can(player, "messaggi.tutti")}
       />
-      <p className="text-xs text-muted-foreground">
-        Nota: lo staff autorizzato può leggere i messaggi OFF e quelli del telefono per far rispettare il regolamento.
-      </p>
     </div>
   );
 }
