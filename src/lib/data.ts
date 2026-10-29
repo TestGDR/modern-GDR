@@ -367,6 +367,8 @@ export type CharacterBuild = {
 export type CharacterAffiliations = {
   jobs: { name: string; role: string; kind: "full_time" | "part_time" }[];
   groups: { name: string; role: string }[];
+  /** Patrimonio (fascia di ricchezza), visibile a tutti */
+  wealth: string | null;
   /** Account del giocatore: iscrizione e ultimo accesso (date ISO) */
   joinedAt: string | null;
   lastLoginAt: string | null;
@@ -375,7 +377,7 @@ export type CharacterAffiliations = {
 export async function getCharacterAffiliations(characterId: string): Promise<CharacterAffiliations> {
   const supabase = await createClient();
   const { data: owner } = await supabase.from("characters").select("owner_id").eq("id", characterId).maybeSingle<{ owner_id: string }>();
-  const [jobs, groups, profile] = await Promise.all([
+  const [jobs, groups, profile, wealth] = await Promise.all([
     supabase
       .from("character_jobs")
       .select("job:jobs(name, kind, active), role:job_roles(name)")
@@ -389,10 +391,12 @@ export async function getCharacterAffiliations(characterId: string): Promise<Cha
     owner
       ? supabase.from("profiles").select("created_at, last_login_at").eq("id", owner.owner_id).maybeSingle<{ created_at: string; last_login_at: string | null }>()
       : Promise.resolve({ data: null }),
+    supabase.rpc("character_wealth", { p_character: characterId }),
   ]);
   return {
     jobs: (jobs.data ?? []).filter((j) => j.job?.active).map((j) => ({ name: j.job!.name, role: j.role?.name ?? "", kind: j.job!.kind })),
     groups: (groups.data ?? []).filter((g) => g.grp?.active).map((g) => ({ name: g.grp!.name, role: g.role?.name ?? "" })),
+    wealth: (wealth.data as string | null) ?? null,
     joinedAt: profile.data?.created_at ?? null,
     lastLoginAt: profile.data?.last_login_at ?? null,
   };

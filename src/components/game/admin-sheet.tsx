@@ -228,13 +228,13 @@ export function AdminSheetPanel({ character, build, rules, districts, onClose }:
             <input className={inputCls} maxLength={140} value={form.quote} onChange={(e) => setForm({ ...form, quote: e.target.value })} />
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Ritratto (link https)">
+            <Field label="Ritratto, 96×96 (link https)">
               <input className={inputCls} value={form.avatarUrl} onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })} />
             </Field>
-            <Field label="Immagine grande, computer 640×560 (link https)">
+            <Field label="Immagine computer, 640×560 (link https)">
               <input className={inputCls} value={form.coverUrl} onChange={(e) => setForm({ ...form, coverUrl: e.target.value })} />
             </Field>
-            <Field label="Immagine cellulare 720×1280 (link https)">
+            <Field label="Immagine cellulare, circa 360×640 (link https)">
               <input className={inputCls} value={form.coverMobileUrl} onChange={(e) => setForm({ ...form, coverMobileUrl: e.target.value })} />
             </Field>
           </div>

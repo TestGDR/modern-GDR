@@ -47,6 +47,7 @@ export async function OwnSheet({ variant }: { variant: SheetVariant }) {
       build={build}
       rules={rules}
       affiliations={affiliations}
+      canSeePrivate
       canReview={can(player, "personaggi.approvare")}
       isAdmin={player.level.is_admin}
     />
@@ -60,6 +61,8 @@ export async function OtherSheet({ id, variant }: { id: string; variant: SheetVa
   const character = await getCharacter(id);
   if (!character) notFound();
   const isAdmin = player.level.is_admin;
+  // Caratteristiche, abilità, tratti, storia ed equipaggiamento: solo proprietario e staff
+  const canSeePrivate = can(player, "personaggi.vedere_tutti");
   const [build, rules, now, districts, affiliations] = await Promise.all([
     getCharacterBuild(id),
     getRulesData(),
@@ -68,17 +71,19 @@ export async function OtherSheet({ id, variant }: { id: string; variant: SheetVa
     getCharacterAffiliations(id),
   ]);
 
+  const visible = canSeePrivate ? character : { ...character, traits: null, bio: null, equipment: null };
   return (
     <CharacterSheetWindow
-      character={character}
+      character={visible}
       isOwner={false}
       online={isOnline(character.last_seen_at, now)}
       since={formatDateTime(character.created_at)}
       districts={districts}
       variant={variant}
-      build={build}
+      build={canSeePrivate ? build : { attributes: {}, skills: {}, optionIds: [] }}
       rules={rules}
       affiliations={affiliations}
+      canSeePrivate={canSeePrivate}
       canReview={can(player, "personaggi.approvare")}
       isAdmin={isAdmin}
     />

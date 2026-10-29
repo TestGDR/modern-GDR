@@ -75,6 +75,9 @@ const SECTIONS: Section[] = [
 
 type View = { section: string; mode: "view" | "edit" | "settings" | "admin" };
 
+/** Sezioni visibili solo al proprietario e allo staff (personaggi.vedere_tutti) */
+const PRIVATE_SECTIONS = ["caratteristiche", "abilita", "tratti", "storia", "equipaggiamento"];
+
 type CharacterSheetWindowProps = {
   character: SheetCharacter;
   isOwner: boolean;
@@ -94,6 +97,8 @@ type CharacterSheetWindowProps = {
   isAdmin?: boolean;
   /** Lavori e gruppi del personaggio */
   affiliations?: CharacterAffiliations;
+  /** Caratteristiche, abilità, tratti, storia, equipaggiamento: proprietario e staff */
+  canSeePrivate?: boolean;
 };
 
 /** Scheda del personaggio a sezioni, nello stile "finestra" del gioco */
@@ -106,7 +111,8 @@ export function CharacterSheetWindow({
   rules,
   canReview = false,
   isAdmin = false,
-  affiliations = { jobs: [], groups: [], joinedAt: null, lastLoginAt: null },
+  affiliations = { jobs: [], groups: [], wealth: null, joinedAt: null, lastLoginAt: null },
+  canSeePrivate = false,
 }: CharacterSheetWindowProps) {
   const [view, setView] = useState<View>({ section: "principale", mode: "view" });
   const section = SECTIONS.find((s) => s.key === view.section) ?? SECTIONS[0];
@@ -231,7 +237,11 @@ export function CharacterSheetWindow({
           ) : section.key === "principale" ? (
             <MainSection character={character} />
           ) : section.key === "dati" ? (
-            <DataList character={character} build={build} rules={rules} affiliations={affiliations} />
+            <DataList character={character} rules={rules} affiliations={affiliations} />
+          ) : PRIVATE_SECTIONS.includes(section.key) && !canSeePrivate ? (
+            <SectionFrame title={section.label}>
+              <p className="text-sm text-muted-foreground">Non hai i permessi necessari.</p>
+            </SectionFrame>
           ) : section.key === "caratteristiche" ? (
             <SectionFrame title="Caratteristiche">
               <StatBars build={build} rules={rules} />
@@ -306,7 +316,7 @@ function Portrait({ character }: { character: SheetCharacter }) {
 
 /**
  * Sezione Principale: sul computer immagine orizzontale 640x560 (8:7);
- * sul cellulare (o con la finestra stretta) scheda verticale 720x1280 (9:16)
+ * sul cellulare (o con la finestra stretta) scheda verticale 9:16 (circa 360x640)
  * con la sua immagine, o quella del computer se manca.
  */
 function MainSection({ character }: { character: SheetCharacter }) {
@@ -369,10 +379,10 @@ function FreeText({ text, isOwner }: { text: string | null; isOwner: boolean }) 
 const SEX_LABELS: Record<string, string> = { M: "Maschile", F: "Femminile", X: "Non binario" };
 
 /** Sezione Dati: banner con il nome, poi i dati divisi in blocchi */
-function DataList({ character, build, rules, affiliations }: { character: SheetCharacter; build: CharacterBuild; rules: RulesData; affiliations: CharacterAffiliations }) {
+function DataList({ character, rules, affiliations }: { character: SheetCharacter; rules: RulesData; affiliations: CharacterAffiliations }) {
   const option = (id: string | null) => (id ? (rules.sheetOptions.find((o) => o.id === id)?.name ?? "—") : "—");
   // patrimonio (fascia di ricchezza) scelto in creazione
-  const wealth = rules.options.find((o) => o.kind === "tenore" && build.optionIds.includes(o.id))?.name ?? null;
+  const wealth = affiliations.wealth;
   // sotto il nome: età, quartiere di residenza, patrimonio
   const subtitle = [character.age ? `${character.age} anni` : null, character.district?.name ?? null, wealth].filter(Boolean);
   const born = character.birth_date ? `${formatBirthDate(character.birth_date)}${character.age ? ` (${character.age} anni)` : ""}` : "—";
@@ -491,6 +501,27 @@ function StatBars({ build, rules }: { build: CharacterBuild; rules: RulesData })
 }
 
 /** Abilità raggruppate per caratteristica, con il totale caratteristica + abilità */
+/** Ranghi di riuscita (caratteristica + abilità), dal più basso */
+const RANKS = [
+  { name: "Pessimo", cls: "bg-destructive/20 text-destructive", hint: "Le prove medie (CD 15) falliscono automaticamente." },
+  { name: "Scadente", cls: "bg-peach/20 text-peach", hint: "Serve impegno per superare le prove medie (CD 15)." },
+  { name: "Buono", cls: "bg-sand/20 text-sand", hint: "Tendenzialmente si superano le prove medie (CD 15)." },
+  { name: "Ottimo", cls: "bg-mint/20 text-mint", hint: "Solo la sfortuna impedirà di superare le prove medie (CD 15)." },
+  { name: "Eccellenza", cls: "bg-lavender/25 text-lavender", hint: "Solo la sfortuna impedirà di superare le prove difficili (CD 20)." },
+];
+
+/** Soglie da Gestione → Impostazioni ("soglie_riuscita"), con quelle predefinite */
+function rankThresholds(rules: RulesData) {
+  const v = rules.settings.find((x) => x.key === "soglie_riuscita")?.value;
+  return Array.isArray(v) && v.length === 4 ? v.map(Number) : [5, 10, 13, 18];
+}
+
+function rankOf(score: number, thresholds: number[]) {
+  let i = 0;
+  while (i < thresholds.length && score >= thresholds[i]) i++;
+  return RANKS[i];
+}
+
 function SkillList({ character, build, rules }: { character: SheetCharacter; build: CharacterBuild; rules: RulesData }) {
   // Tutte le abilità, anche a 0: i PX si spendono anche lì e i dadi si tirano anche lì
   const groups = rules.attributes
@@ -502,6 +533,7 @@ function SkillList({ character, build, rules }: { character: SheetCharacter; bui
   const spentSkills = Object.values(build.skills).reduce((sum, level) => sum + skillCost(level, settings), 0);
   const spentOptions = rules.options.filter((o) => build.optionIds.includes(o.id)).reduce((sum, o) => sum + o.cost_px, 0);
   const total = character.px + spentSkills + spentOptions;
+  const thresholds = rankThresholds(rules);
   return (
     <div className="flex max-w-2xl flex-col gap-5">
       <div className="grid grid-cols-2 gap-2">
@@ -514,6 +546,16 @@ function SkillList({ character, build, rules }: { character: SheetCharacter; bui
           <p className="font-heading text-3xl tracking-wide text-white">{total}</p>
         </div>
       </div>
+      <ul className="flex flex-col gap-0.5 rounded-xl bg-white/[0.04] px-3 py-2 text-[0.7rem] text-muted-foreground">
+        {RANKS.map((r, i) => (
+          <li key={r.name} className="flex flex-wrap items-center gap-1.5">
+            <span className={cn("rounded-full px-1.5 font-semibold uppercase", r.cls)}>{r.name}</span>
+            <span>
+              {i === 0 ? `fino a ${thresholds[0] - 1}` : i < 4 ? `da ${thresholds[i - 1]} a ${thresholds[i] - 1}` : `da ${thresholds[3]}`}: {r.hint}
+            </span>
+          </li>
+        ))}
+      </ul>
       {groups.length === 0 && <p className="text-sm text-muted-foreground">Nessuna abilità nel sistema.</p>}
       {groups.map(({ attr, skills }) => {
         const attrValue = build.attributes[attr.id] ?? 0;
@@ -542,6 +584,14 @@ function SkillList({ character, build, rules }: { character: SheetCharacter; bui
                       <span className="w-14 text-right text-xs text-muted-foreground">
                         totale <strong className="text-foreground">{attrValue + level}</strong>
                       </span>
+                      {(() => {
+                        const rank = rankOf(attrValue + level, thresholds);
+                        return (
+                          <span className={cn("w-20 rounded-full px-2 py-0.5 text-center text-[0.65rem] font-semibold uppercase", rank.cls)} title={rank.hint}>
+                            {rank.name}
+                          </span>
+                        );
+                      })()}
                     </span>
                   </li>
                 );
@@ -672,21 +722,21 @@ function SectionEditor({
         {section.key === "principale" && (
           <>
             <p className="text-sm text-muted-foreground">
-              Incolla i link delle immagini (devono iniziare con https://). Prepara le immagini con queste misure: se le proporzioni sono diverse, i bordi in eccesso vengono tagliati.
+              Incolla i link delle immagini (devono iniziare con https://). Qui sotto le misure reali in cui si vedono le immagini: se le proporzioni sono diverse, i bordi in eccesso vengono tagliati.
             </p>
             <EditField id="avatar_url" label="Ritratto (link immagine)">
-              <p className="-mt-1 text-xs text-muted-foreground">Quadrato: 400 × 400 pixel. Si vede nella scheda, in alto e tra i presenti.</p>
+              <p className="-mt-1 text-xs text-muted-foreground">Quadrato: si vede a 96 × 96 pixel nella scheda (80 × 80 nella barra in alto).</p>
               <Input id="avatar_url" name="avatar_url" type="url" defaultValue={character.avatar_url ?? ""} placeholder="https://…" className="h-10 bg-night/40" />
             </EditField>
             <EditField id="cover_url" label="Immagine grande per il computer (link immagine)">
               <p className="-mt-1 text-xs text-muted-foreground">
-                Orizzontale: 640 × 560 pixel (o 1280 × 1120 per la massima nitidezza). Tieni il soggetto al centro: in basso a sinistra c&apos;è il nome.
+                Si vede a 640 × 560 pixel. Tieni il soggetto al centro: in basso a sinistra c&apos;è il nome.
               </p>
               <Input id="cover_url" name="cover_url" type="url" defaultValue={character.cover_url ?? ""} placeholder="https://…" className="h-10 bg-night/40" />
             </EditField>
             <EditField id="cover_mobile_url" label="Immagine per il cellulare (link immagine)">
               <p className="-mt-1 text-xs text-muted-foreground">
-                Verticale: 720 × 1280 pixel (proporzioni 9:16, come lo schermo del telefono). Se manca, sul telefono si vede quella del computer, tagliata.
+                Verticale: su un telefono si vede a circa 360 × 640 pixel (proporzioni 9:16, come lo schermo). Se manca, sul telefono si vede quella del computer, tagliata.
               </p>
               <Input id="cover_mobile_url" name="cover_mobile_url" type="url" defaultValue={character.cover_mobile_url ?? ""} placeholder="https://…" className="h-10 bg-night/40" />
             </EditField>

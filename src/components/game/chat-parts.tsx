@@ -106,12 +106,9 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
         <Dices className="mt-0.5 size-4 shrink-0 text-peach" />
         <p className="min-w-0 flex-1">
           <span className="mr-2 text-xs text-muted-foreground">{time}</span>
-          <strong className="font-heading tracking-wide text-peach">{m.character_name}</strong> {m.content}
-          {m.roll_data && (m.roll_data.die === 10 || m.roll_data.die === 1) && (
-            <span className={cn("ml-2 rounded-full px-2 py-0.5 text-xs", m.roll_data.die === 10 ? "bg-mint/20 text-mint" : "bg-destructive/20 text-destructive")}>
-              {m.roll_data.die === 10 ? "10 naturale!" : "1 naturale"}
-            </span>
-          )}
+          <strong className="font-heading tracking-wide text-peach">{m.character_name}</strong>{" "}
+          {/* i critici in evidenza: verde il successo, rosso il fallimento */}
+          <span className={cn(m.roll_data?.die === 10 && "font-semibold text-mint", m.roll_data?.die === 1 && "font-semibold text-destructive")}>{m.content}</span>
         </p>
         {tools}
       </div>
@@ -271,7 +268,7 @@ export function DicePanel({
         </button>
       </div>
       <p className="text-xs text-muted-foreground">
-        1d10 + caratteristica (+ abilità) + vantaggi e svantaggi. Il 10 naturale aggiunge un d10, l&apos;1 naturale lo toglie. Il tiro lo fa il server.
+        1d10 + caratteristica (+ abilità) + vantaggi e svantaggi. In chat compare solo l&apos;esito: 10 naturale = successo critico, 1 naturale = fallimento critico. Il tiro lo fa il server.
       </p>
       <div className="flex gap-2">
         <select

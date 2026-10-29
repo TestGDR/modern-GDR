@@ -192,7 +192,7 @@ export type Character = {
   avatar_url: string | null;
   /** Immagine grande della sezione Principale (computer, 640x560) */
   cover_url: string | null;
-  /** Immagine verticale della sezione Principale sul cellulare (720x1280) */
+  /** Immagine verticale della sezione Principale sul cellulare (9:16, circa 360x640) */
   cover_mobile_url: string | null;
   appearance: string | null;
   traits: string | null;
