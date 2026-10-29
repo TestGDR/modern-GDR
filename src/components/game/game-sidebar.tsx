@@ -237,27 +237,56 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="flex flex-col gap-2 rounded-2xl bg-white/5 p-3 text-left transition-colors hover:bg-white/10">
-        <span className="flex items-center gap-2 text-sm font-medium">
+      <div className="flex flex-col gap-2 rounded-2xl bg-white/5 p-3">
+        {/* Il titolo apre l'elenco esteso; icona e nome aprono la scheda */}
+        <button type="button" onClick={() => setOpen(true)} className="flex items-center gap-2 rounded-lg text-left text-sm font-medium transition-colors hover:text-mint">
           <Users className="size-4 text-mint" />
           Presenti online
           <span className="ml-auto rounded-full bg-mint/15 px-2 py-0.5 text-xs text-mint">{players ? list.length : "…"}</span>
-        </span>
+        </button>
         {list.length > 0 ? (
-          <span className="flex flex-col gap-1">
-            {list.slice(0, 8).map((c) => (
-              <span key={c.userId} className="flex items-center gap-2 truncate text-xs text-muted-foreground">
-                <span className={cn("size-1.5 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} />
-                <span className="truncate">{c.name}</span>
-                {c.invisible && <EyeOff className="size-3 shrink-0" aria-label="Invisibile" />}
-              </span>
-            ))}
-            {list.length > 8 && <span className="text-xs text-lavender">e altri {list.length - 8}…</span>}
+          <span className="flex flex-col gap-0.5">
+            {list.slice(0, 8).map((c) => {
+              const inner = (
+                <>
+                  <span className="relative shrink-0">
+                    {c.avatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.avatar} alt="" className="size-6 rounded-full object-cover" />
+                    ) : (
+                      <span className="grid size-6 place-items-center rounded-full bg-gradient-to-br from-violet to-flamingo text-[0.6rem] font-bold text-white">{initials(c.name)}</span>
+                    )}
+                    <span className={cn("absolute -right-0.5 -bottom-0.5 size-2 rounded-full ring-2 ring-sidebar", AVAILABILITY[c.availability].dot)} />
+                  </span>
+                  <span className="truncate">{c.name}</span>
+                  {c.invisible && <EyeOff className="size-3 shrink-0" aria-label="Invisibile" />}
+                </>
+              );
+              return c.characterId ? (
+                <Link
+                  key={c.userId}
+                  href={`/scheda/${c.characterId}`}
+                  title={`Apri la scheda di ${c.name}`}
+                  className="flex items-center gap-2 truncate rounded-lg px-1 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+                >
+                  {inner}
+                </Link>
+              ) : (
+                <span key={c.userId} title="Non ha ancora una scheda approvata" className="flex items-center gap-2 truncate px-1 py-0.5 text-xs text-muted-foreground">
+                  {inner}
+                </span>
+              );
+            })}
+            {list.length > 8 && (
+              <button type="button" onClick={() => setOpen(true)} className="w-fit px-1 text-left text-xs text-lavender hover:underline">
+                e altri {list.length - 8}…
+              </button>
+            )}
           </span>
         ) : (
           <span className="text-xs text-muted-foreground">{players ? "Nessuno online in questo momento." : "Caricamento…"}</span>
         )}
-      </button>
+      </div>
       {open && (
         <FloatingWindow label="Presenti online" onClose={() => setOpen(false)} initialWidth={480} header={<h2 className="pb-4 font-heading text-3xl tracking-wide">Presenti online</h2>}>
           <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
@@ -307,11 +336,11 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
                 return (
                   <li key={c.userId}>
                     {c.characterId ? (
-                      <Link href={`/scheda/${c.characterId}`} onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/5">
+                      <Link href={`/scheda/${c.characterId}`} onClick={() => setOpen(false)} title={`Apri la scheda di ${c.name}`} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/5">
                         {row}
                       </Link>
                     ) : (
-                      <div className="flex items-center gap-3 rounded-xl p-2">{row}</div>
+                      <div className="flex items-center gap-3 rounded-xl p-2" title="Non ha ancora una scheda approvata">{row}</div>
                     )}
                   </li>
                 );
