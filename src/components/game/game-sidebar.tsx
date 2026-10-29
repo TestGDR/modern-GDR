@@ -278,13 +278,57 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
   }
 
   // Gruppi per posto: prima il mio, poi le chat in ordine di nome, la mappa in fondo
+  // chi è in cerca di gioco va in cima a tutto, fuori dai gruppi (il gruppo resta e lo conta)
+  const seekers = list.filter((c) => c.availability === "cerca");
   const groups = [...new Set(list.map((c) => c.placeKey))]
     .map((key) => {
-      const members = list.filter((c) => c.placeKey === key);
+      const all = list.filter((c) => c.placeKey === key);
       const chatId = key.startsWith("chat:") ? key.slice(5) : null;
-      return { key, chatId, name: chatId ? members[0]?.place || "Chat" : "Mappa", members };
+      return { key, chatId, name: chatId ? all[0]?.place || "Chat" : "Mappa", count: all.length, members: all.filter((c) => c.availability !== "cerca") };
     })
     .sort((a, b) => (a.key === placeKey ? -1 : b.key === placeKey ? 1 : !a.chatId ? 1 : !b.chatId ? -1 : a.name.localeCompare(b.name, "it")));
+
+  // Riga di un presente nell'elenco esteso: nome e, sotto, il suo messaggio OFF
+  function playerRow(c: (typeof list)[number], seeking: boolean) {
+    const row = (
+      <>
+        {c.avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={c.avatar} alt="" className="size-10 shrink-0 rounded-full object-cover ring-2 ring-white/10" />
+        ) : (
+          <CharacterAvatar initials={initials(c.name)} />
+        )}
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            <span className={cn("size-2 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} title={AVAILABILITY[c.availability].label} />
+            <span className={cn("truncate font-medium", seeking && "font-semibold text-peach")}>{c.name}</span>
+            {c.userId === me && <span className="text-xs text-muted-foreground">(tu)</span>}
+            {c.invisible && <EyeOff className="size-3.5 shrink-0 text-muted-foreground" aria-label="Invisibile" />}
+            {seeking && <span className="ml-auto shrink-0 truncate text-[0.7rem] text-muted-foreground">{c.placeKey.startsWith("chat:") ? c.place || "In chat" : "Mappa"}</span>}
+          </span>
+          {c.note && <span className="block text-xs break-words text-lavender italic">{c.note}</span>}
+        </span>
+        {c.levelColor && (
+          <span className="shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold" style={{ backgroundColor: `${c.levelColor}33`, color: c.levelColor }}>
+            {c.levelName}
+          </span>
+        )}
+      </>
+    );
+    return (
+      <li key={c.userId}>
+        {c.characterId ? (
+          <Link href={`/scheda/${c.characterId}`} onClick={() => setOpen(false)} title={`Apri la scheda di ${c.name}`} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/5">
+            {row}
+          </Link>
+        ) : (
+          <div className="flex items-center gap-3 rounded-xl p-2" title="Non ha ancora creato il personaggio">
+            {row}
+          </div>
+        )}
+      </li>
+    );
+  }
 
   return (
     <>
@@ -404,6 +448,17 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
             <p className="text-sm text-muted-foreground">Nessuno online in questo momento.</p>
           ) : (
             <div className="flex flex-col gap-4">
+              {/* chi è in cerca di gioco: in cima a tutta la lista, con il nome evidenziato */}
+              {seekers.length > 0 && (
+                <section className="rounded-2xl bg-peach/10 p-2 ring-1 ring-peach/30">
+                  <p className="mb-1 flex items-center gap-2 px-1 font-heading text-lg tracking-[0.12em] text-peach uppercase">
+                    <span className={cn("size-2 rounded-full", AVAILABILITY.cerca.dot)} />
+                    In cerca di gioco
+                    <span className="font-sans text-xs tracking-normal text-muted-foreground normal-case">({seekers.length})</span>
+                  </p>
+                  <ul className="flex flex-col gap-1">{seekers.map((c) => playerRow(c, true))}</ul>
+                </section>
+              )}
               {groups.map((g) => (
                 <section key={g.key}>
                   {/* nome del posto: cliccando si entra in quella chat (o si va alla mappa) */}
@@ -411,55 +466,18 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
                     href={g.chatId ? `/chat/${g.chatId}` : "/mappa"}
                     onClick={() => setOpen(false)}
                     title={g.chatId ? `Entra in ${g.name}` : "Vai alla mappa"}
-                    className="mb-1 flex w-fit items-center gap-2 rounded-lg px-1 font-heading text-lg tracking-[0.12em] text-peach uppercase hover:text-flamingo hover:underline"
+                    className="mb-1 flex w-fit items-center gap-2 rounded-lg px-1 font-heading text-lg tracking-[0.12em] text-lavender uppercase hover:text-flamingo hover:underline"
                   >
                     {g.chatId ? <MessagesSquare className="size-4" /> : <MapIcon className="size-4" />}
                     {g.name}
-                    <span className="font-sans text-xs tracking-normal text-muted-foreground normal-case">({g.members.length})</span>
+                    <span className="font-sans text-xs tracking-normal text-muted-foreground normal-case">({g.count})</span>
                     {g.key === placeKey && <span className="font-sans text-[0.65rem] tracking-normal text-mint normal-case">· sei qui</span>}
                   </Link>
-                  <ul className="flex flex-col gap-1">
-                    {g.members.map((c) => {
-                      const row = (
-                        <>
-                          {c.avatar ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={c.avatar} alt="" className="size-10 shrink-0 rounded-full object-cover ring-2 ring-white/10" />
-                          ) : (
-                            <CharacterAvatar initials={initials(c.name)} />
-                          )}
-                          <span className="min-w-0 flex-1">
-                            <span className="flex items-center gap-2">
-                              <span className={cn("size-2 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} title={AVAILABILITY[c.availability].label} />
-                              <span className="truncate font-medium">{c.name}</span>
-                              {c.userId === me && <span className="text-xs text-muted-foreground">(tu)</span>}
-                              {c.invisible && <EyeOff className="size-3.5 shrink-0 text-muted-foreground" aria-label="Invisibile" />}
-                            </span>
-                            <span className="block truncate text-xs text-muted-foreground">{AVAILABILITY[c.availability].label}</span>
-                            {c.note && <span className="block text-xs break-words text-lavender italic">OFF: {c.note}</span>}
-                          </span>
-                          {c.levelColor && (
-                            <span className="shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold" style={{ backgroundColor: `${c.levelColor}33`, color: c.levelColor }}>
-                              {c.levelName}
-                            </span>
-                          )}
-                        </>
-                      );
-                      return (
-                        <li key={c.userId}>
-                          {c.characterId ? (
-                            <Link href={`/scheda/${c.characterId}`} onClick={() => setOpen(false)} title={`Apri la scheda di ${c.name}`} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/5">
-                              {row}
-                            </Link>
-                          ) : (
-                            <div className="flex items-center gap-3 rounded-xl p-2" title="Non ha ancora creato il personaggio">
-                              {row}
-                            </div>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
+                  {g.members.length > 0 ? (
+                    <ul className="flex flex-col gap-1">{g.members.map((c) => playerRow(c, false))}</ul>
+                  ) : (
+                    <p className="px-1 text-xs text-muted-foreground">Solo chi è in cerca di gioco (in alto).</p>
+                  )}
                 </section>
               ))}
             </div>
