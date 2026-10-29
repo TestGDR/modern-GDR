@@ -201,7 +201,7 @@ function MainButtons() {
 const iconCls = sidebarIconClass;
 
 /** Calendario, Social, Forum, Scheda, Ticket, Gestione */
-function FeatureIcons({ adminSlot }: { adminSlot: React.ReactNode }) {
+function FeatureIcons() {
   return (
     <div className="grid grid-cols-3 gap-1">
       <WindowButton label="Calendario" icon={<CalendarDays />} className={iconCls}>
@@ -220,7 +220,6 @@ function FeatureIcons({ adminSlot }: { adminSlot: React.ReactNode }) {
       <Link href="/utility" className={iconCls}>
         <BriefcaseBusiness /> Utility
       </Link>
-      {adminSlot}
     </div>
   );
 }
@@ -416,11 +415,9 @@ function PrefsLoader() {
 
 /** Barra laterale del gioco */
 export function GameSidebar({
-  adminSlot,
   newsSlot,
   communitySlot,
 }: {
-  adminSlot: React.ReactNode;
   newsSlot: React.ReactNode;
   /** Assenze, ricerca di gioco, pettegolezzi */
   communitySlot: React.ReactNode;
@@ -435,7 +432,7 @@ export function GameSidebar({
       <PlaceCard info={info} />
       <MainButtons />
       {newsSlot}
-      <FeatureIcons adminSlot={adminSlot} />
+      <FeatureIcons />
       {communitySlot}
       <OnlineBox place={info?.name ?? (roomId ? "In chat" : "Mappa")} placeKey={roomId ? `chat:${roomId}` : "mappa"} />
     </div>

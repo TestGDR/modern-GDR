@@ -104,7 +104,7 @@ function Badge({ n }: { n: number }) {
 }
 
 /** Con i contatori dell'utente collegato */
-export function MessageButtons({ userId }: { userId: string | null }) {
+export function MessageButtons({ userId, center }: { userId: string | null; center?: React.ReactNode }) {
   const off = useOffUnread(userId);
   const { state: phone, refresh } = usePhoneState(userId);
   const pathname = usePathname();
@@ -140,18 +140,22 @@ export function MessageButtons({ userId }: { userId: string | null }) {
 
   return (
     <>
-      <Buttons off={off} phone={phone} />
+      <Buttons off={off} phone={phone} center={center} />
       {incoming && phone.call && !pathname.startsWith("/telefono") && <IncomingCall call={phone.call} onDone={refresh} />}
     </>
   );
 }
 
 /** Segnaposto mentre arriva l'utente */
-export function MessageButtonsFallback() {
-  return <Buttons off={0} phone={EMPTY_PHONE} />;
+export function MessageButtonsFallback({ center }: { center?: React.ReactNode }) {
+  return <Buttons off={0} phone={EMPTY_PHONE} center={center} />;
 }
 
-function Buttons({ off, phone }: { off: number; phone: PhoneState }) {
+// Stessa larghezza ai due lati: il ritratto resta al centro
+const SAME_WIDTH = "w-16 sm:w-28";
+
+/** Messaggi OFF · (ritratto al centro) · Telefono */
+function Buttons({ off, phone, center }: { off: number; phone: PhoneState; center?: React.ReactNode }) {
   const call = phone.call;
   const active = call?.status === "attiva";
   const ringing = call?.status === "squilla" && call.incoming;
@@ -159,14 +163,15 @@ function Buttons({ off, phone }: { off: number; phone: PhoneState }) {
   const label = active ? (call.video ? "In video" : "In chiamata") : ringing ? "Squilla!" : "Telefono";
   return (
     <>
-      <Link href="/messaggi?canale=off" className={cn(barButtonClass, off > 0 && "blink-call")} aria-label={off > 0 ? `Messaggi OFF: ${off} da leggere` : "Messaggi OFF"}>
+      <Link href="/messaggi?canale=off" className={cn(barButtonClass, SAME_WIDTH, off > 0 && "blink-call")} aria-label={off > 0 ? `Messaggi OFF: ${off} da leggere` : "Messaggi OFF"}>
         <Mail /> <span className="sm:hidden">OFF</span>
         <span className="hidden sm:inline">Messaggi OFF</span>
         <Badge n={off} />
       </Link>
+      {center}
       <Link
         href={href}
-        className={cn(barButtonClass, (phone.unread > 0 || ringing) && "blink-call", active && "text-mint [&_svg]:animate-pulse")}
+        className={cn(barButtonClass, SAME_WIDTH, (phone.unread > 0 || ringing) && "blink-call", active && "text-mint [&_svg]:animate-pulse")}
         aria-label={phone.unread > 0 ? `Telefono: ${phone.unread} da leggere` : label}
       >
         {active ? call.video ? <Video /> : <PhoneCall /> : ringing ? <PhoneIncoming /> : <Phone />}

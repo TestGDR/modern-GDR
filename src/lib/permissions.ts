@@ -121,6 +121,7 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     title: "Contenuti",
     items: [
       { key: "elenchi.gestire", label: "Gestire gli elenchi della scheda", description: "Indirizzi di studio, anni di corso, squadre e club" },
+      { key: "guida.scrivere", label: "Scrivere la guida", description: "Macrosezioni, sottosezioni e discussioni della Guida (barra laterale)" },
       { key: "annunci.globali", label: "Pubblicare notizie e scrivere a tutti", description: "Notizie dello staff, messaggi a tutti (ON e OFF) e bacheche riservate del forum" },
       { key: "contenuti.moderare", label: "Moderare il social", description: "Eliminare post e commenti altrui sul social" },
     ],

@@ -194,7 +194,7 @@ function RoomList({ district, rooms, groups, activity }: { district: District; r
         </section>
       ))}
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <MapPin className="size-3.5" /> Entra in una chat e premi «Entra in giocata» per partecipare.
+        <MapPin className="size-3.5" /> Apri una chat per entrare in giocata.
       </p>
     </div>
   );

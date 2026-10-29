@@ -299,7 +299,8 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
     setMessages((prev) => prev.filter((x) => x.id !== m.id));
   }
 
-  const back = `/mappa?quartiere=${room.location_id}`;
+  // alla mappa senza riaprire il riquadro del quartiere
+  const back = "/mappa";
   const blurred = !joined && !invisible;
 
   return (

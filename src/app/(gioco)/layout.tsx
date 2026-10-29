@@ -3,13 +3,13 @@ import { GameSidebar, SidebarFrame, SidebarShell } from "@/components/game/game-
 import { ModalGate, ModalReopen } from "@/components/game/page-modal";
 import { MessageButtonsFallback } from "@/components/game/message-buttons";
 import { VersionBanner } from "@/components/game/site-watch";
-import { AdminSidebarIcon, PlayerCommunity, PlayerIdle, PlayerMessages, PlayerNews, PlayerPortrait, PortraitFallback, TopBar } from "@/components/game/top-bar";
+import { AdminTopIcon, PlayerGuide, PlayerCommunity, PlayerIdle, PlayerMessages, PlayerNews, PlayerPortrait, PortraitFallback, TopBar } from "@/components/game/top-bar";
 import { DuskBackdrop } from "@/components/scenery/sunset-sky";
 
 // Struttura dell'area di gioco:
 // - barra laterale (fissa su desktop, cassetto dal pulsante menu su mobile):
 //   immagine della chat, Aggiorna/Mappa/Esci, icone delle funzioni, presenti online
-// - barra in alto: guida e ambientazione, ritratto del personaggio, messaggi OFF e ON
+// - barra in alto: al centro messaggi OFF, ritratto del personaggio, telefono
 // Social, forum, scheda, messaggi e gestione si aprono in finestre (slot @modal).
 export default function GameLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   return (
@@ -20,15 +20,15 @@ export default function GameLayout({ children, modal }: { children: React.ReactN
         <Suspense fallback={<aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-sidebar-border bg-sidebar lg:block" />}>
           <SidebarFrame>
             <GameSidebar
-              adminSlot={
-                <Suspense>
-                  <AdminSidebarIcon />
-                </Suspense>
-              }
               newsSlot={
-                <Suspense>
-                  <PlayerNews />
-                </Suspense>
+                <>
+                  <Suspense>
+                    <PlayerNews />
+                  </Suspense>
+                  <Suspense>
+                    <PlayerGuide />
+                  </Suspense>
+                </>
               }
               communitySlot={
                 <Suspense>
@@ -40,14 +40,20 @@ export default function GameLayout({ children, modal }: { children: React.ReactN
         </Suspense>
 
         <TopBar
-          portrait={
-            <Suspense fallback={<PortraitFallback />}>
-              <PlayerPortrait />
+          admin={
+            <Suspense>
+              <AdminTopIcon />
             </Suspense>
           }
           messages={
-            <Suspense fallback={<MessageButtonsFallback />}>
-              <PlayerMessages />
+            <Suspense fallback={<MessageButtonsFallback center={<PortraitFallback />} />}>
+              <PlayerMessages
+                center={
+                  <Suspense fallback={<PortraitFallback />}>
+                    <PlayerPortrait />
+                  </Suspense>
+                }
+              />
             </Suspense>
           }
         />

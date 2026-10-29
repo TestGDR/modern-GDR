@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { BookOpen, Palmtree, ShieldCheck } from "lucide-react";
-import { ComingSoon, WindowButton } from "@/components/game/info-window";
+import { ShieldCheck } from "lucide-react";
+import { GuideButton } from "@/components/guide/guide-app";
 import { MenuButton } from "@/components/game/game-sidebar";
 import { MessageButtons } from "@/components/game/message-buttons";
 import { NewsButton } from "@/components/game/news-panel";
 import { CommunityButtons } from "@/components/game/community";
 import { IdleLogout } from "@/components/game/site-watch";
 import { getChatSettings } from "@/lib/data";
-import { barButtonClass as barBtn, sidebarIconClass } from "@/components/game/sidebar-styles";
+import { barButtonClass } from "@/components/game/sidebar-styles";
 import { activeCharacter, can, getPlayer, requirePlayer } from "@/lib/auth";
 import { initials } from "@/lib/format";
 import { requestTime } from "@/lib/request-time";
@@ -47,9 +47,9 @@ export async function PlayerPortrait() {
 }
 
 /** Messaggi OFF e ON con i contatori del proprio personaggio */
-export async function PlayerMessages() {
+export async function PlayerMessages({ center }: { center?: React.ReactNode }) {
   const player = await getPlayer();
-  return <MessageButtons userId={player?.userId ?? null} />;
+  return <MessageButtons userId={player?.userId ?? null} center={center} />;
 }
 
 /** Segnaposto del ritratto mentre arriva dal database */
@@ -57,35 +57,26 @@ export function PortraitFallback() {
   return <span className="block size-16 animate-pulse rounded-full bg-white/10 lg:size-20" />;
 }
 
-/** Barra in alto: guida e ambientazione, ritratto al centro, messaggi */
-export function TopBar({ portrait, messages }: { portrait: React.ReactNode; messages: React.ReactNode }) {
+/** Barra in alto: al centro Messaggi OFF, ritratto del personaggio e Telefono */
+export function TopBar({ admin, messages }: { admin: React.ReactNode; messages: React.ReactNode }) {
   return (
     <header className="glass fixed inset-x-0 top-0 z-40 flex h-20 items-center border-x-0 border-t-0 px-2 pt-[env(safe-area-inset-top)] sm:px-4 lg:left-72 lg:h-24">
-      <div className="flex flex-1 items-center gap-0.5 sm:gap-1">
+      {/* lati uguali: il gruppo centrale resta al centro anche con il pulsante del menu */}
+      <div className="flex min-w-[4.75rem] flex-1 basis-0 items-center gap-1 sm:min-w-10">
         <MenuButton />
-        <WindowButton label="Guida" shortLabel="Guida" icon={<BookOpen />} className={barBtn} width={600}>
-          <ComingSoon>
-            <p>La guida al gioco: come si crea il personaggio, come si gioca in chat, il sistema Interlock e il regolamento.</p>
-            <p>Lo staff potrà scriverla e aggiornarla dal pannello di gestione.</p>
-          </ComingSoon>
-        </WindowButton>
-        <WindowButton label="Ambientazione" shortLabel="Mondo" icon={<Palmtree />} className={barBtn} width={600}>
-          <ComingSoon>
-            <p>Miami, Florida: il college, i quartieri, la vita tra lezioni, spiaggia e locali al tramonto.</p>
-            <p>Lo staff potrà scrivere qui l&apos;ambientazione completa dal pannello di gestione.</p>
-          </ComingSoon>
-        </WindowButton>
+        {admin}
       </div>
-
-      <div className="shrink-0">
-        {portrait}
-      </div>
-
-      <div className="flex flex-1 items-center justify-end gap-0.5 sm:gap-1">
-        {messages}
-      </div>
+      <div className="flex shrink-0 items-center gap-1 sm:gap-4">{messages}</div>
+      <div className="min-w-[4.75rem] flex-1 basis-0 sm:min-w-10" />
     </header>
   );
+}
+
+/** Guida al gioco: pulsante lungo nella barra laterale, sotto le Notizie */
+export async function PlayerGuide() {
+  const player = await getPlayer();
+  if (!player) return null;
+  return <GuideButton canEdit={can(player, "guida.scrivere")} />;
 }
 
 /** Notizie dello staff: chi ha il permesso le scrive dalla stessa finestra */
@@ -117,13 +108,13 @@ export async function PlayerIdle() {
   return <IdleLogout minutes={settings.idle_minutes} />;
 }
 
-/** Icona Gestione nella barra laterale: solo per chi può accedere al pannello */
-export async function AdminSidebarIcon() {
+/** Gestione nella barra in alto a sinistra: solo per chi può accedere al pannello (Livelli e permessi) */
+export async function AdminTopIcon() {
   const player = await getPlayer();
   if (!player || !can(player, "admin.accedere")) return null;
   return (
-    <Link href="/gestione" className={sidebarIconClass}>
-      <ShieldCheck /> Gestione
+    <Link href="/gestione" className={barButtonClass} aria-label="Gestione" title="Gestione">
+      <ShieldCheck /> <span className="hidden sm:inline">Gestione</span>
     </Link>
   );
 }
