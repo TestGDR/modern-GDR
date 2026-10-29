@@ -158,7 +158,14 @@ export async function reviewCharacter(characterId: string, approve: boolean, rea
     p_approve: approve,
     p_reason: reason.trim() || null,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    // la scheda era già stata approvata o rifiutata (es. dal ticket): si ricarica lo stato vero
+    if (error.message.includes("non è in attesa")) {
+      refresh();
+      return { ok: false, error: "Questa scheda è già stata approvata o rifiutata: la finestra si aggiorna con lo stato attuale." };
+    }
+    return { ok: false, error: error.message };
+  }
   refresh();
   return { ok: true };
 }

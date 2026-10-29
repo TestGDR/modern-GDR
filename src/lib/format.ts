@@ -4,6 +4,11 @@
 const TIME_ZONE = "Europe/Rome";
 
 /** Iniziali del nome: "Lena Moreno" → "LM" */
+/** Il nome del personaggio (prima parola): "Santiago Medina Rojas" → "Santiago". Fuori dalla scheda si mostra solo questo. */
+export function firstName(full: string | null | undefined) {
+  return (full ?? "").trim().split(/\s+/)[0] ?? "";
+}
+
 export function initials(name: string) {
   return name
     .split(/\s+/)

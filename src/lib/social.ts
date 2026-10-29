@@ -1,5 +1,7 @@
 // Social stile Instagram: tipi e regole condivise (browser).
 
+import { firstName } from "@/lib/format";
+
 export type MediaType = "image" | "video" | "youtube";
 export type Media = { type: MediaType; url: string };
 
@@ -57,11 +59,12 @@ export type SocialNotification = {
 
 /** Campi da chiedere al database per un personaggio */
 export const PERSON = "id, name, avatar_url, social:social_profiles(handle, bio)";
-export const POST_SELECT = `id, character_id, body, media, location, created_at, author:characters(${PERSON}), social_reactions(character_id, emoji), social_comments(count), social_tags(character:characters(${PERSON}))`;
+export const POST_SELECT = `id, character_id, body, media, location, created_at, author:characters!social_posts_character_id_fkey(${PERSON}), social_reactions(character_id, emoji), social_comments(count), social_tags(character:characters(${PERSON}))`;
 
 /** Nome visibile: @nome se c'è, altrimenti il nome del personaggio */
 export function handleOf(p: SocialPerson | null | undefined) {
-  return p?.social?.handle ? `@${p.social.handle}` : (p?.name ?? "utente");
+  // senza @nome: solo il nome del personaggio
+  return p?.social?.handle ? `@${p.social.handle}` : firstName(p?.name) || "utente";
 }
 
 /** @nome suggerito dal nome del personaggio: "Lena Moreno" → "lena.moreno" */

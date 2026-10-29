@@ -6,7 +6,7 @@ import { ForumReadSignal } from "@/components/game/forum-client";
 import { LoadingBlocks } from "@/components/game/loading";
 import { requirePlayer } from "@/lib/auth";
 import { getForumUnread, getLatestThreads } from "@/lib/data";
-import { formatDateTime } from "@/lib/format";
+import { firstName, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Forum" };
@@ -49,7 +49,7 @@ async function Latest() {
                       <span className="truncate">{t.title}</span>
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      in {t.board?.name ?? "—"} · di {t.character?.name ?? t.author?.username ?? "utente"} · {replies} {replies === 1 ? "risposta" : "risposte"}
+                      in {t.board?.name ?? "—"} · di {firstName(t.character?.name ?? t.author?.username) || "utente"} · {replies} {replies === 1 ? "risposta" : "risposte"}
                     </p>
                   </div>
                   <span className="shrink-0 pt-1 text-xs text-muted-foreground">{formatDateTime(t.updated_at)}</span>

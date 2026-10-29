@@ -123,15 +123,11 @@ export function SignUpForm({ inModal, onGoToLogin }: SignUpFormProps = {}) {
     <form action={action} className="flex flex-col gap-4">
       {inModal && <input type="hidden" name="in_modal" value="1" />}
       <FormMessage state={state} />
-      <Field
-        id="name"
-        label="Nome e cognome del personaggio"
-        autoComplete="username"
-        placeholder="Es. Lena Moreno"
-        defaultValue={state.values?.name}
-        minLength={NAME_MIN}
-        maxLength={NAME_MAX}
-      />
+      <div className="grid grid-cols-2 gap-3">
+        <Field id="first_name" label="Nome del personaggio" autoComplete="username" placeholder="Es. Lena" defaultValue={state.values?.first_name} minLength={2} maxLength={20} />
+        <Field id="last_name" label="Cognome" autoComplete="off" placeholder="Es. Moreno" defaultValue={state.values?.last_name} minLength={1} maxLength={NAME_MAX - NAME_MIN} />
+      </div>
+      <p className="-mt-2 text-xs text-muted-foreground">Il nome è unico nel gioco: è quello con cui ti vedranno tutti e con cui entri. Una parola sola (es. Maria-Luisa).</p>
       <Field id="email" label="Email" type="email" autoComplete="email" placeholder="tu@email.com" defaultValue={state.values?.email} />
       <Field id="password" label="Password (almeno 8 caratteri)" type="password" autoComplete="new-password" minLength={8} />
       <p className="text-xs text-muted-foreground">

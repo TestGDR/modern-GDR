@@ -6,7 +6,7 @@ import { FloatingWindow } from "@/components/floating-window";
 import { Button } from "@/components/ui/button";
 import { expelFromRoom, inviteToRoom, rollDice, setMasterMode } from "@/lib/actions/chat";
 import { EDIT_WINDOW_MS } from "@/lib/chat";
-import { formatTime, initials } from "@/lib/format";
+import { firstName, formatTime, initials } from "@/lib/format";
 import type { Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -100,7 +100,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
     return (
       <p className="px-1 text-center text-xs text-muted-foreground">
         <span className="mr-2">{time}</span>
-        <strong className="font-semibold text-lavender">{m.character_name}</strong> {m.content}
+        <strong className="font-semibold text-lavender">{firstName(m.character_name)}</strong> {m.content}
       </p>
     );
   }
@@ -111,7 +111,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
         <Dices className="mt-0.5 size-4 shrink-0 text-peach" />
         <p className="min-w-0 flex-1">
           <span className="mr-2 text-xs text-muted-foreground">{time}</span>
-          <strong className="font-heading tracking-wide text-peach">{m.character_name}</strong>{" "}
+          <strong className="font-heading tracking-wide text-peach">{firstName(m.character_name)}</strong>{" "}
           {/* i critici in evidenza: verde il successo, rosso il fallimento */}
           <span className={cn(m.roll_data?.die === 10 && "font-semibold text-mint", m.roll_data?.die === 1 && "font-semibold text-destructive")}>{m.content}</span>
         </p>
@@ -127,7 +127,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
         <p className="min-w-0 flex-1">
           <span className="mr-2 text-xs text-muted-foreground">{time}</span>
           <strong className="text-lavender">
-            {m.character_name} sussurra a {m.recipient ?? "…"}:
+            {firstName(m.character_name)} sussurra a {m.recipient ? firstName(m.recipient) : "…"}:
           </strong>{" "}
           <FormattedText text={m.content} names={names} />
           {edited}
@@ -143,7 +143,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
         <p className="min-w-0 flex-1">
           <span className="mr-2 text-xs">{time}</span>
           <span className="mr-1 rounded bg-white/10 px-1.5 py-0.5 text-[0.65rem] font-semibold tracking-wider uppercase">OFF</span>
-          <strong className="text-foreground/80">{m.character_name}:</strong> {m.content}
+          <strong className="text-foreground/80">{firstName(m.character_name)}:</strong> {m.content}
           {edited}
         </p>
         {tools}
@@ -184,8 +184,8 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
             type="button"
             onClick={() => onLook(m)}
             className="absolute -right-1 -bottom-1 grid size-7 place-items-center rounded-full border border-white/20 bg-night/90 text-peach shadow transition-colors hover:bg-flamingo hover:text-white"
-            aria-label={`Il look di ${m.character_name}`}
-            title={`Il look di ${m.character_name}`}
+            aria-label={`Il look di ${firstName(m.character_name)}`}
+            title={`Il look di ${firstName(m.character_name)}`}
           >
             <Shirt className="size-3.5" />
           </button>
@@ -194,7 +194,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
       <div className="min-w-0 flex-1">
         <header className="mb-1 flex items-baseline gap-2">
           <span className={cn("font-heading text-lg tracking-wide", mine ? "text-flamingo" : "text-peach")}>
-            {m.character_name}
+            {firstName(m.character_name)}
             {to}
           </span>
           <span className="ml-auto text-xs text-muted-foreground">{time}</span>
@@ -442,7 +442,7 @@ export function RoomAccessBar({
             <span>Invitati:</span>
             {guests.map((g) => (
               <span key={g.id} className="flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-foreground">
-                {g.name}
+                {firstName(g.name)}
                 {canManage && (
                   <button type="button" onClick={() => expel(g.id, g.name)} className="text-muted-foreground hover:text-destructive" aria-label={`Allontana ${g.name}`}>
                     <X className="size-3" />
@@ -461,7 +461,7 @@ export function RoomAccessBar({
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={60}
-            placeholder="Nome e cognome del personaggio da invitare"
+            placeholder="Nome del personaggio da invitare"
             className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-night/40 px-2 text-xs outline-none focus-visible:border-ring"
           />
           <Button type="submit" size="sm" disabled={pending || name.trim().length < 2} className="rounded-full">
@@ -481,7 +481,7 @@ export function LookWindow({ person, onClose }: { person: { name: string; avatar
   if (!person) return null;
   return (
     <FloatingWindow
-      label={`Il look di ${person.name}`}
+      label={`Il look di ${firstName(person.name)}`}
       onClose={onClose}
       initialWidth={460}
       header={
@@ -496,7 +496,7 @@ export function LookWindow({ person, onClose }: { person: { name: string; avatar
             <p className="flex items-center gap-1.5 text-xs tracking-widest text-peach uppercase">
               <Shirt className="size-3.5" /> Look
             </p>
-            <h2 className="truncate font-heading text-2xl tracking-wide">{person.name}</h2>
+            <h2 className="truncate font-heading text-2xl tracking-wide">{firstName(person.name)}</h2>
           </div>
         </div>
       }

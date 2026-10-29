@@ -9,7 +9,7 @@ import { IdleLogout } from "@/components/game/site-watch";
 import { getChatSettings } from "@/lib/data";
 import { barButtonClass } from "@/components/game/sidebar-styles";
 import { activeCharacter, can, getPlayer, requirePlayer } from "@/lib/auth";
-import { initials } from "@/lib/format";
+import { firstName, initials } from "@/lib/format";
 import { requestTime } from "@/lib/request-time";
 import { createClient } from "@/lib/supabase/server";
 
@@ -28,7 +28,7 @@ export async function PlayerPortrait() {
   const player = await requirePlayer();
   const character = activeCharacter(player);
   if (character) await touchLastSeen(character.id, character.last_seen_at);
-  const name = player.character?.name ?? player.profile.username;
+  const name = firstName(player.character?.name ?? player.profile.username);
   const avatar = player.character?.avatar_url ?? null;
   return (
     <Link href="/scheda" className="group relative block" aria-label={`Scheda di ${name}`} title={name}>

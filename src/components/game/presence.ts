@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isAvailability, type Availability } from "@/lib/availability";
+import { firstName } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 
 // Presenti online (dal Westeros: presence.ts).
@@ -65,7 +66,8 @@ export function usePresence(info: PresenceInfo) {
       (data as Row[])
         .map((r) => ({
           userId: r.user_id,
-          name: r.name,
+          // fuori dalla scheda si mostra solo il nome
+          name: firstName(r.name),
           avatar: r.avatar_url,
           characterId: r.character_id,
           levelName: r.level_name,

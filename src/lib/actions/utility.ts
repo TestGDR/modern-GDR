@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 import type { ActionResult } from "@/lib/actions/admin";
 import { requirePlayer } from "@/lib/auth";
-import { isValidName, NAME_MAX, NAME_MIN, normalizeName } from "@/lib/character-name";
+import { isValidFirstName, isValidName, NAME_MAX, NAME_MIN, normalizeName } from "@/lib/character-name";
 import { isUuid } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 
@@ -35,6 +35,7 @@ export async function renameCharacter(first: string, last: string): Promise<Acti
   const f = normalizeName(first);
   const l = normalizeName(last);
   if (!f || !l) return { ok: false, error: "Scrivi sia il nome sia il cognome." };
+  if (!isValidFirstName(f)) return { ok: false, error: "Il nome è una parola sola, da 2 a 20 lettere (per i nomi doppi usa il trattino, es. Maria-Luisa)." };
   if (!isValidName(`${f} ${l}`)) {
     return { ok: false, error: `Nome e cognome: da ${NAME_MIN} a ${NAME_MAX} caratteri in tutto, solo lettere, spazi, apostrofo, punto o trattino.` };
   }

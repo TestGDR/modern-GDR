@@ -24,6 +24,7 @@ import type { ChatPresent, ChatRoomData } from "@/lib/data";
 import { createClient } from "@/lib/supabase/client";
 import { useResync } from "@/lib/use-resync";
 import type { Message, MessageKind } from "@/lib/types";
+import { firstName } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -203,7 +204,8 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
   const master = room.master_max !== null ? { min: room.master_min ?? 0, max: room.master_max } : null;
   const maxLen = kind === "azione" && master ? master.max : settings.max_length;
   const left = maxLen - text.length;
-  const myNames = useMemo(() => (me && me.name.trim().length >= 2 ? [me.name.trim()] : []), [me]);
+  // si evidenzia il mio nome (e il nome completo, se qualcuno lo scrive)
+  const myNames = useMemo(() => (me && me.name.trim().length >= 2 ? [...new Set([me.name.trim(), firstName(me.name)])].filter((n) => n.length >= 2) : []), [me]);
 
   // Entrata in giocata automatica all'apertura della chat (se si può);
   // se si stava giocando in un'altra chat, prima si esce da quella
@@ -255,7 +257,9 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
       return setError(`Modalità master: l'azione deve avere almeno ${master.min} caratteri (ne ha ${content.length}).`);
     }
     // sussurro: il destinatario dev'essere uno dei presenti
-    const whisperTo = kind === "sussurro" ? others.find((o) => o.name.toLowerCase() === recipient.trim().toLowerCase()) : null;
+    // per il sussurro basta il nome (vale anche il nome completo)
+    const wanted = recipient.trim().toLowerCase();
+    const whisperTo = kind === "sussurro" ? others.find((o) => o.name.toLowerCase() === wanted || firstName(o.name).toLowerCase() === wanted) : null;
     if (kind === "sussurro" && !whisperTo) {
       return setError(others.length ? "Per sussurrare scegli nel destinatario uno dei presenti." : "Non c'è nessun altro in chat a cui sussurrare.");
     }
@@ -268,7 +272,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
         character_id: me.id,
         kind,
         content,
-        recipient: whisperTo ? whisperTo.name : recipient.trim() || null,
+        recipient: whisperTo ? firstName(whisperTo.name) : recipient.trim() || null,
         ...(whisperTo ? { recipient_id: whisperTo.character_id } : {}),
       })
       .select()
@@ -297,7 +301,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
   }
 
   async function remove(m: Message) {
-    if (!window.confirm(`Eliminare questo messaggio di ${m.character_name}?`)) return;
+    if (!window.confirm(`Eliminare questo messaggio di ${firstName(m.character_name)}?`)) return;
     const res = await deleteMessage(m.id);
     if (res.error) return setError(res.error);
     setMessages((prev) => prev.filter((x) => x.id !== m.id));
@@ -366,7 +370,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
         ) : (
           present.map((p) => (
             <span key={p.character_id} className={cn("rounded-full px-2.5 py-0.5 text-xs", p.character_id === me?.id ? "bg-flamingo/25 text-white" : "bg-white/10")}>
-              {p.name}
+              {firstName(p.name)}
             </span>
           ))
         )}
@@ -472,13 +476,13 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
               onChange={(e) => setRecipient(e.target.value)}
               list={`dest-${roomId}`}
               maxLength={60}
-              placeholder={kind === "sussurro" ? "A chi sussurri?" : "Destinatario (facoltativo)"}
+              placeholder={kind === "sussurro" ? "A chi sussurri? (il nome)" : "Destinatario (facoltativo)"}
               aria-label="Destinatario"
               className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-night/40 px-2 outline-none focus-visible:border-ring sm:max-w-56"
             />
             <datalist id={`dest-${roomId}`}>
               {others.map((o) => (
-                <option key={o.character_id} value={o.name} />
+                <option key={o.character_id} value={firstName(o.name)} />
               ))}
             </datalist>
             <span className="ml-auto flex gap-1">

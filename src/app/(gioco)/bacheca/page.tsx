@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/game/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { activeCharacter, can, requirePlayer } from "@/lib/auth";
 import { getNews, getOnlineCharacters, getPendingCharacters, getRoomActivity, getWorld } from "@/lib/data";
-import { formatDateTime, initials } from "@/lib/format";
+import { firstName, formatDateTime, initials } from "@/lib/format";
 import { requestTime } from "@/lib/request-time";
 
 export const metadata: Metadata = { title: "Bacheca" };
@@ -83,7 +83,7 @@ async function Content() {
             {pendingSheets.map((p) => (
               <li key={p.id}>
                 <Link href={`/scheda/${p.id}`} className="block rounded-full bg-white/10 px-3 py-1 text-sm hover:bg-white/20">
-                  {p.name}
+                  {firstName(p.name)}
                 </Link>
               </li>
             ))}
@@ -163,7 +163,7 @@ async function Content() {
               <Link key={c.id} href={`/scheda/${c.id}`} className="flex items-center gap-3 rounded-xl p-1 hover:bg-white/5">
                 <CharacterAvatar initials={initials(c.name)} online />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{c.name}</p>
+                  <p className="truncate text-sm font-medium">{firstName(c.name)}</p>
                   <p className="truncate text-xs text-muted-foreground">{c.occupation ?? "—"}</p>
                 </div>
               </Link>

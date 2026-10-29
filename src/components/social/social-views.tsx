@@ -21,6 +21,7 @@ import {
   type SocialPerson,
   type SocialPost,
 } from "@/lib/social";
+import { firstName } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const PAGE = 12;
@@ -199,7 +200,7 @@ export function ProfileView({ id }: { id: string }) {
       <div>
         <p className="font-semibold">{handleOf(person)}</p>
         <Link href={`/scheda/${person.id}`} className="text-sm text-peach hover:underline">
-          {person.name}
+          {firstName(person.name)}
         </Link>
         {person.social?.bio && (
           <p className="mt-1 text-sm">
@@ -386,7 +387,7 @@ export function PeopleList({ people, empty }: { people: SocialPerson[] | null; e
             <Avatar person={p} size="size-11" />
             <span className="min-w-0">
               <span className="block truncate text-sm font-semibold">{handleOf(p)}</span>
-              <span className="block truncate text-xs text-muted-foreground">{p.name}</span>
+              <span className="block truncate text-xs text-muted-foreground">{firstName(p.name)}</span>
             </span>
           </button>
           <FollowButton id={p.id} />
@@ -640,7 +641,7 @@ export function DmThread({ otherId, onRead }: { otherId: string; onRead: () => v
           <Avatar person={other} size="size-9" />
           <span className="min-w-0">
             <span className="block truncate text-sm font-semibold">{handleOf(other)}</span>
-            <span className="block truncate text-xs text-muted-foreground">{other?.name}</span>
+            <span className="block truncate text-xs text-muted-foreground">{firstName(other?.name)}</span>
           </span>
         </button>
       </div>

@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { ArrowLeft, Check, CheckCheck, LogOut, Megaphone, Plus, SendHorizontal, Trash2, UserMinus, UserPlus, Users, X } from "lucide-react";
 import { CharacterAvatar } from "@/components/game/character-avatar";
 import { Button } from "@/components/ui/button";
-import { formatTime, initials } from "@/lib/format";
+import { firstName, formatTime, initials } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import { useResync } from "@/lib/use-resync";
 import { useStickToBottom } from "@/lib/use-stick-bottom";
@@ -81,7 +81,7 @@ export function MessagesApp({
       if (missing.length === 0) return;
       const { data } = await supabase.rpc("player_cards", { p_users: missing });
       const rows = (data ?? []) as { user_id: string; name: string; avatar_url: string | null }[];
-      setPeople((prev) => ({ ...prev, ...Object.fromEntries(rows.map((r) => [r.user_id, { id: r.user_id, name: r.name, avatar: r.avatar_url }])) }));
+      setPeople((prev) => ({ ...prev, ...Object.fromEntries(rows.map((r) => [r.user_id, { id: r.user_id, name: firstName(r.name), avatar: r.avatar_url }])) }));
     },
     [supabase],
   );
@@ -358,12 +358,12 @@ export function MessagesApp({
 
   async function findPlayer(raw: string): Promise<Contact | string> {
     const name = raw.trim();
-    if (name.length < 3) return "Scrivi il nome e cognome.";
+    if (name.length < 2) return "Scrivi il nome del personaggio.";
     const { data } = await supabase.rpc("find_player", { p_name: name });
     const row = ((data ?? []) as { user_id: string; name: string; avatar_url: string | null; has_character: boolean }[])[0];
     if (!row) return `Nessuno si chiama «${name}».`;
-    if (channel === "on" && !row.has_character) return `${row.name} non ha ancora un personaggio approvato: scrivigli nei messaggi OFF.`;
-    const c = { id: row.user_id, name: row.name, avatar: row.avatar_url };
+    if (channel === "on" && !row.has_character) return `${firstName(row.name)} non ha ancora un personaggio approvato: scrivigli nei messaggi OFF.`;
+    const c = { id: row.user_id, name: firstName(row.name), avatar: row.avatar_url };
     setPeople((prev) => ({ ...prev, [c.id]: c }));
     return c;
   }
@@ -472,7 +472,7 @@ export function MessagesApp({
           <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", channel === "on" ? "bg-flamingo/20 text-flamingo" : "bg-lavender/20 text-lavender")}>{channel.toUpperCase()}</span>
           <span className="text-xs text-muted-foreground">{channel === "on" ? "Tra personaggi, in gioco" : "Tra giocatori, fuori gioco"}</span>
         </div>
-        <NameForm label="Nuovo messaggio a" button="Apri" placeholder="Nome e cognome" onSubmit={openByName} />
+        <NameForm label="Nuovo messaggio a" button="Apri" placeholder="Nome del personaggio" onSubmit={openByName} />
         <div className="border-b border-border px-3 pb-3">
           <Button type="button" variant="ghost" size="sm" onClick={() => (setPanel("new-group"), setActive(null))} className="w-full rounded-full">
             <Plus /> Nuovo gruppo
@@ -762,7 +762,7 @@ function NewGroup({ channel, onCreate, onCancel }: { channel: Channel; onCreate:
           value={list}
           onChange={(e) => setList(e.target.value)}
           rows={4}
-          placeholder={"Un nome per riga (nome e cognome)\nLena Moreno\nMax Rivera"}
+          placeholder={"Un nome per riga\nLena\nMax"}
           className="rounded-lg border border-input bg-night/40 px-3 py-2 outline-none focus-visible:border-ring"
         />
         <span className="text-xs text-muted-foreground">
@@ -809,7 +809,7 @@ function MembersPanel({
           <X className="size-4" />
         </button>
       </div>
-      {isOwner && <NameForm label="Aggiungi un membro" button="Aggiungi" placeholder="Nome e cognome" onSubmit={onAdd} />}
+      {isOwner && <NameForm label="Aggiungi un membro" button="Aggiungi" placeholder="Nome del personaggio" onSubmit={onAdd} />}
       <ul className="flex flex-col gap-1 px-3 pb-3">
         {members.map((id) => {
           const p = people[id];

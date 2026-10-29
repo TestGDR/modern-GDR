@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Archive, ArrowLeft, Dices, IdCard, Plus, SendHorizontal, ShieldCheck, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatDateTime } from "@/lib/format";
+import { firstName, formatDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import { useResync } from "@/lib/use-resync";
 import type { Ticket, TicketMessage, TicketSection, TicketStatus } from "@/lib/types";
@@ -110,7 +110,7 @@ export function TicketsApp({
                   <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[0.65rem]", STATUS[t.status].cls)}>{STATUS[t.status].label}</span>
                 </span>
                 <span className="truncate text-xs text-muted-foreground">
-                  {sectionName(t.section_id)} · {t.opener_name} · {formatDateTime(t.last_message_at)}
+                  {sectionName(t.section_id)} · {firstName(t.opener_name)} · {formatDateTime(t.last_message_at)}
                 </span>
               </button>
             </li>
@@ -272,7 +272,7 @@ function TicketView({
     const ids = ((p ?? []) as { user_id: string }[]).map((x) => x.user_id);
     if (ids.length) {
       const { data: cards } = await supabase.rpc("player_cards", { p_users: ids });
-      setParticipants(((cards ?? []) as { name: string }[]).map((c) => c.name));
+      setParticipants(((cards ?? []) as { name: string }[]).map((c) => firstName(c.name)));
     }
     // aprendo il ticket lo si segna come letto
     await supabase.rpc("mark_ticket_read", { p_ticket: ticket.id });
@@ -347,7 +347,7 @@ function TicketView({
           <div className="min-w-0 flex-1">
             <h3 className="truncate font-heading text-xl tracking-wide">{ticket.title}</h3>
             <p className="truncate text-xs text-muted-foreground">
-              {sectionName} · {participants.join(", ") || ticket.opener_name}
+              {sectionName} · {participants.join(", ") || firstName(ticket.opener_name)}
               {ticket.assigned_name ? ` · seguito da ${ticket.assigned_name}` : ""}
             </p>
           </div>
@@ -400,7 +400,7 @@ function TicketView({
                 <div key={m.id} className={cn("max-w-[85%] rounded-2xl px-3 py-2 text-sm", m.from_staff ? "self-start border border-mint/30 bg-mint/10" : "self-end bg-white/10")}>
                   <p className="mb-0.5 flex items-center gap-1.5 text-xs font-semibold">
                     {m.from_staff && <ShieldCheck className="size-3.5 text-mint" />}
-                    <span className={m.from_staff ? "text-mint" : "text-lavender"}>{m.author_name}</span>
+                    <span className={m.from_staff ? "text-mint" : "text-lavender"}>{firstName(m.author_name)}</span>
                     {m.from_staff && <span className="font-normal text-mint/80">· staff</span>}
                   </p>
                   <p className="leading-relaxed break-words whitespace-pre-line">{m.body}</p>

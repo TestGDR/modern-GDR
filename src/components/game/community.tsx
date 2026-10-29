@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarX2, Check, Dices, Ear, Search, Trash2, X } from "lucide-react";
 import { FloatingWindow } from "@/components/floating-window";
 import { Button } from "@/components/ui/button";
-import { formatDateTime } from "@/lib/format";
+import { firstName, formatDateTime } from "@/lib/format";
 import { playEvent } from "@/lib/notify-sound";
 import { createClient } from "@/lib/supabase/client";
 import { useResync } from "@/lib/use-resync";
@@ -85,7 +85,7 @@ function useGossipWaiting(enabled: boolean) {
 async function names(supabase: Supabase, ids: string[]) {
   if (ids.length === 0) return {} as Record<string, string>;
   const { data } = await supabase.rpc("player_cards", { p_users: [...new Set(ids)] });
-  return Object.fromEntries(((data ?? []) as { user_id: string; name: string }[]).map((r) => [r.user_id, r.name]));
+  return Object.fromEntries(((data ?? []) as { user_id: string; name: string }[]).map((r) => [r.user_id, firstName(r.name)]));
 }
 
 const smallBtn =
@@ -450,7 +450,15 @@ function GossipForm({ rollId, onDone }: { rollId: string; onDone: () => void }) 
     setError(null);
     const ids: string[] = [];
     for (const n of form.people.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)) {
-      const { data } = await supabase.from("characters").select("id").ilike("name", n.replace(/[%_\\]/g, "\\$&")).eq("status", "approvata").limit(1).maybeSingle<{ id: string }>();
+      // basta il nome (vale anche nome e cognome)
+      const safe = n.replace(/[%_\\]/g, "\\$&");
+      const { data } = await supabase
+        .from("characters")
+        .select("id")
+        .or(`name.ilike.${safe},name.ilike.${safe} %`)
+        .eq("status", "approvata")
+        .limit(1)
+        .maybeSingle<{ id: string }>();
       if (!data) {
         setPending(false);
         return setError(`Nessun personaggio approvato si chiama «${n}».`);
@@ -500,7 +508,7 @@ function GossipForm({ rollId, onDone }: { rollId: string; onDone: () => void }) 
             ))}
         </select>
       </div>
-      <input value={form.people} onChange={(e) => setForm({ ...form, people: e.target.value })} placeholder="Altri personaggi presenti, separati da virgola" className={field} />
+      <input value={form.people} onChange={(e) => setForm({ ...form, people: e.target.value })} placeholder="Altri personaggi presenti (il nome), separati da virgola" className={field} />
       {error && <p className="text-xs text-destructive">{error}</p>}
       <Button type="submit" size="sm" disabled={pending} className="self-end rounded-full">
         <Ear /> Manda allo staff

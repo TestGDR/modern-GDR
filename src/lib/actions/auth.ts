@@ -2,7 +2,7 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { isValidName, NAME_MAX, NAME_MIN, normalizeName } from "@/lib/character-name";
+import { isValidFirstName, isValidName, NAME_MAX, NAME_MIN, normalizeName } from "@/lib/character-name";
 import { ACCESS_COOKIE, getClientIp, logAccess } from "@/lib/access-log";
 import { findEmailByName } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -18,12 +18,19 @@ async function siteOrigin() {
 
 export async function signUp(_prev: FormState, formData: FormData): Promise<FormState> {
   // Il nome scelto in registrazione è il nome del personaggio, ed è quello con cui si accede
-  const name = normalizeName(text(formData, "name"));
+  // nome (una parola, è quello che conta) e cognome
+  const first = normalizeName(text(formData, "first_name"));
+  const last = normalizeName(text(formData, "last_name"));
+  const name = normalizeName(`${first} ${last}`);
   const email = text(formData, "email");
   const password = String(formData.get("password") ?? "");
   // In caso di errore, nome ed email restano nel modulo
-  const fail = (error: string): FormState => ({ error, values: { name, email } });
+  const fail = (error: string): FormState => ({ error, values: { first_name: first, last_name: last, email } });
 
+  if (!isValidFirstName(first)) {
+    return fail("Il nome è una parola sola, da 2 a 20 lettere (per i nomi doppi usa il trattino, es. Maria-Luisa).");
+  }
+  if (!last) return fail("Scrivi anche il cognome del personaggio.");
   if (!isValidName(name)) {
     return fail(`Il nome del personaggio deve avere da ${NAME_MIN} a ${NAME_MAX} caratteri: lettere, spazi, apostrofo o trattino.`);
   }
@@ -48,7 +55,7 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
 
   if (error) {
     if (error.message.toLowerCase().includes("database error")) {
-      return fail("Esiste già un personaggio con questo nome. Scegline un altro.");
+      return fail(`Esiste già un personaggio che si chiama ${first}: scegli un altro nome.`);
     }
     if (error.code === "user_already_exists") {
       return fail("Esiste già un account con questa email. Prova ad accedere.");

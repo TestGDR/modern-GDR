@@ -10,7 +10,7 @@ import { PostBody, ThreadModeration } from "@/components/game/forum-thread";
 import { LoadingBlocks } from "@/components/game/loading";
 import { activeCharacter, can, requirePlayer } from "@/lib/auth";
 import { getBoard, getForumNav, getPosts, getThread } from "@/lib/data";
-import { formatDateTime, initials } from "@/lib/format";
+import { firstName, formatDateTime, initials } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Forum" };
@@ -60,7 +60,7 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]/[discus
 
       <ol className="flex flex-col gap-3">
         {posts.map((post) => {
-          const name = post.character?.name ?? post.author?.username ?? "utente";
+          const name = firstName(post.character?.name ?? post.author?.username) || "utente";
           const level = post.author?.level;
           const canEdit = moderator || post.author_id === player.userId;
           return (
@@ -111,7 +111,7 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]/[discus
         {thread.is_locked && !moderator ? (
           <p className="text-center text-sm text-muted-foreground">Discussione chiusa: non si può più rispondere.</p>
         ) : (
-          <ReplyForm threadId={thread.id} characterName={character?.name ?? null} onGame={board.section.is_on_game} />
+          <ReplyForm threadId={thread.id} characterName={character ? firstName(character.name) : null} onGame={board.section.is_on_game} />
         )}
       </div>
     </>

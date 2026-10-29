@@ -7,7 +7,7 @@ import { NewThreadForm } from "@/components/game/forum-forms";
 import { LoadingBlocks } from "@/components/game/loading";
 import { activeCharacter, can, requirePlayer } from "@/lib/auth";
 import { getBoard, getForumUnread, getThreads } from "@/lib/data";
-import { formatDateTime } from "@/lib/format";
+import { firstName, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Forum" };
@@ -49,7 +49,7 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]">["para
             <Plus className="size-4 transition-transform group-open:rotate-45" /> Nuova discussione
           </summary>
           <div className="border-t border-white/10 p-4">
-            <NewThreadForm boardId={board.id} boardSlug={board.slug} characterName={character?.name ?? null} onGame={board.section.is_on_game} />
+            <NewThreadForm boardId={board.id} boardSlug={board.slug} characterName={character ? firstName(character.name) : null} onGame={board.section.is_on_game} />
           </div>
         </details>
       ) : (
@@ -74,7 +74,7 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]">["para
                       <span className="truncate">{t.title}</span>
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      di {t.character?.name ?? t.author?.username ?? "utente"} · aperta il {formatDateTime(t.created_at)} · {replies} {replies === 1 ? "risposta" : "risposte"}
+                      di {firstName(t.character?.name ?? t.author?.username) || "utente"} · aperta il {formatDateTime(t.created_at)} · {replies} {replies === 1 ? "risposta" : "risposte"}
                     </p>
                   </div>
                   <span className="shrink-0 pt-1 text-xs text-muted-foreground">{formatDateTime(t.updated_at)}</span>

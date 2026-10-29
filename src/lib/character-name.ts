@@ -12,6 +12,12 @@ export function normalizeName(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
 
+/** Il nome è una parola sola (nomi doppi con il trattino: Maria-Luisa) */
+const FIRST_RE = /^\p{L}[\p{L}'.-]*\p{L}$/u;
+export function isValidFirstName(first: string) {
+  return first.length >= 2 && first.length <= 20 && FIRST_RE.test(first);
+}
+
 export function isValidName(name: string) {
   return name.length >= NAME_MIN && name.length <= NAME_MAX && NAME_RE.test(name);
 }

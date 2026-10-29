@@ -8,6 +8,7 @@ import { NeedsCharacter } from "@/components/game/needs-character";
 import { bankTransfer, renameCharacter, setFaceClaim, setTalentClaim } from "@/lib/actions/utility";
 import { formatDay, formatDollars, formatMoment, periodLabel } from "@/lib/bank";
 import type { BankOverview, BankTransaction, CharacterStatus } from "@/lib/types";
+import { firstName } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /** Personaggio negli elenchi dell'Utility */
@@ -268,7 +269,7 @@ function MyFaceClaim({ kind, mine }: { kind: ClaimKind; mine: FaceClaimsProps["m
     return (
       <div className="glass rounded-2xl p-4 text-sm">
         <p>
-          Il {t.label} di <strong>{mine.name}</strong> è <strong className="text-peach">{current}</strong>.
+          Il {t.label} di <strong>{firstName(mine.name)}</strong> è <strong className="text-peach">{current}</strong>.
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           Per cambiarlo scrivi alla gestione con un <Link href="/ticket" className="text-lavender underline">ticket</Link>.
@@ -283,7 +284,7 @@ function MyFaceClaim({ kind, mine }: { kind: ClaimKind; mine: FaceClaimsProps["m
         e.preventDefault();
         const name = value.trim();
         if (name.length < 2) return setError(`Scrivi il nome del ${t.label}.`);
-        if (!window.confirm(`Registrare «${name}» come ${t.label} di ${mine.name}? Si registra una volta sola: dopo potrà cambiarlo solo la gestione.`)) return;
+        if (!window.confirm(`Registrare «${name}» come ${t.label} di ${firstName(mine.name)}? Si registra una volta sola: dopo potrà cambiarlo solo la gestione.`)) return;
         setError(null);
         start(async () => {
           const r = kind === "talento" ? await setTalentClaim(mine.id, name) : await setFaceClaim(mine.id, name);
@@ -292,7 +293,7 @@ function MyFaceClaim({ kind, mine }: { kind: ClaimKind; mine: FaceClaimsProps["m
       }}
     >
       <p className="text-sm">
-        Registra il {t.label} di <strong>{mine.name}</strong>: {t.what}. Ognuno è unico in città: non può averlo un altro personaggio.
+        Registra il {t.label} di <strong>{firstName(mine.name)}</strong>: {t.what}. Ognuno è unico in città: non può averlo un altro personaggio.
       </p>
       <ErrorLine error={error} />
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -312,6 +313,7 @@ function MyFaceClaim({ kind, mine }: { kind: ClaimKind; mine: FaceClaimsProps["m
 export function NameChange({ current, changedAt }: { current: string; changedAt: string | null }) {
   // Proposta iniziale: prima parola = nome, il resto = cognome
   const [first, setFirst] = useState(() => current.split(" ")[0] ?? "");
+  // il nome è una parola sola: niente spazi
   const [last, setLast] = useState(() => current.split(" ").slice(1).join(" "));
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -361,7 +363,7 @@ export function NameChange({ current, changedAt }: { current: string; changedAt:
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
           Nome
-          <input value={first} onChange={(e) => setFirst(e.target.value)} maxLength={40} className={inputCls} autoComplete="off" />
+          <input value={first} onChange={(e) => setFirst(e.target.value.replace(/\s/g, ""))} maxLength={20} className={inputCls} autoComplete="off" />
         </label>
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
           Cognome
@@ -428,7 +430,7 @@ function FaceClaimRow({ kind, person, canManage }: { kind: ClaimKind; person: Ut
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
       <span className="min-w-40 flex-1 font-medium">{current}</span>
       <Link href={`/scheda/${person.id}`} className="text-sm text-lavender hover:underline">
-        {person.name}
+        {firstName(person.name)}
       </Link>
       {person.status !== "approvata" && <span className="text-xs text-muted-foreground">(scheda non ancora approvata)</span>}
       {canManage && (
@@ -579,7 +581,7 @@ function Transfer({ characterId, balance, recipients }: { characterId: string; b
                     }}
                     className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-white/10"
                   >
-                    <Portrait person={r} size="size-7" /> {r.name}
+                    <Portrait person={r} size="size-7" /> {firstName(r.name)}
                   </button>
                 </li>
               ))}

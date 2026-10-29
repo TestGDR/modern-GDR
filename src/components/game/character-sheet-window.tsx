@@ -644,6 +644,7 @@ function ChosenOptions({ build, rules }: { build: CharacterBuild; rules: RulesDa
 
 /** Stato della scheda (bozza, in attesa, rifiutata) e, per chi può, Approva/Rifiuta */
 function StatusBanner({ character, canReview }: { character: SheetCharacter; canReview: boolean }) {
+  const router = useRouter();
   const [reason, setReason] = useState("");
   const [rejecting, setRejecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -654,6 +655,8 @@ function StatusBanner({ character, canReview }: { character: SheetCharacter; can
     startTransition(async () => {
       const result = await reviewCharacter(character.id, approve, reason);
       if (!result.ok) setError(result.error ?? "Operazione non riuscita.");
+      // in ogni caso si rilegge la scheda: lo stato mostrato resta quello vero
+      router.refresh();
     });
   }
 
