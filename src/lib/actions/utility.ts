@@ -3,6 +3,7 @@
 import { refresh } from "next/cache";
 import type { ActionResult } from "@/lib/actions/admin";
 import { requirePlayer } from "@/lib/auth";
+import { isValidName, NAME_MAX, NAME_MIN, normalizeName } from "@/lib/character-name";
 import { isUuid } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 
@@ -25,6 +26,21 @@ export async function setFaceClaim(characterId: string, faceClaim: string): Prom
   await requirePlayer();
   const supabase = await createClient();
   const { error } = await supabase.rpc("set_face_claim", { p_character: characterId, p_face_claim: faceClaim.slice(0, 120) });
+  if (!error) refresh();
+  return result(error);
+}
+
+/** Cambio di nome e cognome: una volta sola (lo controlla rename_character nel database) */
+export async function renameCharacter(first: string, last: string): Promise<ActionResult> {
+  const f = normalizeName(first);
+  const l = normalizeName(last);
+  if (!f || !l) return { ok: false, error: "Scrivi sia il nome sia il cognome." };
+  if (!isValidName(`${f} ${l}`)) {
+    return { ok: false, error: `Nome e cognome: da ${NAME_MIN} a ${NAME_MAX} caratteri in tutto, solo lettere, spazi, apostrofo, punto o trattino.` };
+  }
+  await requirePlayer();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("rename_character", { p_first: f, p_last: l });
   if (!error) refresh();
   return result(error);
 }

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
@@ -7,29 +8,36 @@ type LogoProps = {
   href?: string | null;
   size?: "sm" | "md" | "lg";
   className?: string;
+  /** Da caricare subito (es. al centro della homepage) */
+  priority?: boolean;
 };
 
+// Larghezza del logo (l'immagine è 1200x490)
 const sizes = {
-  sm: { name: "text-2xl", tag: "text-[0.6rem]" },
-  md: { name: "text-3xl", tag: "text-xs" },
-  lg: { name: "text-5xl sm:text-7xl", tag: "text-sm sm:text-lg" },
+  sm: "w-52",
+  md: "w-64",
+  lg: "w-[min(88vw,640px)]",
 };
 
-export function Logo({ href = "/", size = "md", className }: LogoProps) {
-  const s = sizes[size];
-  const classes = cn("inline-flex flex-col gap-1 leading-none", className);
+/** Logo "Neon Campus" (public/images/logo-neon-campus.webp) */
+export function Logo({ href = "/", size = "md", className, priority }: LogoProps) {
+  const classes = cn("inline-flex", className);
   const content = (
-    <>
-      <span className={cn("font-script text-sunset pr-2 pb-1 drop-shadow-[0_2px_12px_rgb(255_121_176/0.35)]", s.name)}>
-        {siteConfig.name}
-      </span>
-      <span className={cn("font-heading tracking-[0.35em] text-lavender", s.tag)}>{siteConfig.tagline}</span>
-    </>
+    <Image
+      src="/images/logo-neon-campus.webp"
+      alt={siteConfig.name}
+      width={1200}
+      height={490}
+      loading={priority ? "eager" : undefined}
+      fetchPriority={priority ? "high" : undefined}
+      sizes={size === "lg" ? "(max-width: 728px) 88vw, 640px" : size === "md" ? "256px" : "208px"}
+      className={cn("h-auto drop-shadow-[0_4px_24px_rgb(91_75_181/0.45)]", sizes[size])}
+    />
   );
 
   if (href === null) return <span className={classes}>{content}</span>;
   return (
-    <Link href={href} className={classes}>
+    <Link href={href} className={classes} aria-label={siteConfig.name}>
       {content}
     </Link>
   );

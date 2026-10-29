@@ -1,7 +1,7 @@
 "use client";
 
 // Numero delle cose da leggere nel titolo della scheda del browser, es.
-// "(3) Mappa · Modern GDR": somma dei messaggi ON e OFF e dei ticket.
+// "(3) Mappa · Neon Campus": somma dei messaggi ON e OFF e dei ticket.
 // Ogni fonte imposta il proprio numero; il titolo mostra la somma.
 
 const counts = new Map<string, number>();

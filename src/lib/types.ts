@@ -23,6 +23,8 @@ export type Profile = {
   created_at: string;
   last_login_at: string | null;
   last_played_at: string | null;
+  /** Quando ha usato il cambio di nome (una volta sola); null = ancora disponibile */
+  name_changed_at: string | null;
   /** Sospeso fino a questa data ("infinity" = per sempre) */
   banned_until: string | null;
   ban_reason: string;

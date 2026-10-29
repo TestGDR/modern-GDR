@@ -286,7 +286,6 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
     })
     .sort((a, b) => (a.key === placeKey ? -1 : b.key === placeKey ? 1 : !a.chatId ? 1 : !b.chatId ? -1 : a.name.localeCompare(b.name, "it")));
 
-  const title = placeKey === "mappa" ? "Presenti in mappa" : "Presenti in chat";
   return (
     <>
       {/* Telefono: solo l'icona con il numero, che apre l'elenco */}
@@ -303,9 +302,9 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
         {/* Il titolo apre l'elenco esteso; il nome apre la scheda */}
         <button type="button" onClick={() => setOpen(true)} className="flex items-center gap-2 rounded-lg text-left text-sm font-medium transition-colors hover:text-mint" title="Tutti i presenti online">
           <Users className="size-4 text-mint" />
-          {title}
-          <span className="ml-auto rounded-full bg-mint/15 px-2 py-0.5 text-xs text-mint" title={`${list.length} online in tutto`}>
-            {players ? here.length : "…"}
+          Online
+          <span className="ml-auto rounded-full bg-mint/15 px-2 py-0.5 text-xs text-mint" title={`${list.length} online in tutto il gioco`}>
+            {players ? list.length : "…"}
           </span>
         </button>
         {here.length > 0 ? (
@@ -335,7 +334,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
             })}
           </span>
         ) : (
-          <span className="text-xs text-muted-foreground">{players ? "Nessuno qui in questo momento." : "Caricamento…"}</span>
+          <span className="text-xs text-muted-foreground">{players ? placeKey === "mappa" ? "Nessuno in mappa." : "Nessuno in questa chat." : "Caricamento…"}</span>
         )}
       </div>
       {open && (

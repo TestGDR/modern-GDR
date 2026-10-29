@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BookUser, BriefcaseBusiness, Landmark, Shield, VenetianMask } from "lucide-react";
+import { BookUser, BriefcaseBusiness, Landmark, PenLine, Shield, VenetianMask } from "lucide-react";
 import { PageHeader } from "@/components/game/page-header";
 
 export const metadata: Metadata = { title: "Utility" };
@@ -11,13 +11,14 @@ const BOXES = [
   { href: "/utility/lavori", label: "Lavori", hint: "Full time e part time: scegli il tuo", icon: BriefcaseBusiness, color: "text-peach" },
   { href: "/utility/gruppi", label: "Gruppi", hint: "Gruppi della land, ruoli e membri", icon: Shield, color: "text-lavender" },
   { href: "/utility/banca", label: "Servizi bancari", hint: "Stipendio, conto e soldi agli altri", icon: Landmark, color: "text-sand" },
+  { href: "/utility/nome", label: "Cambio nome", hint: "Nome e cognome: una volta sola", icon: PenLine, color: "text-flamingo" },
 ];
 
 // Pannello Utility: le sezioni si aprono nella stessa finestra
 export default function UtilityPage() {
   return (
     <>
-      <PageHeader title="Utility" subtitle="Anagrafe, prestavolti, lavori, gruppi e servizi bancari." />
+      <PageHeader title="Utility" subtitle="Anagrafe, prestavolti, lavori, gruppi, servizi bancari e cambio nome." />
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {BOXES.map((b) => (
           <li key={b.href}>

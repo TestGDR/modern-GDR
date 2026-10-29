@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowDownLeft, ArrowLeft, ArrowUpRight, Check, HandCoins, Pencil, Search, SendHorizontal, Wallet, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NeedsCharacter } from "@/components/game/needs-character";
-import { bankTransfer, setFaceClaim } from "@/lib/actions/utility";
+import { bankTransfer, renameCharacter, setFaceClaim } from "@/lib/actions/utility";
 import { formatDay, formatDollars, formatMoment, periodLabel } from "@/lib/bank";
 import type { BankOverview, BankTransaction, CharacterStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -273,6 +273,82 @@ function MyFaceClaim({ mine }: { mine: FaceClaimsProps["mine"] }) {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">Attenzione: una volta salvato non si cambia più, se non dallo staff.</p>
+    </form>
+  );
+}
+
+/* ------------------------------ Cambio nome ------------------------------ */
+
+/** Cambio di nome e cognome: si usa una volta sola */
+export function NameChange({ current, changedAt }: { current: string; changedAt: string | null }) {
+  // Proposta iniziale: prima parola = nome, il resto = cognome
+  const [first, setFirst] = useState(() => current.split(" ")[0] ?? "");
+  const [last, setLast] = useState(() => current.split(" ").slice(1).join(" "));
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  if (changedAt || done) {
+    return (
+      <div className="glass flex flex-col gap-2 rounded-2xl p-4 text-sm">
+        <p>
+          Il tuo personaggio si chiama <strong className="text-peach">{done ?? current}</strong>.
+        </p>
+        <p className="rounded-lg bg-white/5 px-3 py-2 text-muted-foreground">
+          {done ? "Cambio fatto: da adesso accedi al gioco con il nuovo nome." : `Hai già usato il cambio di nome il ${formatDay((changedAt ?? "").slice(0, 10))}.`} Il cambio si può fare <strong className="text-foreground">una volta sola</strong>: non è più disponibile.
+        </p>
+      </div>
+    );
+  }
+
+  const next = `${first.trim().replace(/\s+/g, " ")} ${last.trim().replace(/\s+/g, " ")}`.trim();
+  return (
+    <form
+      className="glass flex flex-col gap-4 rounded-2xl p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!first.trim() || !last.trim()) return setError("Scrivi sia il nome sia il cognome.");
+        if (next === current) return setError("È uguale al nome attuale.");
+        if (!window.confirm(`Cambiare «${current}» in «${next}»?\n\nIl cambio si può fare UNA VOLTA SOLA: dopo non potrai più cambiare né il nome né il cognome. Da adesso accederai al gioco con il nuovo nome.`)) return;
+        setError(null);
+        start(async () => {
+          const r = await renameCharacter(first, last);
+          if (!r.ok) return setError(r.error ?? "Operazione non riuscita.");
+          setDone(next);
+        });
+      }}
+    >
+      <div className="rounded-xl border border-flamingo/40 bg-flamingo/10 px-4 py-3 text-sm">
+        <p className="font-semibold text-flamingo">Attenzione: si può fare una volta sola</p>
+        <p className="mt-1 text-muted-foreground">
+          Puoi cambiare il nome, il cognome o entrambi, ma <strong className="text-foreground">una sola volta</strong>: dopo il cambio questa funzione non sarà più disponibile. Il nuovo nome
+          diventa anche quello con cui accedi al gioco.
+        </p>
+      </div>
+      <p className="text-sm">
+        Nome attuale: <strong className="text-peach">{current}</strong>
+      </p>
+      <ErrorLine error={error} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          Nome
+          <input value={first} onChange={(e) => setFirst(e.target.value)} maxLength={40} className={inputCls} autoComplete="off" />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          Cognome
+          <input value={last} onChange={(e) => setLast(e.target.value)} maxLength={40} className={inputCls} autoComplete="off" />
+        </label>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" disabled={pending || next === current} className="h-10 rounded-full px-5">
+          {pending ? "Cambio in corso…" : "Cambia nome (una volta sola)"}
+        </Button>
+        {next !== current && next && (
+          <span className="text-xs text-muted-foreground">
+            Diventerà: <strong className="text-foreground">{next}</strong>
+          </span>
+        )}
+      </div>
     </form>
   );
 }

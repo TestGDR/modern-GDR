@@ -14,19 +14,18 @@ export default function Home() {
         {/* Hero a tutto schermo */}
         <section className="relative isolate flex flex-1 flex-col overflow-hidden">
           <SunsetScene className="-z-10" />
-          <nav className="flex items-center justify-between px-5 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-10">
-            <Logo size="sm" />
+          {/* in alto solo "Accedi": il logo è al centro */}
+          <nav className="flex items-center justify-end px-5 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-10">
             <OpenAuthButton mode="login" className={cn(buttonVariants({ variant: "ghost" }), "text-white hover:bg-white/15")}>
               Accedi
             </OpenAuthButton>
           </nav>
 
-          <div className="flex flex-1 flex-col items-center px-5 pt-[12vh] pb-16 text-center sm:pt-[14vh]">
+          <div className="flex flex-1 flex-col items-center px-5 pt-[8vh] pb-16 text-center sm:pt-[10vh]">
             <p className="mb-3 font-heading text-lg tracking-[0.4em] text-sand/90 sm:text-xl">Play by chat</p>
-            <h1 className="font-script text-6xl leading-tight text-white drop-shadow-[0_4px_24px_rgb(91_75_181/0.6)] sm:text-8xl">
-              {siteConfig.name}
+            <h1>
+              <Logo href={null} size="lg" priority />
             </h1>
-            <p className="mt-4 font-heading text-2xl tracking-[0.3em] text-white/90 sm:text-3xl">{siteConfig.tagline}</p>
             <p className="mt-6 max-w-md text-balance text-white/85">
               Sole, palme e affari sporchi. Crea il tuo personaggio e vivi la tua storia a Miami.
             </p>
