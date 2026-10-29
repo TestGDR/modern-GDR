@@ -27,6 +27,7 @@ import { TicketIcon } from "@/components/game/ticket-icon";
 import { ForumIcon } from "@/components/game/forum-icon";
 import { SocialIcon } from "@/components/social/social-icon";
 import { usePresence } from "@/components/game/presence";
+import { useMiamiWeather, WeatherBadge, WeatherDetails } from "@/components/game/weather";
 import { sidebarIconClass } from "@/components/game/sidebar-styles";
 import { FloatingWindow } from "@/components/floating-window";
 import { signOut } from "@/lib/actions/auth";
@@ -135,6 +136,7 @@ function PlaceCard({ info }: { info: RoomInfo | null }) {
   const subtitle = info ? (info.district?.name ?? "") : "Florida";
   const gradient = info?.district?.gradient ?? "from-violet via-flamingo to-peach";
   const iconBtn = "grid size-8 place-items-center rounded-full bg-night/60 text-white backdrop-blur hover:bg-night/80";
+  const weather = useMiamiWeather();
 
   return (
     <div className={cn("relative aspect-[4/3] overflow-hidden rounded-2xl bg-gradient-to-br", gradient)}>
@@ -157,10 +159,16 @@ function PlaceCard({ info }: { info: RoomInfo | null }) {
             </p>
           )}
         </WindowButton>
-        <WindowButton label="Meteo" icon={<CloudSun className="size-4" />} showLabel={false} className={iconBtn}>
-          <ComingSoon>
-            <p>Qui comparirà il meteo di Miami nel mondo di gioco: cielo, temperatura e mare, impostati dallo staff.</p>
-          </ComingSoon>
+        {/* meteo reale di Miami: icona e temperatura, cliccando il dettaglio */}
+        <WindowButton
+          label="Meteo"
+          title="Meteo a Miami"
+          icon={weather ? <WeatherBadge weather={weather} /> : <CloudSun className="size-4" />}
+          showLabel={false}
+          className="flex h-8 min-w-8 items-center justify-center rounded-full bg-night/60 px-2 text-white backdrop-blur hover:bg-night/80"
+          width={440}
+        >
+          <WeatherDetails weather={weather} />
         </WindowButton>
       </div>
       <div className="absolute inset-x-3 bottom-2.5">
