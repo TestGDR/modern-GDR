@@ -1,8 +1,9 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { isValidName, NAME_MAX, NAME_MIN, normalizeName } from "@/lib/character-name";
+import { ACCESS_COOKIE, getClientIp, logAccess } from "@/lib/access-log";
 import { findEmailByName } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { FormState } from "@/lib/types";
@@ -30,6 +31,9 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
   if (password.length < 8) return fail("La password deve avere almeno 8 caratteri.");
 
   const supabase = await createClient();
+  // Iscrizioni chiuse dallo staff (il database le rifiuta comunque)
+  const { data: signups } = await supabase.from("signup_settings").select("open, message").maybeSingle<{ open: boolean; message: string }>();
+  if (signups && !signups.open) return fail(signups.message || "Le iscrizioni sono chiuse in questo momento.");
   // Un nuovo account parte sempre da zero: chiude un'eventuale sessione rimasta aperta
   await supabase.auth.signOut();
   const { data, error } = await supabase.auth.signUp({
@@ -59,6 +63,12 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
       return fail("Troppe registrazioni in poco tempo. Riprova tra qualche minuto.");
     }
     return fail(`Registrazione non riuscita: ${error.message}`);
+  }
+
+  // Registro degli accessi: la registrazione
+  if (data.user) {
+    const h = await headers();
+    await logAccess({ userId: data.user.id, event: "iscrizione", ip: getClientIp(h), userAgent: h.get("user-agent") });
   }
 
   // Dopo la registrazione si torna alla home per fare l'accesso.
@@ -91,9 +101,12 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
   if (!email) return fail("Nome del personaggio o password non corretti.");
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data: signed, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
+    if (error.code === "user_banned") {
+      return fail("Questo account è sospeso. Per informazioni scrivi allo staff.");
+    }
     if (error.code === "email_not_confirmed") {
       return fail("Devi prima confermare l'email: controlla la posta (anche lo spam).");
     }
@@ -103,8 +116,34 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
     return fail(`Accesso non riuscito: ${error.message}`);
   }
 
+  // Account sospeso dallo staff: niente accesso
+  const { data: ban } = await supabase.rpc("my_ban");
+  const banned = ((ban ?? []) as { banned_until: string; ban_reason: string }[])[0];
+  if (banned) {
+    await supabase.auth.signOut();
+    const until = banned.banned_until === "infinity" ? "a tempo indeterminato" : `fino al ${new Date(banned.banned_until).toLocaleString("it-IT", { timeZone: "Europe/Rome", dateStyle: "short", timeStyle: "short" })}`;
+    return fail(`Account sospeso ${until}.${banned.ban_reason ? ` Motivo: ${banned.ban_reason}` : ""}`);
+  }
+
+  // Registro degli accessi (e ultimo accesso)
+  if (signed.user) {
+    const h = await headers();
+    const ip = getClientIp(h);
+    await logAccess({ userId: signed.user.id, event: "login", ip, userAgent: h.get("user-agent") });
+    // il proxy non registra di nuovo lo stesso accesso
+    if (ip) (await cookies()).set(ACCESS_COOKIE, `${signed.user.id}|${ip}`, { httpOnly: true, sameSite: "lax", secure: true, path: "/", maxAge: 60 * 60 * 24 * 30 });
+  }
+
   // Si entra in gioco dalla mappa: la scheda si completa da Scheda personaggio
   redirect("/mappa");
+}
+
+/** Uscita automatica dopo il tempo di inattività (Gestione → Chat) */
+export async function logoutIdle() {
+  const supabase = await createClient();
+  await supabase.rpc("leave_online");
+  await supabase.auth.signOut();
+  redirect("/login?inattivo=1");
 }
 
 export async function signOut() {

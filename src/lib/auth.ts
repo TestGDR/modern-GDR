@@ -60,6 +60,9 @@ function pickCharacter(list: Character[]) {
 export async function requirePlayer() {
   const player = await getPlayer();
   if (!player) redirect("/login");
+  // Sospeso dallo staff: esce e vede perché
+  const until = player.profile.banned_until;
+  if (until && (until === "infinity" || new Date(until).getTime() > Date.now())) redirect("/api/sospeso");
   return player;
 }
 

@@ -16,19 +16,28 @@ import {
 import { Button } from "@/components/ui/button";
 import { deleteOption, moveItem, saveOption, type OptionInput } from "@/lib/actions/admin";
 import type { CreationOption, Skill } from "@/lib/types";
+import { formatDollars } from "@/lib/bank";
 import { cn } from "@/lib/utils";
 
-const KINDS: { kind: CreationOption["kind"]; title: string; hint: string }[] = [
-  { kind: "tenore", title: "Tenore di vita", hint: "Scelta singola alla creazione." },
+const ALL_KINDS: { kind: CreationOption["kind"]; title: string; hint: string }[] = [
+  { kind: "tenore", title: "Patrimonio", hint: "Scelta singola alla creazione: costo in PX, entrata e mantenimento mensili, quota iniziale sul conto." },
   { kind: "vantaggio", title: "Vantaggi", hint: "Costano PX (costo positivo)." },
   { kind: "svantaggio", title: "Svantaggi", hint: "Danno PX (costo negativo)." },
   { kind: "tratto", title: "Tratti", hint: "Hanno il loro costo in PX." },
 ];
 
-type Props = { options: CreationOption[]; skills: Skill[]; usage: Record<string, number>; pxPerLevel: number };
+type Props = {
+  options: CreationOption[];
+  skills: Skill[];
+  usage: Record<string, number>;
+  pxPerLevel: number;
+  /** Quali elenchi mostrare (il Patrimonio ha la sua pagina) */
+  kinds: CreationOption["kind"][];
+};
 
-export function OptionsManager({ options, skills, usage, pxPerLevel }: Props) {
-  const [kind, setKind] = useState<CreationOption["kind"]>("tenore");
+export function OptionsManager({ options, skills, usage, pxPerLevel, kinds }: Props) {
+  const KINDS = ALL_KINDS.filter((k) => kinds.includes(k.kind));
+  const [kind, setKind] = useState<CreationOption["kind"]>(kinds[0]);
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const { pending, error, execute } = useAdminAction();
   const list = options.filter((o) => o.kind === kind);
@@ -40,7 +49,7 @@ export function OptionsManager({ options, skills, usage, pxPerLevel }: Props) {
       <p className="text-sm text-muted-foreground">
         Riferimento per calibrare i costi: portare un&apos;abilità da 0 a 6 costa {(pxPerLevel * 6 * 7) / 2} PX.
       </p>
-      <div className="flex gap-1 overflow-x-auto" role="tablist">
+      <div className={cn("flex gap-1 overflow-x-auto", KINDS.length < 2 && "hidden")} role="tablist">
         {KINDS.map((k) => (
           <button
             key={k.kind}
@@ -92,6 +101,11 @@ export function OptionsManager({ options, skills, usage, pxPerLevel }: Props) {
                       {o.roll_modifier} ai tiri{o.roll_skill_id ? ` di ${skills.find((s) => s.id === o.roll_skill_id)?.name ?? "?"}` : ""}
                     </span>
                   )}
+                  {o.kind === "tenore" && (
+                    <span className="text-xs text-sand">
+                      entrata {formatDollars(o.salary)} · mantenimento {formatDollars(o.upkeep)} · iniziale {formatDollars(o.initial_amount)}
+                    </span>
+                  )}
                   <StatusPill active={o.active} />
                 </p>
                 <p className="line-clamp-1 text-xs text-muted-foreground">{o.description}</p>
@@ -134,6 +148,9 @@ function OptionForm({
     rollModifier: option?.roll_modifier ?? null,
     rollSkillId: option?.roll_skill_id ?? null,
     incompatibleIds: option?.incompatible_ids ?? [],
+    salary: option?.salary ?? 0,
+    upkeep: option?.upkeep ?? 0,
+    initialAmount: option?.initial_amount ?? 0,
     active: option?.active ?? true,
   });
   const { pending, error, execute } = useAdminAction();
@@ -162,16 +179,29 @@ function OptionForm({
         </FieldLabel>
         <FieldLabel label="Tipo">
           <select className={inputClass} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as OptionInput["kind"] })}>
-            <option value="tenore">Tenore di vita</option>
+            <option value="tenore">Patrimonio</option>
             <option value="vantaggio">Vantaggio</option>
             <option value="svantaggio">Svantaggio</option>
             <option value="tratto">Tratto</option>
           </select>
         </FieldLabel>
-        <FieldLabel label="Costo in PX" hint="Negativo se dà PX">
+        <FieldLabel label="Costo in PX" hint={form.kind === "tenore" ? "Alla creazione del personaggio" : "Negativo se dà PX"}>
           <input className={inputClass} type="number" min={-1000} max={1000} value={form.costPx} onChange={(e) => setForm({ ...form, costPx: Number(e.target.value) })} />
         </FieldLabel>
       </div>
+      {form.kind === "tenore" && (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <FieldLabel label="Entrata mensile in $" hint="Arriva da sola ogni mese">
+            <input className={inputClass} type="number" min={0} max={1000000} value={form.salary} onChange={(e) => setForm({ ...form, salary: Number(e.target.value) })} />
+          </FieldLabel>
+          <FieldLabel label="Mantenimento mensile in $" hint="Uscita automatica ogni mese">
+            <input className={inputClass} type="number" min={0} max={1000000} value={form.upkeep} onChange={(e) => setForm({ ...form, upkeep: Number(e.target.value) })} />
+          </FieldLabel>
+          <FieldLabel label="Quota iniziale in $" hint="Sul conto all'approvazione">
+            <input className={inputClass} type="number" min={0} max={100000000} value={form.initialAmount} onChange={(e) => setForm({ ...form, initialAmount: Number(e.target.value) })} />
+          </FieldLabel>
+        </div>
+      )}
       <FieldLabel label="Descrizione">
         <textarea className={textareaClass} value={form.description} maxLength={500} onChange={(e) => setForm({ ...form, description: e.target.value })} />
       </FieldLabel>

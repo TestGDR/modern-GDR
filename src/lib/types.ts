@@ -21,6 +21,11 @@ export type Profile = {
   username: string;
   level_id: string;
   created_at: string;
+  last_login_at: string | null;
+  last_played_at: string | null;
+  /** Sospeso fino a questa data ("infinity" = per sempre) */
+  banned_until: string | null;
+  ban_reason: string;
 };
 
 export type CharacterStatus = "bozza" | "in_attesa" | "approvata" | "rifiutata";
@@ -65,6 +70,12 @@ export type CreationOption = {
   roll_modifier: number | null;
   roll_skill_id: string | null;
   incompatible_ids: string[];
+  /** Patrimonio: entrata a ogni accredito (mensile) */
+  salary: number;
+  /** Patrimonio: uscita di mantenimento a ogni accredito */
+  upkeep: number;
+  /** Patrimonio: soldi sul conto all'approvazione */
+  initial_amount: number;
   sort_order: number;
   active: boolean;
 };
@@ -203,6 +214,8 @@ export type Character = {
   rejection_reason: string | null;
   /** PX non spesi */
   px: number;
+  /** Prestavolto: unico, una volta registrato lo cambia solo lo staff */
+  face_claim: string | null;
 };
 
 /** Versione ridotta del personaggio, usata in elenchi e messaggi */
@@ -318,6 +331,8 @@ export type Ticket = {
   created_at: string;
   last_message_at: string;
   last_author_name: string;
+  /** Ticket di approvazione: la scheda di cui parla */
+  character_id: string | null;
 };
 
 export type TicketMessage = {
@@ -328,6 +343,31 @@ export type TicketMessage = {
   from_staff: boolean;
   body: string;
   roll_data: RollData | null;
+  created_at: string;
+};
+
+/** Situazione del conto in banca (bank_overview) */
+export type BankOverview = {
+  /** Può essere negativo (mantenimento) */
+  balance: number;
+  /** Entrate a ogni accredito: patrimonio + lavori + gruppi */
+  income: number;
+  income_parts: { label: string; amount: number }[];
+  /** Mantenimento del patrimonio a ogni accredito */
+  upkeep: number;
+  period_days: number;
+  /** Giorno del prossimo accredito (AAAA-MM-GG) */
+  next_on: string;
+};
+
+export type BankTransaction = {
+  id: number;
+  character_id: string;
+  amount: number;
+  kind: "stipendio" | "bonifico" | "staff" | "mantenimento" | "iniziale";
+  description: string;
+  counterpart_id: string | null;
+  balance_after: number;
   created_at: string;
 };
 

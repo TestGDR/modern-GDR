@@ -1,8 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { ACCESS_COOKIE, getClientIp, logAccess } from "@/lib/access-log";
 
 // Pagine riservate a chi ha fatto l'accesso
-const PROTECTED = ["/bacheca", "/mappa", "/chat", "/messaggi", "/social", "/forum", "/scheda", "/gestione", "/ticket", "/nuova-password"];
+const PROTECTED = ["/bacheca", "/mappa", "/chat", "/messaggi", "/social", "/forum", "/scheda", "/gestione", "/ticket", "/utility", "/nuova-password"];
 
 function matches(pathname: string, paths: string[]) {
   return paths.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -44,6 +45,16 @@ export async function updateSession(request: NextRequest) {
   // sul server (requirePlayer) e nel database (RLS).
   if (!loggedIn && matches(pathname, PROTECTED)) {
     return redirectKeepingCookies(request, supabaseResponse, "/login");
+  }
+
+  // Registro degli accessi: un accesso nuovo quando cambia l'IP (o l'utente)
+  if (loggedIn && !pathname.startsWith("/api/")) {
+    const ip = getClientIp(request.headers);
+    const mark = `${data.claims.sub}|${ip ?? ""}`;
+    if (ip && request.cookies.get(ACCESS_COOKIE)?.value !== mark) {
+      await logAccess({ userId: data.claims.sub, event: "accesso", ip, userAgent: request.headers.get("user-agent") });
+      supabaseResponse.cookies.set(ACCESS_COOKIE, mark, { httpOnly: true, sameSite: "lax", secure: true, path: "/", maxAge: 60 * 60 * 24 * 30 });
+    }
   }
 
   // Restituisci sempre supabaseResponse così com'è, per non perdere i cookie aggiornati.

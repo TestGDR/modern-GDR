@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  BriefcaseBusiness,
   CalendarDays,
   CircleUserRound,
   CloudSun,
@@ -214,6 +215,9 @@ function FeatureIcons({ adminSlot }: { adminSlot: React.ReactNode }) {
         <CircleUserRound /> Scheda
       </Link>
       <TicketIcon />
+      <Link href="/utility" className={iconCls}>
+        <BriefcaseBusiness /> Utility
+      </Link>
       {adminSlot}
     </div>
   );

@@ -73,6 +73,9 @@ async function Content({ searchParams }: { searchParams: PageProps<"/messaggi">[
           canBroadcast={can(player, "annunci.globali") || can(player, "messaggi.tutti")}
         />
       )}
+      <p className="text-xs text-muted-foreground">
+        Nota: lo staff autorizzato può leggere i messaggi ON e OFF per far rispettare il regolamento.
+      </p>
     </div>
   );
 }

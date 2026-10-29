@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { MailCheck } from "lucide-react";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { requestPasswordReset, signIn, signUp, updatePassword } from "@/lib/actions/auth";
 import { NAME_MAX, NAME_MIN } from "@/lib/character-name";
+import { createClient } from "@/lib/supabase/client";
 import type { FormState } from "@/lib/types";
 
 const initial: FormState = {};
@@ -42,10 +43,13 @@ function Field({ id, label, ...props }: React.ComponentProps<"input"> & { id: st
 
 export function LoginForm({ onForgotPassword }: { onForgotPassword?: () => void } = {}) {
   const [state, action, pending] = useActionState(signIn, initial);
-  const confirmError = useSearchParams().get("errore") === "conferma";
+  const params = useSearchParams();
+  const confirmError = params.get("errore") === "conferma";
+  const idle = params.get("inattivo") === "1";
 
   return (
     <form action={action} className="flex flex-col gap-4">
+      {idle && !state.error && <FormMessage state={{ success: "Sei stato disconnesso per inattività. Accedi di nuovo per tornare in gioco." }} />}
       {confirmError && !state.error && (
         <FormMessage state={{ error: "Il link non è valido o è scaduto. Prova ad accedere o richiedi un nuovo link." }} />
       )}
@@ -76,6 +80,29 @@ type SignUpFormProps = {
 
 export function SignUpForm({ inModal, onGoToLogin }: SignUpFormProps = {}) {
   const [state, action, pending] = useActionState(signUp, initial);
+  // Iscrizioni chiuse dallo staff (Gestione → Iscrizioni)
+  const [closed, setClosed] = useState<string | null>(null);
+  useEffect(() => {
+    createClient()
+      .from("signup_settings")
+      .select("open, message")
+      .maybeSingle<{ open: boolean; message: string }>()
+      .then(({ data }) => setClosed(data && !data.open ? data.message || "Le iscrizioni sono chiuse in questo momento." : null));
+  }, []);
+
+  if (closed) {
+    return (
+      <div className="flex flex-col items-center gap-3 text-center">
+        <p className="font-semibold">Iscrizioni chiuse</p>
+        <p className="text-sm text-muted-foreground">{closed}</p>
+        {onGoToLogin && (
+          <Button type="button" variant="outline" onClick={onGoToLogin} className="mt-2 h-11 w-full rounded-full text-base">
+            Hai già un account? Accedi
+          </Button>
+        )}
+      </div>
+    );
+  }
 
   if (state.success) {
     return (

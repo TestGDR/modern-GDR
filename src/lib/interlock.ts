@@ -170,7 +170,7 @@ export function findAnomalies(
 
   // 3. Scelte
   const chosen = data.options.filter((o) => build.optionIds.includes(o.id));
-  if (chosen.filter((o) => o.kind === "tenore").length !== 1) out.push({ step: 3, message: "Scegli un tenore di vita." });
+  if (chosen.filter((o) => o.kind === "tenore").length !== 1) out.push({ step: 3, message: "Scegli il patrimonio." });
   if (chosen.some((o) => o.incompatible_ids.some((id) => build.optionIds.includes(id)))) {
     out.push({ step: 3, message: "Hai scelto voci incompatibili tra loro." });
   }

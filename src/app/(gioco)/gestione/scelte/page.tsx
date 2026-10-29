@@ -14,7 +14,7 @@ export default function Page() {
   return (
     <>
       <BackToPanel />
-      <PageHeader title="Vantaggi, svantaggi e tratti" subtitle="Anche il tenore di vita." />
+      <PageHeader title="Vantaggi, svantaggi e tratti" subtitle="Costi in PX ed effetti sui tiri." />
       <Suspense fallback={<LoadingBlocks />}>
         <Content />
       </Suspense>
@@ -25,5 +25,5 @@ export default function Page() {
 async function Content() {
   await requirePermission("regole.gestire");
   const [{ options, skills }, usage, settings] = await Promise.all([getAllRules(), getRulesUsage(), getSettings()]);
-  return <OptionsManager options={options} skills={skills} usage={usage} pxPerLevel={parseSettings(settings).pxPerLevel} />;
+  return <OptionsManager options={options} skills={skills} usage={usage} pxPerLevel={parseSettings(settings).pxPerLevel} kinds={["vantaggio", "svantaggio", "tratto"]} />;
 }

@@ -20,12 +20,13 @@ import {
   type InterlockSettings,
 } from "@/lib/interlock";
 import type { Character, CreationOption } from "@/lib/types";
+import { formatDollars } from "@/lib/bank";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["Anagrafica", "Caratteristiche", "Scelte", "Abilità", "Background", "Riepilogo"];
 const SEX_LABELS = { M: "Maschile", F: "Femminile", X: "Non binario" } as const;
 const OPTION_GROUPS: { kind: CreationOption["kind"]; title: string; single: boolean }[] = [
-  { kind: "tenore", title: "Tenore di vita", single: true },
+  { kind: "tenore", title: "Patrimonio", single: true },
   { kind: "vantaggio", title: "Vantaggi", single: false },
   { kind: "svantaggio", title: "Svantaggi", single: false },
   { kind: "tratto", title: "Tratti", single: false },
@@ -526,7 +527,7 @@ function StepOptions({
   return (
     <div className="flex flex-col gap-5">
       <p className="text-sm text-muted-foreground">
-        Un vantaggio, un tratto o un tenore di vita costa PX; uno svantaggio ne dà. Ti restano{" "}
+        Un vantaggio, un tratto o un patrimonio costa PX; uno svantaggio ne dà. Ti restano{" "}
         <strong className={remaining < 0 ? "text-destructive" : "text-mint"}>{remaining} PX</strong> per le abilità.
       </p>
       {OPTION_GROUPS.map((group) => {
@@ -573,6 +574,11 @@ function StepOptions({
                           </span>
                         </span>
                         {o.description && <span className="block text-xs text-muted-foreground">{o.description}</span>}
+                        {o.kind === "tenore" && (
+                          <span className="block text-xs text-sand">
+                            Entrata {formatDollars(o.salary)} al mese · mantenimento {formatDollars(o.upkeep)} al mese · quota iniziale {formatDollars(o.initial_amount)}
+                          </span>
+                        )}
                         {disabled && blockedBy && <span className="block text-xs text-destructive">Incompatibile con {nameOf(blockedBy)}</span>}
                       </span>
                     </button>
@@ -773,7 +779,7 @@ function StepSummary({
         </ul>
       ) : (
         <p className="rounded-xl border border-mint/30 bg-mint/10 px-3 py-2 text-sm text-mint">
-          Tutto in regola: invia la scheda allo staff per l&apos;approvazione.
+          Tutto in regola: invia la scheda allo staff per l&apos;approvazione. Si aprirà da solo un ticket «Approvazione PG», dove lo staff ti risponderà.
         </p>
       )}
 

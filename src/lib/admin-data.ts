@@ -42,15 +42,24 @@ export async function getLevels() {
   return data ?? [];
 }
 
+export type AdminUserRow = {
+  id: string;
+  username: string;
+  level_id: string;
+  created_at: string;
+  last_login_at: string | null;
+  last_played_at: string | null;
+  banned_until: string | null;
+  ban_reason: string;
+  character_name: string | null;
+  character_status: string | null;
+};
+
+/** Utenti con ultimo accesso, ultimo gioco e sospensione (solo per lo staff) */
 export async function getUsers() {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("profiles")
-    .select("id, username, level_id, created_at")
-    .order("username")
-    .limit(1000)
-    .overrideTypes<{ id: string; username: string; level_id: string; created_at: string }[], { merge: false }>();
-  return data ?? [];
+  const { data } = await supabase.rpc("admin_users");
+  return (data ?? []) as AdminUserRow[];
 }
 
 export type LogEntry = {

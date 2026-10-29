@@ -351,6 +351,7 @@ function DataList({ character, online, since, rules }: { character: SheetCharact
     { label: "Età", value: character.age ? `${character.age} anni` : "—" },
     { label: "Nato/a il", value: formatBirthDate(character.birth_date) },
     { label: "Nazionalità", value: character.nationality || "—" },
+    { label: "Prestavolto", value: character.face_claim || "—" },
     { label: "Indirizzo di studio", value: option(character.study_track_id) },
     { label: "Anno di corso", value: option(character.year_id) },
     { label: "Squadra o club", value: character.club_id ? option(character.club_id) : "—" },
@@ -440,7 +441,7 @@ function SkillList({ build, rules }: { build: CharacterBuild; rules: RulesData }
   );
 }
 
-const OPTION_TITLES = { tenore: "Tenore di vita", vantaggio: "Vantaggi", svantaggio: "Svantaggi", tratto: "Tratti" } as const;
+const OPTION_TITLES = { tenore: "Patrimonio", vantaggio: "Vantaggi", svantaggio: "Svantaggi", tratto: "Tratti" } as const;
 
 function ChosenOptions({ build, rules }: { build: CharacterBuild; rules: RulesData }) {
   const chosen = rules.options.filter((o) => build.optionIds.includes(o.id));

@@ -133,6 +133,10 @@ export type OptionInput = {
   rollModifier: number | null;
   rollSkillId: string | null;
   incompatibleIds: string[];
+  /** Patrimonio: entrata, mantenimento e quota iniziale */
+  salary: number;
+  upkeep: number;
+  initialAmount: number;
   active: boolean;
 };
 
@@ -141,6 +145,9 @@ export async function saveOption(input: OptionInput): Promise<ActionResult> {
   if (name.length < 2) return { ok: false, error: "Scrivi il nome della voce." };
   if (!["vantaggio", "svantaggio", "tratto", "tenore"].includes(input.kind)) return { ok: false, error: "Tipo non valido." };
   if (!Number.isInteger(input.costPx) || Math.abs(input.costPx) > 1000) return { ok: false, error: "Il costo deve essere un numero intero tra -1000 e 1000." };
+  if (!Number.isInteger(input.salary) || input.salary < 0 || input.salary > 1000000) return { ok: false, error: "L'entrata va da 0 a 1.000.000." };
+  if (!Number.isInteger(input.upkeep) || input.upkeep < 0 || input.upkeep > 1000000) return { ok: false, error: "Il mantenimento va da 0 a 1.000.000." };
+  if (!Number.isInteger(input.initialAmount) || input.initialAmount < 0 || input.initialAmount > 100000000) return { ok: false, error: "La quota iniziale va da 0 a 100.000.000." };
   if (input.rollModifier !== null && (!Number.isInteger(input.rollModifier) || Math.abs(input.rollModifier) > 3)) {
     return { ok: false, error: "L'effetto sui tiri va da -3 a +3." };
   }
@@ -152,6 +159,9 @@ export async function saveOption(input: OptionInput): Promise<ActionResult> {
     roll_modifier: input.rollModifier,
     roll_skill_id: input.rollSkillId && isUuid(input.rollSkillId) ? input.rollSkillId : null,
     incompatible_ids: input.incompatibleIds.filter((i) => isUuid(i) && i !== input.id),
+    salary: input.kind === "tenore" ? input.salary : 0,
+    upkeep: input.kind === "tenore" ? input.upkeep : 0,
+    initial_amount: input.kind === "tenore" ? input.initialAmount : 0,
     active: input.active,
   };
   return run(async (supabase) => {

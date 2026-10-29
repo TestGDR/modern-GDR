@@ -31,9 +31,12 @@ export const PERMISSION_AREAS: PermissionArea[] = [
       { key: "utenti.vedere_modificare", label: "Vedere e modificare gli utenti" },
       { key: "livelli.assegnare", label: "Assegnare i livelli" },
       { key: "livelli.gestire", label: "Gestire livelli e permessi" },
-      { key: "regole.gestire", label: "Gestire caratteristiche e abilità", description: "Anche vantaggi, svantaggi, tratti e tenore di vita" },
+      { key: "regole.gestire", label: "Gestire caratteristiche e abilità", description: "Anche vantaggi, svantaggi, tratti e patrimonio" },
       { key: "impostazioni.gestire", label: "Modificare le impostazioni del sistema" },
-      { key: "log.vedere", label: "Vedere il log delle azioni" },
+      { key: "log.vedere", label: "Vedere il registro delle azioni del pannello" },
+      { key: "iscrizioni.gestire", label: "Aprire e chiudere le iscrizioni" },
+      { key: "gestione.accessi", label: "Vedere gli accessi", description: "Indirizzi IP, paese e controllo VPN/proxy di ogni accesso" },
+      { key: "manutenzione.sito", label: "Fare manutenzione", description: "Eliminare messaggi vecchi e account inattivi, con anteprima" },
     ],
   },
   {
@@ -61,6 +64,7 @@ export const PERMISSION_AREAS: PermissionArea[] = [
       { key: "chat.moderare", label: "Moderare le chat", description: "Entrare in tutte le chat, anche chiuse o su invito, eliminare messaggi, invitare e allontanare" },
       { key: "staff.invisibile", label: "Diventare invisibile", description: "Leggere e scrivere nelle chat senza comparire tra i presenti" },
       { key: "mondo.gestire", label: "Gestire il mondo", description: "Mappe, quartieri, chat e impostazioni della chat" },
+      { key: "chat.log", label: "Rileggere le chat", description: "Gestione → Log: tutte le chat, anche senza entrare in giocata (i sussurri solo l'Amministratore)" },
     ],
   },
   {
@@ -68,6 +72,7 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     title: "Messaggi e ticket",
     items: [
       { key: "messaggi.tutti", label: "Scrivere a tutti", description: "Messaggi a tutti nei canali ON e OFF (anche senza pubblicare notizie)" },
+      { key: "messaggi.log", label: "Leggere i messaggi ON e OFF", description: "Gestione → Log: i messaggi privati e dei gruppi (i giocatori ne sono avvisati nella pagina Messaggi)" },
       { key: "ticket.gestire", label: "Gestire i ticket", description: "Vedere tutti i ticket, rispondere come staff, cambiare stato ed eliminare quelli in archivio" },
       { key: "ticket.categorie", label: "Gestire le sezioni dei ticket", description: "Nomi, istruzioni e ordine delle sezioni" },
     ],
@@ -82,6 +87,16 @@ export const PERMISSION_AREAS: PermissionArea[] = [
       { key: "assenze.gestire", label: "Gestire le assenze", description: "Togliere le assenze di chiunque" },
       { key: "ricerca.moderare", label: "Moderare la ricerca di gioco", description: "Togliere le richieste di chiunque" },
       { key: "pettegolezzi.gestire", label: "Gestire i pettegolezzi", description: "Vedere i tiri, approvare, modificare, rifiutare ed eliminare le voci, cambiare dado e soglia" },
+    ],
+  },
+  {
+    id: "utility",
+    title: "Utility",
+    items: [
+      { key: "prestavolti.gestire", label: "Cambiare i prestavolti", description: "Modificare o togliere il prestavolto registrato da un giocatore" },
+      { key: "lavori.gestire", label: "Gestire i lavori", description: "Creare lavori e ruoli con lo stipendio, assegnarli ai personaggi" },
+      { key: "gruppi.gestire", label: "Gestire i gruppi", description: "Creare gruppi e ruoli con lo stipendio, assegnarli ai personaggi" },
+      { key: "banca.gestire", label: "Gestire la banca", description: "Vedere tutti i conti e i movimenti, dare e togliere soldi con un motivo" },
     ],
   },
   {

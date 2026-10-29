@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Archive, ArrowLeft, Dices, Plus, SendHorizontal, ShieldCheck, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Archive, ArrowLeft, Dices, IdCard, Plus, SendHorizontal, ShieldCheck, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
@@ -352,6 +353,11 @@ function TicketView({
           </div>
           <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs", STATUS[ticket.status].cls)}>{STATUS[ticket.status].label}</span>
         </div>
+        {ticket.character_id && (
+          <Link href={`/scheda/${ticket.character_id}`} className="flex w-fit items-center gap-1.5 rounded-full bg-flamingo px-3 py-1 text-xs font-medium text-white hover:bg-flamingo/90">
+            <IdCard className="size-4" /> Apri la scheda{canManage ? " per approvarla" : ""}
+          </Link>
+        )}
         {canManage && (
           <div className="flex flex-wrap gap-1">
             {ticket.status !== "in_carico" && (

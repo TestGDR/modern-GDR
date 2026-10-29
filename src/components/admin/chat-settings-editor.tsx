@@ -52,8 +52,8 @@ export function ChatSettingsEditor({ settings }: { settings: ChatSettings }) {
         />
       </FieldLabel>
       <FieldLabel
-        label="Uscita automatica dalla giocata"
-        hint={`In minuti, da ${CHAT_LIMITS.idle_minutes.min} a ${CHAT_LIMITS.idle_minutes.max}. Chi non scrive per questo tempo esce da solo; quando esce l'ultimo la chat si svuota.`}
+        label="Inattività: uscita dalla giocata e dal sito"
+        hint={`In minuti, da ${CHAT_LIMITS.idle_minutes.min} a ${CHAT_LIMITS.idle_minutes.max}. Chi non scrive per questo tempo esce dalla giocata (quando esce l'ultimo la chat si svuota); chi non usa il sito per questo tempo viene disconnesso, con un avviso 5 minuti prima.`}
       >
         <input
           type="number"

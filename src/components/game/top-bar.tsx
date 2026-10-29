@@ -5,6 +5,8 @@ import { MenuButton } from "@/components/game/game-sidebar";
 import { MessageButtons } from "@/components/game/message-buttons";
 import { NewsButton } from "@/components/game/news-panel";
 import { CommunityButtons } from "@/components/game/community";
+import { IdleLogout } from "@/components/game/site-watch";
+import { getChatSettings } from "@/lib/data";
 import { barButtonClass as barBtn, sidebarIconClass } from "@/components/game/sidebar-styles";
 import { activeCharacter, can, getPlayer, requirePlayer } from "@/lib/auth";
 import { initials } from "@/lib/format";
@@ -110,6 +112,14 @@ export async function PlayerCommunity() {
       characterId={activeCharacter(player)?.id ?? null}
     />
   );
+}
+
+/** Uscita automatica: il tempo è quello di Gestione → Chat (uscita dalla giocata) */
+export async function PlayerIdle() {
+  const player = await getPlayer();
+  if (!player) return null;
+  const settings = await getChatSettings();
+  return <IdleLogout minutes={settings.idle_minutes} />;
 }
 
 /** Icona Gestione nella barra laterale: solo per chi può accedere al pannello */
