@@ -9,16 +9,19 @@ import {
   Eye,
   Fingerprint,
   Gauge,
+  GraduationCap,
   Heart,
+  House,
   IdCard,
   KeyRound,
-  MapPin,
+  Mail,
   Pencil,
   ScanFace,
   Send,
   Settings,
   ShieldAlert,
   Sparkles,
+  UserRound,
   UserRoundPlus,
   X,
   Zap,
@@ -114,11 +117,19 @@ export function CharacterSheetWindow({
     <SheetFrame title={`Scheda · ${character.name}`} variant={variant}>
       <StatusBanner character={character} canReview={canReview} />
       <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto @2xl:grid-cols-[16rem_minmax(0,1fr)] @2xl:overflow-hidden">
-        {/* Colonna sinistra: ritratto, quartiere, sezioni */}
+        {/* Colonna sinistra: ritratto e sezioni */}
         <aside className="flex flex-col border-white/10 @2xl:min-h-0 @2xl:border-r">
-          <div className="flex items-end gap-3 p-4 @2xl:pb-3">
-            <Portrait character={character} online={online} />
-            <DistrictBanner district={character.district} />
+          <div className="flex items-end gap-3 p-4 @2xl:justify-center @2xl:pb-3">
+            <Portrait character={character} />
+            {/* Messaggi OFF: con il giocatore di questa scheda (o i propri, sulla propria) */}
+            <Link
+              href={isOwner ? "/messaggi" : `/messaggi?a=${character.owner_id}`}
+              title={isOwner ? "Messaggi OFF" : `Messaggio OFF al giocatore di ${character.name}`}
+              aria-label={isOwner ? "Messaggi OFF" : `Messaggio OFF al giocatore di ${character.name}`}
+              className="grid size-8 shrink-0 place-items-center rounded-lg border border-white/15 bg-night/60 text-lavender transition-colors hover:border-flamingo/60 hover:text-white [&_svg]:size-4"
+            >
+              <Mail />
+            </Link>
           </div>
 
           <nav className="flex gap-1 overflow-x-auto px-3 pb-3 @2xl:flex-1 @2xl:flex-col @2xl:overflow-y-auto @2xl:px-0 @2xl:pb-0" aria-label="Sezioni della scheda">
@@ -131,13 +142,13 @@ export function CharacterSheetWindow({
                   onClick={() => open(key)}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex shrink-0 items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium tracking-wide whitespace-nowrap uppercase transition-colors @2xl:rounded-none @2xl:border-b @2xl:border-white/5 @2xl:px-5 @2xl:py-2.5",
+                    "flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-xs font-medium tracking-wide whitespace-nowrap uppercase transition-colors @2xl:rounded-none @2xl:border-b @2xl:border-white/5 @2xl:px-5 @2xl:py-2",
                     active
                       ? "bg-gradient-to-r from-flamingo/35 to-flamingo/5 text-white shadow-[inset_3px_0_0_var(--flamingo)]"
                       : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
                   )}
                 >
-                  <Icon className={cn("size-4 shrink-0", active ? "text-peach" : "text-lavender/70")} />
+                  <Icon className={cn("size-3.5 shrink-0", active ? "text-peach" : "text-lavender/70")} />
                   {label}
                 </button>
               );
@@ -145,7 +156,7 @@ export function CharacterSheetWindow({
           </nav>
 
           {/* Pulsanti in fondo */}
-          <div className="hidden justify-center gap-3 border-t border-white/10 p-4 @2xl:flex">
+          <div className="hidden justify-center gap-2 border-t border-white/10 p-2.5 @2xl:flex">
             {isAdmin && (
               <IconButton label="Amministrazione della scheda" active={view.mode === "admin"} onClick={() => setView((v) => ({ ...v, mode: v.mode === "admin" ? "view" : "admin" }))}>
                 <ShieldAlert />
@@ -218,9 +229,7 @@ export function CharacterSheetWindow({
           ) : section.key === "principale" ? (
             <MainSection character={character} />
           ) : section.key === "dati" ? (
-            <SectionFrame title="Dati">
-              <DataList character={character} online={online} since={since} rules={rules} />
-            </SectionFrame>
+            <DataList character={character} online={online} since={since} rules={rules} />
           ) : section.key === "caratteristiche" ? (
             <SectionFrame title="Caratteristiche">
               <StatBars build={build} rules={rules} />
@@ -270,7 +279,7 @@ function IconButton({
       title={label}
       aria-label={label}
       className={cn(
-        "grid size-10 place-items-center rounded-xl border border-white/15 bg-night/60 text-white/80 backdrop-blur transition-colors hover:border-flamingo/60 hover:text-white disabled:opacity-40 [&_svg]:size-4",
+        "grid size-8 place-items-center rounded-lg border border-white/15 bg-night/60 text-white/80 backdrop-blur transition-colors hover:border-flamingo/60 hover:text-white disabled:opacity-40 [&_svg]:size-3.5",
         active && "border-flamingo bg-flamingo/20 text-white",
       )}
     >
@@ -279,7 +288,7 @@ function IconButton({
   );
 }
 
-function Portrait({ character, online }: { character: SheetCharacter; online: boolean }) {
+function Portrait({ character }: { character: SheetCharacter }) {
   return (
     <div className="relative size-24 shrink-0 overflow-hidden rounded-2xl border border-peach/40 bg-gradient-to-br from-violet via-orchid to-peach shadow-lg">
       {character.avatar_url ? (
@@ -289,29 +298,6 @@ function Portrait({ character, online }: { character: SheetCharacter; online: bo
       ) : (
         <span className="grid size-full place-items-center font-heading text-4xl tracking-wider text-white">{initials(character.name)}</span>
       )}
-      <span
-        className={cn("absolute right-1.5 bottom-1.5 size-3 rounded-full ring-2 ring-night", online ? "bg-mint" : "bg-white/40")}
-        aria-label={online ? "Online" : "Offline"}
-      />
-    </div>
-  );
-}
-
-/** "Cartolina" del quartiere, al posto dello stendardo */
-function DistrictBanner({ district }: { district: SheetCharacter["district"] }) {
-  return (
-    <div
-      className={cn(
-        "relative flex h-24 w-16 shrink-0 flex-col items-center justify-end overflow-hidden rounded-b-2xl rounded-t-md border border-white/15 bg-gradient-to-b pb-2 shadow-lg",
-        district?.gradient ?? "from-dusk via-violet to-lavender",
-      )}
-      title={district ? `Quartiere: ${district.name}` : "Nessun quartiere"}
-    >
-      <Palm className="absolute -bottom-1 left-1/2 h-16 -translate-x-1/2 text-palm/80" lean={8} />
-      <MapPin className="relative size-4 text-white drop-shadow" />
-      <span className="relative mt-0.5 px-1 text-center font-heading text-[0.65rem] leading-tight tracking-wider text-white drop-shadow">
-        {district?.name ?? "Miami"}
-      </span>
     </div>
   );
 }
@@ -342,8 +328,8 @@ function MainSection({ character }: { character: SheetCharacter }) {
 
 function SectionFrame({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="p-6 pr-16 sm:p-8 sm:pr-20">
-      <h2 className="mb-5 font-heading text-4xl tracking-wide text-sunset">{title}</h2>
+    <div className="p-5 pr-14 @3xl:p-6 @3xl:pr-16">
+      <h2 className="mb-4 font-heading text-3xl tracking-wide text-sunset">{title}</h2>
       {children}
     </div>
   );
@@ -357,38 +343,112 @@ function FreeText({ text, isOwner }: { text: string | null; isOwner: boolean }) 
       </p>
     );
   }
-  return <p className="max-w-2xl text-[0.95rem] leading-relaxed whitespace-pre-line text-foreground/90">{text}</p>;
+  return <p className="max-w-2xl text-sm leading-relaxed whitespace-pre-line text-foreground/90">{text}</p>;
 }
 
 const SEX_LABELS: Record<string, string> = { M: "Maschile", F: "Femminile", X: "Non binario" };
 
+/** Sezione Dati: banner con il nome, poi i dati divisi in blocchi */
 function DataList({ character, online, since, rules }: { character: SheetCharacter; online: boolean; since: string; rules: RulesData }) {
   const option = (id: string | null) => rules.sheetOptions.find((o) => o.id === id)?.name ?? "—";
-  const rows = [
-    { label: "Nome", value: character.name },
-    { label: "Sesso", value: character.sex ? SEX_LABELS[character.sex] : "—" },
-    { label: "Età", value: character.age ? `${character.age} anni` : "—" },
-    { label: "Nato/a il", value: formatBirthDate(character.birth_date) },
-    { label: "Nazionalità", value: character.nationality || "—" },
-    { label: "Prestavolto", value: character.face_claim || "—" },
-    { label: "Indirizzo di studio", value: option(character.study_track_id) },
-    { label: "Anno di corso", value: option(character.year_id) },
-    { label: "Squadra o club", value: character.club_id ? option(character.club_id) : "—" },
-    { label: "Lavoro", value: character.occupation ?? "—" },
-    { label: "Quartiere", value: character.district?.name ?? "—" },
-    { label: "PX da spendere", value: String(character.px) },
-    { label: "A Miami dal", value: since },
-    { label: "Stato", value: online ? "Online" : "Offline" },
-  ];
+  const job = character.occupation || (character.study_track_id ? "Studente" : null);
+  const subtitle = ["Miami", character.age ? `${character.age} anni` : null, job].filter(Boolean);
   return (
-    <dl className="grid max-w-2xl gap-3 sm:grid-cols-2">
-      {rows.map((r) => (
-        <div key={r.label} className="rounded-xl bg-white/5 px-4 py-3">
-          <dt className="text-xs tracking-wider text-lavender uppercase">{r.label}</dt>
-          <dd className="mt-0.5 font-medium">{r.value}</dd>
-        </div>
-      ))}
-    </dl>
+    <div className="flex flex-col">
+      <DataBanner name={character.name} subtitle={subtitle as string[]} />
+      <div className="flex flex-col gap-3 px-4 py-3 @3xl:px-5">
+        <DataBlock icon={<UserRound />} title="Informazioni personali" cols={3}>
+          <DataCard label="Nome" value={character.name} />
+          <DataCard label="Sesso" value={character.sex ? SEX_LABELS[character.sex] : "—"} />
+          <DataCard label="Età" value={character.age ? `${character.age} anni` : "—"} />
+          <DataCard label="Nato/a il" value={formatBirthDate(character.birth_date)} />
+          <DataCard label="Nazionalità" value={character.nationality || "—"} />
+          <DataCard label="Prestavolto" value={character.face_claim || "—"} />
+        </DataBlock>
+        <DataBlock icon={<GraduationCap />} title="Studio e lavoro" cols={4}>
+          <DataCard label="Indirizzo di studio" value={option(character.study_track_id)} />
+          <DataCard label="Anno di corso" value={option(character.year_id)} />
+          <DataCard label="Squadra o club" value={character.club_id ? option(character.club_id) : "—"} />
+          <DataCard label="Lavoro" value={character.occupation || "—"} />
+        </DataBlock>
+        <DataBlock icon={<House />} title="Residenza e altro" cols={5}>
+          <DataCard label="Città di residenza" value="Miami" />
+          <DataCard label="Zona" value={character.district?.name ?? "—"} />
+          <DataCard label="A Miami dal" value={since} />
+          <DataCard label="PX da spendere" value={String(character.px)} />
+          <DataCard label="Stato" value={online ? "Online" : "Offline"} />
+        </DataBlock>
+      </div>
+    </div>
+  );
+}
+
+/** Palazzi dello skyline: [larghezza, altezza] in % del banner */
+const SKYLINE: [number, number][] = [
+  [4, 38], [3, 56], [5, 30], [3.5, 72], [6, 44], [3, 62], [4.5, 34], [5, 52],
+  [3, 80], [4, 40], [6, 58], [3.5, 30], [4, 66], [5, 42], [3, 50],
+];
+
+/** Banner al tramonto: cielo, sole, skyline di Miami e palme in silhouette */
+function DataBanner({ name, subtitle }: { name: string; subtitle: string[] }) {
+  return (
+    <div className="relative h-32 shrink-0 overflow-hidden border-b border-white/10">
+      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#3b2d86_0%,#6c56c2_35%,#c27bc9_65%,#ff8fb3_85%,#ffb48c_100%)]" />
+      {/* sole */}
+      <div className="absolute top-[38%] right-[14%] size-28 rounded-full bg-[radial-gradient(circle,#ffe2b0_0%,#ffc28f_45%,rgb(255_160_140/0.35)_70%,transparent_75%)] sm:size-36" />
+      {/* skyline */}
+      <div className="absolute right-0 bottom-0 left-[34%] flex h-[70%] items-end gap-[3px] opacity-85">
+        {SKYLINE.map(([w, h], i) => (
+          <span key={i} className="relative rounded-t-sm bg-gradient-to-b from-[#5b4a9c] to-[#3d2f78]" style={{ width: `${w}%`, height: `${h}%` }}>
+            {/* finestre accese */}
+            <span className="absolute inset-x-[22%] top-[12%] bottom-[18%] bg-[repeating-linear-gradient(to_bottom,rgb(255_210_170/0.35)_0_2px,transparent_2px_7px)]" />
+          </span>
+        ))}
+      </div>
+      {/* palme */}
+      <Palm className="absolute -bottom-3 left-[30%] h-[88%] text-palm" lean={10} />
+      <Palm className="absolute -bottom-3 left-[48%] h-[70%] text-palm/90" lean={-16} />
+      <Palm className="absolute -bottom-3 right-[22%] h-[60%] text-palm/90" lean={14} />
+      <Palm className="absolute -right-6 -bottom-3 h-[84%] text-palm" lean={-22} />
+      <div className="absolute inset-0 bg-gradient-to-r from-night/70 via-night/20 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-night/60 via-transparent to-transparent" />
+      <div className="relative flex h-full flex-col justify-end px-5 pb-3">
+        <h2 className="font-heading text-4xl leading-none tracking-wide text-white drop-shadow-lg @3xl:text-5xl">{name}</h2>
+        {subtitle.length > 0 && (
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-white/90 @3xl:text-sm">
+            {subtitle.map((part, i) => (
+              <span key={i} className="flex items-center gap-2.5">
+                {i > 0 && <span className="text-white/60">·</span>}
+                {part}
+              </span>
+            ))}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Blocco di dati con titolo spaziato e linea, come nella scheda grafica */
+function DataBlock({ icon, title, cols, children }: { icon: React.ReactNode; title: string; cols: 3 | 4 | 5; children: React.ReactNode }) {
+  return (
+    <section>
+      <h3 className="mb-1.5 flex items-center gap-2">
+        <span className="text-flamingo [&_svg]:size-4">{icon}</span>
+        <span className="font-heading text-sm tracking-[0.18em] text-flamingo uppercase @3xl:text-base @3xl:tracking-[0.26em]">{title}</span>
+        <span className="h-px flex-1 bg-gradient-to-r from-flamingo/60 to-flamingo/10" />
+      </h3>
+      <dl className={cn("grid grid-cols-2 gap-2", cols === 3 && "@3xl:grid-cols-3", cols === 4 && "@3xl:grid-cols-4", cols === 5 && "@3xl:grid-cols-3 @6xl:grid-cols-5")}>{children}</dl>
+    </section>
+  );
+}
+
+function DataCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-1.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.04)]">
+      <dt className="text-[0.6rem] font-medium tracking-wider text-lavender uppercase">{label}</dt>
+      <dd className="text-[0.8rem] font-medium break-words text-white">{value}</dd>
+    </div>
   );
 }
 

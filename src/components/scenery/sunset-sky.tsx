@@ -49,10 +49,10 @@ export function SunsetScene({ className }: { className?: string }) {
 export function DuskBackdrop() {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden="true">
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#161030_0%,#221a4d_45%,#3b2766_80%,#5a2f6e_100%)]" />
-      <div className="absolute -bottom-40 left-1/2 size-[70vmax] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgb(255_143_179/0.28)_0%,rgb(255_180_140/0.12)_35%,transparent_65%)]" />
-      <Palm className="absolute -bottom-4 -left-20 h-[60vh] text-[#2a1f52]/80" lean={24} />
-      <Palm className="absolute -right-20 -bottom-4 h-[50vh] text-[#2a1f52]/70" lean={-22} />
+      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#271e4c_0%,#35295f_40%,#4f3a78_78%,#6d4782_100%)]" />
+      <div className="absolute -bottom-40 left-1/2 size-[70vmax] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgb(236_140_184/0.24)_0%,rgb(242_179_156/0.10)_35%,transparent_65%)]" />
+      <Palm className="absolute -bottom-4 -left-20 h-[60vh] text-[#3b2b66]/80" lean={24} />
+      <Palm className="absolute -right-20 -bottom-4 h-[50vh] text-[#3b2b66]/70" lean={-22} />
     </div>
   );
 }

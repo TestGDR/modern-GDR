@@ -69,36 +69,36 @@
 }
 
 :root {
-  /* Palette */
-  --night: #1a1336;
-  --dusk: #2b2160;
-  --violet: #5b4bb5;
-  --lavender: #a99be6;
-  --orchid: #c77dd1;
-  --flamingo: #ff79b0;
-  --peach: #ffb08a;
-  --sand: #ffd9a6;
-  --mint: #8fe3d1;
-  --palm: #34265f;
+  /* Palette: pastelli del tramonto, toni morbidi e malva (meno accesi) */
+  --night: #2a2150;
+  --dusk: #3a2d68;
+  --violet: #7563b6;
+  --lavender: #b8a8e4;
+  --orchid: #c391cc;
+  --flamingo: #ec8cb8;
+  --peach: #f2b39c;
+  --sand: #f3d5b3;
+  --mint: #93d4cf;
+  --palm: #4a3778;
 
   /* Variabili shadcn */
   --background: var(--night);
-  --foreground: #fbeff6;
-  --card: rgb(43 33 96 / 0.62);
-  --card-foreground: #fbeff6;
-  --popover: #2b2160;
-  --popover-foreground: #fbeff6;
+  --foreground: #f6eef6;
+  --card: rgb(72 57 122 / 0.58);
+  --card-foreground: #f6eef6;
+  --popover: #3a2d68;
+  --popover-foreground: #f6eef6;
   --primary: var(--flamingo);
-  --primary-foreground: #24163f;
-  --secondary: rgb(169 155 230 / 0.16);
-  --secondary-foreground: #fbeff6;
-  --muted: rgb(169 155 230 / 0.12);
-  --muted-foreground: #bcb0e4;
-  --accent: rgb(255 176 138 / 0.16);
-  --accent-foreground: #ffd9c4;
-  --destructive: #ff6b7d;
-  --border: rgb(255 255 255 / 0.1);
-  --input: rgb(255 255 255 / 0.14);
+  --primary-foreground: #2e2050;
+  --secondary: rgb(184 168 228 / 0.16);
+  --secondary-foreground: #f6eef6;
+  --muted: rgb(184 168 228 / 0.12);
+  --muted-foreground: #c6b9e6;
+  --accent: rgb(242 179 156 / 0.16);
+  --accent-foreground: #f8dccb;
+  --destructive: #ec7a8a;
+  --border: rgb(255 255 255 / 0.12);
+  --input: rgb(255 255 255 / 0.16);
   --ring: var(--flamingo);
   --chart-1: var(--flamingo);
   --chart-2: var(--peach);
@@ -106,13 +106,13 @@
   --chart-4: var(--mint);
   --chart-5: var(--orchid);
   --radius: 0.875rem;
-  --sidebar: rgb(26 19 54 / 0.72);
-  --sidebar-foreground: #fbeff6;
+  --sidebar: rgb(48 37 92 / 0.78);
+  --sidebar-foreground: #f6eef6;
   --sidebar-primary: var(--flamingo);
-  --sidebar-primary-foreground: #24163f;
-  --sidebar-accent: rgb(255 121 176 / 0.14);
-  --sidebar-accent-foreground: #ffd0e4;
-  --sidebar-border: rgb(255 255 255 / 0.08);
+  --sidebar-primary-foreground: #2e2050;
+  --sidebar-accent: rgb(236 140 184 / 0.14);
+  --sidebar-accent-foreground: #f7d3e4;
+  --sidebar-border: rgb(255 255 255 / 0.1);
   --sidebar-ring: var(--flamingo);
 
   color-scheme: dark;

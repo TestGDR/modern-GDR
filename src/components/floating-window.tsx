@@ -188,7 +188,7 @@ export function FloatingWindow({
         tabIndex={-1}
         style={style}
         className={cn(
-          "pointer-events-auto absolute flex flex-col overflow-hidden rounded-3xl border border-white/20 bg-night/80 shadow-[0_24px_70px_rgb(0_0_0/0.6)] outline-none backdrop-blur-2xl backdrop-saturate-150 animate-in fade-in-0 zoom-in-95 sm:bg-night/65",
+          "pointer-events-auto absolute flex flex-col overflow-hidden rounded-3xl border border-white/20 bg-dusk/85 shadow-[0_24px_70px_rgb(20_10_40/0.55)] outline-none backdrop-blur-2xl backdrop-saturate-150 animate-in fade-in-0 zoom-in-95 sm:bg-dusk/75",
           className,
         )}
         {...chromelessDrag}
