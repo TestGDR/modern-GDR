@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowLeft, Crown, Dices, Eye, EyeOff, LogIn, LogOut, SendHorizontal, Users } from "lucide-react";
+import { ArrowDown, ArrowLeft, Crown, Dices, Eye, EyeOff, SendHorizontal, Users } from "lucide-react";
 import {
   BlurredRows,
   DicePanel,
@@ -47,6 +47,9 @@ const byTime = (a: Message, b: Message) => a.created_at.localeCompare(b.created_
  * entrata e uscita dalla giocata, presenti, sussurri, dadi, modalità master,
  * correzione entro 5 minuti. I messaggi spariscono dopo la durata impostata.
  */
+// Uscita dalla giocata in attesa: annullata se si rientra subito nella stessa chat
+let pendingLeave: { roomId: string; timer: ReturnType<typeof setTimeout> } | null = null;
+
 export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canDice, isOwner, ownerName, attributes, skills }: Props) {
   const { room, settings } = data;
   const roomId = room.id;
@@ -198,25 +201,40 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
   const left = maxLen - text.length;
   const myNames = useMemo(() => (me && me.name.trim().length >= 2 ? [me.name.trim()] : []), [me]);
 
-  async function enter() {
-    if (!me) return;
-    setBusy(true);
-    setError(null);
-    const res = await joinChat(roomId, me.id);
-    setBusy(false);
-    if (res.error) return setError(res.error);
-    router.refresh();
-  }
+  // Entrata in giocata automatica all'apertura della chat (se si può);
+  // se si stava giocando in un'altra chat, prima si esce da quella
+  const canJoin = !!me && data.canEnter && (room.is_open || canModerate) && !invisible;
+  const meId = me?.id ?? null;
+  const busyInId = data.busyIn?.id ?? null;
+  const tried = useRef(false);
+  useEffect(() => {
+    if (!meId || !canJoin || joined || tried.current) return;
+    tried.current = true;
+    (async () => {
+      setBusy(true);
+      setError(null);
+      if (busyInId && busyInId !== roomId) await leaveChat(busyInId, meId);
+      const res = await joinChat(roomId, meId);
+      setBusy(false);
+      if (res.error) return setError(res.error);
+      router.refresh();
+    })();
+  }, [meId, canJoin, joined, busyInId, roomId, router]);
 
-  async function exit() {
-    if (!me) return;
-    setBusy(true);
-    setError(null);
-    await leaveChat(roomId, me.id);
-    setBusy(false);
-    setMessages([]);
-    router.refresh();
-  }
+  // Uscita automatica lasciando la chat (mappa, altra chat); le finestre aperte sopra non contano
+  useEffect(() => {
+    if (!meId) return;
+    if (pendingLeave?.roomId === roomId) {
+      clearTimeout(pendingLeave.timer);
+      pendingLeave = null;
+    }
+    return () => {
+      pendingLeave = { roomId, timer: setTimeout(() => {
+        pendingLeave = null;
+        leaveChat(roomId, meId);
+      }, 400) };
+    };
+  }, [meId, roomId]);
 
   async function toggleInvisible() {
     setBusy(true);
@@ -285,7 +303,8 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
   const blurred = !joined && !invisible;
 
   return (
-    <div className="glass flex min-h-0 flex-1 flex-col overflow-hidden lg:rounded-2xl">
+    <div className="fixed inset-x-0 bottom-0 top-[calc(5rem+env(safe-area-inset-top))] z-10 p-[10px] lg:top-24 lg:left-72">
+    <div className="glass flex h-full min-h-0 flex-col overflow-hidden rounded-2xl">
       {/* Intestazione */}
       <header className={cn("relative shrink-0 overflow-hidden bg-gradient-to-r px-4 py-3 sm:px-6", room.district.gradient)}>
         <div className="absolute inset-0 bg-night/35" />
@@ -323,13 +342,6 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
             </span>
           ))
         )}
-        <span className="ml-auto flex gap-2">
-          {me && joined && (
-            <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={exit} className="rounded-full">
-              <LogOut /> Esci dalla chat
-            </Button>
-          )}
-        </span>
       </div>
 
       {master && (
@@ -356,24 +368,12 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
               {hidden > 0 && <BlurredRows count={hidden} />}
               <div className="mx-auto flex max-w-sm flex-col items-center gap-3 py-6 text-center">
                 <p className="text-sm text-muted-foreground">
-                  {hidden > 0
-                    ? `In questa chat ci sono ${hidden} messaggi recenti. Entra in giocata per leggerli e scrivere.`
-                    : "La chat è tranquilla. Entra in giocata per iniziare la scena."}
+                  {canJoin && !error
+                    ? "Entrata in giocata…"
+                    : hidden > 0
+                      ? `In questa chat ci sono ${hidden} messaggi recenti.`
+                      : "La chat è tranquilla."}
                 </p>
-                {me && data.canEnter && (room.is_open || canModerate) && !data.busyIn && (
-                  <Button type="button" disabled={busy} onClick={enter} className="rounded-full">
-                    <LogIn /> Entra in giocata
-                  </Button>
-                )}
-                {me && data.busyIn && (
-                  <p className="text-sm text-peach">
-                    Hai una giocata in corso in{" "}
-                    <Link href={`/chat/${data.busyIn.id}`} className="underline">
-                      {data.busyIn.name}
-                    </Link>
-                    : prima esci da quella chat.
-                  </p>
-                )}
                 {!room.is_open && <p className="text-sm text-muted-foreground">Questa chat è chiusa dallo staff.</p>}
                 {error && <p className="text-sm text-destructive">{error}</p>}
               </div>
@@ -490,6 +490,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
           </p>
         </form>
       ) : null}
+    </div>
     </div>
   );
 }
