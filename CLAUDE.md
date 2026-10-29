@@ -16,7 +16,7 @@ GDR (gioco di ruolo) play by chat moderno ambientato a Miami: chat di gioco, mes
 - `src/lib/supabase/proxy.ts` + `src/proxy.ts` — aggiornano la sessione a ogni richiesta.
 - `src/components/ui/` — componenti shadcn/ui (si aggiungono con `npx shadcn@latest add <nome>`).
 - `supabase/migrations/` — migrazioni SQL del database, una per file, con prefisso data (`YYYYMMDDHHMMSS_nome.sql`).
-- `src/config/site.ts` — nome del sito (Neon Campus), tagline e voci di menu. Il logo è l'immagine `public/images/logo-neon-campus.webp` (componente `Logo`, `src/components/brand/logo.tsx`): barra laterale, accesso e centro della homepage.
+- `src/config/site.ts` — nome del sito (Neon Campus), tagline, voci di menu e i testi delle finestre Credits e Disclaimer della homepage (sopra il logo: Guida · Credits · Disclaimer; la Guida la leggono anche i visitatori, policy per `anon`). Il logo è l'immagine `public/images/logo-neon-campus.webp` (componente `Logo`, `src/components/brand/logo.tsx`): barra laterale, accesso e centro della homepage.
 - `src/app/(gioco)/` — area di gioco (bacheca, mappa, chat, messaggi, forum, social, scheda) con il layout comune.
 - `src/components/scenery/` — scenografia (cielo al tramonto, palme SVG).
 - `src/app/(gioco)/gestione/` — pannello di gestione (caratteristiche, abilità, scelte, elenchi, impostazioni, livelli e permessi, utenti, registro). Sezioni e permessi in `src/config/admin.ts`; ogni pagina usa `requirePermission()` di `src/lib/admin.ts` (senza permesso: "non trovata"). Letture in `src/lib/admin-data.ts`, scritture in `src/lib/actions/admin.ts`, interfaccia in `src/components/admin/`.

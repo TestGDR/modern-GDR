@@ -23,16 +23,23 @@ const inputCls =
 const byOrder = <T extends { sort_order: number; name: string }>(a: T, b: T) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "it");
 
 /** Pulsante lungo nella barra laterale, sotto le Notizie */
-export function GuideButton({ canEdit }: { canEdit: boolean }) {
+export function GuideButton({ canEdit, className, children }: { canEdit: boolean; className?: string; children?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center justify-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+        className={
+          className ??
+          "flex items-center justify-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+        }
       >
-        <BookOpen className="size-4" /> Guida
+        {children ?? (
+          <>
+            <BookOpen className="size-4" /> Guida
+          </>
+        )}
       </button>
       {open && (
         <FloatingWindow label="Guida" onClose={() => setOpen(false)} initialWidth={1150} initialHeight={760} chromeless>
