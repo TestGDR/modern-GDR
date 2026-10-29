@@ -8,7 +8,7 @@ import { FloatingWindow } from "@/components/floating-window";
 // pagina in cui si è (rotte intercettate in src/app/(gioco)/@modal).
 // Aprendo o ricaricando l'indirizzo di una finestra, si torna alla pagina che
 // c'era sotto (o alla mappa) e la finestra si riapre sopra (ModalReopen).
-export const MODAL_PREFIXES = ["/scheda", "/social", "/forum", "/messaggi", "/ticket", "/gestione", "/utility"];
+export const MODAL_PREFIXES = ["/scheda", "/social", "/forum", "/messaggi", "/ticket", "/gestione", "/utility", "/telefono"];
 
 export function isModalPath(pathname: string) {
   return MODAL_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

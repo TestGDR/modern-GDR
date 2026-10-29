@@ -2,30 +2,32 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Mail, Send } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Mail, Phone, PhoneCall, PhoneIncoming, PhoneOff, Video } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { barButtonClass } from "@/components/game/sidebar-styles";
 import { everyEvenInBackground, playEvent } from "@/lib/notify-sound";
+import { formatPhone, type PhoneState } from "@/lib/phone";
 import { createClient } from "@/lib/supabase/client";
 import { setTitleCount } from "@/lib/title-count";
 import { useResync } from "@/lib/use-resync";
 import { cn } from "@/lib/utils";
 
-// Messaggi OFF e ON nella barra in alto, con i contatori dei non letti separati
-// (dal Westeros: useUnread in GameShell.tsx).
+// Messaggi OFF e Telefono nella barra in alto, con i loro contatori
+// (dal Westeros: useUnread in GameShell.tsx). Il telefono cambia icona
+// durante una chiamata e fa squillare in tutto il gioco.
 
-type Counts = { on: number; off: number };
+const EMPTY_PHONE: PhoneState = { unread: 0, call: null };
 
-/** Non letti dei due canali (messaggi, gruppi, messaggi a tutti, SISTEMA), in tempo reale */
-function useUnread(userId: string | null) {
+/** Non letti OFF (messaggi, gruppi, messaggi a tutti, SISTEMA), in tempo reale */
+function useOffUnread(userId: string | null) {
   const supabase = useMemo(() => createClient(), []);
-  const pathname = usePathname();
-  const [counts, setCounts] = useState<Counts>({ on: 0, off: 0 });
+  const [count, setCount] = useState(0);
 
   const refresh = useCallback(async () => {
     if (!userId) return;
-    const [on, off] = await Promise.all([supabase.rpc("off_unread", { p_channel: "on" }), supabase.rpc("off_unread", { p_channel: "off" })]);
-    setCounts({ on: (on.data as number | null) ?? 0, off: (off.data as number | null) ?? 0 });
+    const { data } = await supabase.rpc("off_unread", { p_channel: "off" });
+    setCount((data as number | null) ?? 0);
   }, [supabase, userId]);
 
   useResync(refresh);
@@ -50,24 +52,46 @@ function useUnread(userId: string | null) {
     };
   }, [supabase, userId, refresh]);
 
-  // Suono subito quando un conteggio sale, poi ogni 15 secondi finché resta
-  // qualcosa da leggere, anche con la scheda in secondo piano
-  const previous = useRef<Counts>({ on: 0, off: 0 });
-  useEffect(() => {
-    if (counts.on > previous.current.on) playEvent("on");
-    else if (counts.off > previous.current.off) playEvent("off");
-    previous.current = counts;
-    if (counts.on + counts.off === 0) return;
-    return everyEvenInBackground(() => playEvent(counts.on > 0 ? "on" : "off"), 15_000);
-  }, [counts]);
+  return count;
+}
 
-  // Numero dei non letti nel titolo della scheda (sommato ai ticket)
-  const total = counts.on + counts.off;
-  useEffect(() => {
-    setTitleCount("messaggi", total);
-  }, [total, pathname]);
+/** Telefono: non letti e chiamata in corso (o che squilla), in tempo reale */
+function usePhoneState(userId: string | null) {
+  const supabase = useMemo(() => createClient(), []);
+  const [state, setState] = useState<PhoneState>(EMPTY_PHONE);
 
-  return counts;
+  const refresh = useCallback(async () => {
+    if (!userId) return;
+    const { data } = await supabase.rpc("phone_state");
+    if (data) setState(data as PhoneState);
+  }, [supabase, userId]);
+
+  useResync(refresh, 60_000);
+
+  useEffect(() => {
+    if (!userId) return;
+    const first = setTimeout(refresh, 0);
+    const ch = supabase
+      .channel(`telefono-stato:${userId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "phone_messages" }, () => refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "phone_members" }, () => refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "phone_calls" }, () => refresh())
+      .subscribe();
+    return () => {
+      clearTimeout(first);
+      supabase.removeChannel(ch);
+    };
+  }, [supabase, userId, refresh]);
+
+  // Mentre squilla, si ricontrolla spesso (la chiamata può diventare "persa")
+  const ringing = state.call?.status === "squilla";
+  useEffect(() => {
+    if (!ringing) return;
+    const t = setInterval(refresh, 15_000);
+    return () => clearInterval(t);
+  }, [ringing, refresh]);
+
+  return { state, refresh };
 }
 
 function Badge({ n }: { n: number }) {
@@ -81,35 +105,104 @@ function Badge({ n }: { n: number }) {
 
 /** Con i contatori dell'utente collegato */
 export function MessageButtons({ userId }: { userId: string | null }) {
-  return <Buttons counts={useUnread(userId)} />;
+  const off = useOffUnread(userId);
+  const { state: phone, refresh } = usePhoneState(userId);
+  const pathname = usePathname();
+  const incoming = phone.call?.status === "squilla" && phone.call.incoming;
+
+  // Suoni: subito quando sale un conteggio, poi ogni 15 secondi finché resta
+  // qualcosa da leggere; il telefono che squilla suona ogni 3 secondi
+  const previous = useRef({ off: 0, phone: 0 });
+  useEffect(() => {
+    if (phone.unread > previous.current.phone) playEvent("on");
+    else if (off > previous.current.off) playEvent("off");
+    previous.current = { off, phone: phone.unread };
+    if (off + phone.unread === 0) return;
+    return everyEvenInBackground(() => playEvent(phone.unread > 0 ? "on" : "off"), 15_000);
+  }, [off, phone.unread]);
+  useEffect(() => {
+    if (!incoming) return;
+    playEvent("on");
+    return everyEvenInBackground(() => playEvent("on"), 3_000);
+  }, [incoming]);
+
+  // Non letti nel titolo della scheda (sommati ai ticket)
+  const total = off + phone.unread + (incoming ? 1 : 0);
+  useEffect(() => {
+    setTitleCount("messaggi", total);
+  }, [total, pathname]);
+
+  return (
+    <>
+      <Buttons off={off} phone={phone} />
+      {incoming && phone.call && !pathname.startsWith("/telefono") && <IncomingCall call={phone.call} onDone={refresh} />}
+    </>
+  );
 }
 
 /** Segnaposto mentre arriva l'utente */
 export function MessageButtonsFallback() {
-  return <Buttons counts={{ on: 0, off: 0 }} />;
+  return <Buttons off={0} phone={EMPTY_PHONE} />;
 }
 
-function Buttons({ counts }: { counts: Counts }) {
+function Buttons({ off, phone }: { off: number; phone: PhoneState }) {
+  const call = phone.call;
+  const active = call?.status === "attiva";
+  const ringing = call?.status === "squilla" && call.incoming;
+  const href = call ? `/telefono?numero=${call.my_number}&chat=${call.thread_id}` : "/telefono";
+  const label = active ? (call.video ? "In video" : "In chiamata") : ringing ? "Squilla!" : "Telefono";
   return (
     <>
-      <Link
-        href="/messaggi?canale=off"
-        className={cn(barButtonClass, counts.off > 0 && "blink-call")}
-        aria-label={counts.off > 0 ? `Messaggi OFF: ${counts.off} da leggere` : "Messaggi OFF"}
-      >
+      <Link href="/messaggi?canale=off" className={cn(barButtonClass, off > 0 && "blink-call")} aria-label={off > 0 ? `Messaggi OFF: ${off} da leggere` : "Messaggi OFF"}>
         <Mail /> <span className="sm:hidden">OFF</span>
         <span className="hidden sm:inline">Messaggi OFF</span>
-        <Badge n={counts.off} />
+        <Badge n={off} />
       </Link>
       <Link
-        href="/messaggi?canale=on"
-        className={cn(barButtonClass, counts.on > 0 && "blink-call")}
-        aria-label={counts.on > 0 ? `Messaggi ON: ${counts.on} da leggere` : "Messaggi ON"}
+        href={href}
+        className={cn(barButtonClass, (phone.unread > 0 || ringing) && "blink-call", active && "text-mint [&_svg]:animate-pulse")}
+        aria-label={phone.unread > 0 ? `Telefono: ${phone.unread} da leggere` : label}
       >
-        <Send /> <span className="sm:hidden">ON</span>
-        <span className="hidden sm:inline">Messaggi ON</span>
-        <Badge n={counts.on} />
+        {active ? call.video ? <Video /> : <PhoneCall /> : ringing ? <PhoneIncoming /> : <Phone />}
+        <span>{label}</span>
+        <Badge n={phone.unread} />
       </Link>
     </>
+  );
+}
+
+/** Avviso di chiamata in arrivo, in tutto il gioco */
+function IncomingCall({ call, onDone }: { call: NonNullable<PhoneState["call"]>; onDone: () => void }) {
+  const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+
+  async function answer(accept: boolean) {
+    setPending(true);
+    await supabase.rpc("phone_answer", { p_call: call.id, p_accept: accept });
+    setPending(false);
+    onDone();
+    if (accept) router.push(`/telefono?numero=${call.my_number}&chat=${call.thread_id}`);
+  }
+
+  return (
+    <div role="alertdialog" aria-label="Chiamata in arrivo" className="glass fixed right-4 bottom-4 z-[60] flex w-72 flex-col gap-3 rounded-3xl border-mint/40 p-4 shadow-2xl">
+      <p className="flex items-center gap-2 text-sm text-mint">
+        {call.video ? <Video className="size-4" /> : <PhoneIncoming className="size-4" />}
+        {call.video ? "Videochiamata in arrivo" : "Chiamata in arrivo"}
+      </p>
+      <div>
+        <p className="font-heading text-2xl tracking-wide">{call.other_name}</p>
+        <p className="text-xs text-muted-foreground">{formatPhone(call.other_digits)}</p>
+      </div>
+      <div className="flex gap-2">
+        <Button type="button" disabled={pending} onClick={() => answer(true)} className="flex-1 rounded-full bg-mint text-night hover:bg-mint/90">
+          <Phone /> Rispondi
+        </Button>
+        <Button type="button" disabled={pending} variant="destructive" onClick={() => answer(false)} className="flex-1 rounded-full">
+          <PhoneOff /> Rifiuta
+        </Button>
+      </div>
+    </div>
   );
 }

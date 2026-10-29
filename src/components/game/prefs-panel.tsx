@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 const field = "h-10 rounded-lg border border-input bg-night/40 px-3 text-sm outline-none focus-visible:border-ring";
 
 const SOUND_ROWS: { group: SoundGroup; key: "sound_on" | "sound_off" | "sound_chat"; label: string; hint: string }[] = [
-  { group: "on", key: "sound_on", label: "Messaggi ON", hint: "Messaggi tra personaggi" },
+  { group: "on", key: "sound_on", label: "Telefono", hint: "Messaggi e chiamate tra personaggi" },
   { group: "off", key: "sound_off", label: "Messaggi OFF", hint: "Messaggi fuori gioco, ticket e avvisi del sito" },
   { group: "chat", key: "sound_chat", label: "Chat", hint: "Quando un altro scrive nella chat in cui sei" },
 ];

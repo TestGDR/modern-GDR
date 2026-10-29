@@ -34,9 +34,9 @@ function Highlighted({ text, names }: { text: string; names: string[] }) {
   );
 }
 
-/** Il parlato tra «caporali» o "virgolette" prende il colore scelto per il parlato */
+/** Il parlato tra < >, «caporali» o "virgolette" prende il colore scelto per il parlato */
 export function FormattedText({ text, names = [] }: { text: string; names?: string[] }) {
-  const parts = text.split(/(«[^»]*»|"[^"]*"|“[^”]*”)/g);
+  const parts = text.split(/(<[^<>]*>|«[^»]*»|"[^"]*"|“[^”]*”)/g);
   return (
     <>
       {parts.map((part, i) =>

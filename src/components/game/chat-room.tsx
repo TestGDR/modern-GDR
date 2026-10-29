@@ -477,7 +477,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
               maxLength={maxLen}
               rows={3}
               placeholder={
-                kind === "fuori_gioco" ? "Scrivi fuori dal gioco…" : kind === "master" ? "Narra la scena…" : "Cosa fa il tuo personaggio? Il parlato va tra «» o \"\"…"
+                kind === "fuori_gioco" ? "Scrivi fuori dal gioco…" : kind === "master" ? "Narra la scena…" : "Cosa fa il tuo personaggio? Il parlato va tra < >, «» o \"\"…"
               }
               className="min-h-0 flex-1 resize-none rounded-xl border border-input bg-night/40 px-3 py-2 text-sm outline-none focus-visible:border-ring"
             />

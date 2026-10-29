@@ -156,8 +156,8 @@ export function CharacterSheetWindow({
                 </IconButton>
               </>
             ) : (
-              <Link href={`/messaggi?canale=on&a=${character.owner_id}`} className={cn(buttonVariants({ variant: "outline" }), "rounded-full")}>
-                <Send /> Scrivi
+              <Link href={`/messaggi?a=${character.owner_id}`} className={cn(buttonVariants({ variant: "outline" }), "rounded-full")} title="Messaggio OFF al giocatore">
+                <Send /> Scrivi OFF
               </Link>
             )}
           </div>
@@ -180,8 +180,8 @@ export function CharacterSheetWindow({
               </span>
             )}
             {!isOwner && (
-              <Link href={`/messaggi?canale=on&a=${character.owner_id}`} className={cn(buttonVariants({ size: "sm" }), "rounded-full @2xl:hidden")}>
-                <Send /> Scrivi
+              <Link href={`/messaggi?a=${character.owner_id}`} className={cn(buttonVariants({ size: "sm" }), "rounded-full @2xl:hidden")} title="Messaggio OFF al giocatore">
+                <Send /> Scrivi OFF
               </Link>
             )}
           </div>

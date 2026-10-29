@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { ACCESS_COOKIE, getClientIp, logAccess } from "@/lib/access-log";
 
 // Pagine riservate a chi ha fatto l'accesso
-const PROTECTED = ["/bacheca", "/mappa", "/chat", "/messaggi", "/social", "/forum", "/scheda", "/gestione", "/ticket", "/utility", "/nuova-password"];
+const PROTECTED = ["/bacheca", "/mappa", "/chat", "/messaggi", "/social", "/forum", "/scheda", "/gestione", "/ticket", "/utility", "/telefono", "/nuova-password"];
 
 function matches(pathname: string, paths: string[]) {
   return paths.some((p) => pathname === p || pathname.startsWith(`${p}/`));

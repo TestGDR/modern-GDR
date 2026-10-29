@@ -72,7 +72,7 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     title: "Messaggi e ticket",
     items: [
       { key: "messaggi.tutti", label: "Scrivere a tutti", description: "Messaggi a tutti nei canali ON e OFF (anche senza pubblicare notizie)" },
-      { key: "messaggi.log", label: "Leggere i messaggi ON e OFF", description: "Gestione → Log: i messaggi privati e dei gruppi (i giocatori ne sono avvisati nella pagina Messaggi)" },
+      { key: "messaggi.log", label: "Leggere i messaggi OFF e del telefono", description: "Gestione → Log: messaggi privati, gruppi e telefono (i giocatori ne sono avvisati)" },
       { key: "ticket.gestire", label: "Gestire i ticket", description: "Vedere tutti i ticket, rispondere come staff, cambiare stato ed eliminare quelli in archivio" },
       { key: "ticket.categorie", label: "Gestire le sezioni dei ticket", description: "Nomi, istruzioni e ordine delle sezioni" },
     ],

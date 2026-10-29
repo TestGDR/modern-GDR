@@ -51,7 +51,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { href: "/gestione/impostazioni", title: "Impostazioni del sistema", description: "Punti, età, PX, massimali e anno di gioco", icon: Settings2, permissions: ["impostazioni.gestire"] },
   { href: "/gestione/livelli", title: "Livelli e permessi", description: "Livelli utente, rango e azioni consentite", icon: ShieldCheck, permissions: ["livelli.gestire"] },
   { href: "/gestione/utenti", title: "Utenti", description: "Livelli, ultimo accesso e gioco, inattivi, sospensioni", icon: Users, permissions: ["livelli.assegnare", "utenti.vedere_modificare", "utenti.bandire"] },
-  { href: "/gestione/log", title: "Log", description: "Rileggi chat, messaggi ON e messaggi OFF", icon: FileSearch, permissions: ["chat.log", "messaggi.log"] },
+  { href: "/gestione/log", title: "Log", description: "Rileggi chat, telefono e messaggi OFF", icon: FileSearch, permissions: ["chat.log", "messaggi.log"] },
   { href: "/gestione/accessi", title: "Accessi", description: "IP, paese e controllo VPN di ogni accesso", icon: Fingerprint, permissions: ["gestione.accessi"] },
   { href: "/gestione/iscrizioni", title: "Iscrizioni", description: "Apri o chiudi le nuove registrazioni", icon: UserPlus, permissions: ["iscrizioni.gestire"] },
   { href: "/gestione/manutenzione", title: "Manutenzione", description: "Pulizia di messaggi vecchi e account inattivi", icon: Wrench, permissions: ["manutenzione.sito"] },

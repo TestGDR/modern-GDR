@@ -19,7 +19,7 @@ export const metadata: Metadata = { title: "Log" };
 type Tab = "chat" | "on" | "off";
 const TABS: { id: Tab; label: string; perm: string }[] = [
   { id: "chat", label: "Log chat", perm: "chat.log" },
-  { id: "on", label: "Messaggi ON", perm: "messaggi.log" },
+  { id: "on", label: "Telefono", perm: "messaggi.log" },
   { id: "off", label: "Messaggi OFF", perm: "messaggi.log" },
 ];
 const LIMIT = 300;
@@ -28,7 +28,7 @@ export default function Page({ searchParams }: PageProps<"/gestione/log">) {
   return (
     <>
       <BackToPanel />
-      <PageHeader title="Log" subtitle="Rileggi le chat di gioco e i messaggi ON e OFF, con filtri per persona, chat e data." />
+      <PageHeader title="Log" subtitle="Rileggi le chat di gioco, il telefono e i messaggi OFF, con filtri per persona, chat e data." />
       <Suspense fallback={<LoadingBlocks />}>
         <Content searchParams={searchParams} />
       </Suspense>
@@ -55,7 +55,7 @@ async function Content({ searchParams }: { searchParams: PageProps<"/gestione/lo
 
   // Persona cercata (nome del personaggio = nome dell'account)
   let personId: string | null = null;
-  if (chi && tab !== "chat") {
+  if (chi && tab === "off") {
     const { data } = await supabase.rpc("find_player", { p_name: chi });
     personId = ((data ?? []) as { user_id: string }[])[0]?.user_id ?? "00000000-0000-0000-0000-000000000000";
   }
@@ -85,6 +85,36 @@ async function Content({ searchParams }: { searchParams: PageProps<"/gestione/lo
       where: m.room?.name ?? null,
       kind: KIND_LABEL[m.kind],
       body: m.content,
+    }));
+  } else if (tab === "on") {
+    // Telefono: chi scrive (personaggio e numero), conversazione o gruppo
+    type PhoneRow = {
+      id: number;
+      created_at: string;
+      mode: string;
+      body: string;
+      sender: { display_name: string; digits: string; character: { name: string } | null } | null;
+      thread: { is_group: boolean; name: string } | null;
+    };
+    let q = supabase
+      .from("phone_messages")
+      .select(`id, created_at, mode, body, sender:phone_numbers${chi ? "!inner" : ""}(display_name, digits, character:characters${chi ? "!inner" : ""}(name)), thread:phone_threads(is_group, name)`)
+      .order("created_at", { ascending: false })
+      .limit(LIMIT);
+    if (chi) q = q.ilike("sender.character.name", `%${chi}%`);
+    if (from) q = q.gte("created_at", from);
+    if (to) q = q.lte("created_at", to);
+    const { data } = await q.overrideTypes<PhoneRow[], { merge: false }>();
+    const MODE: Record<string, string> = { testo: "Messaggio", vocale: "Vocale", chiamata: "Chiamata", videochiamata: "Videochiamata", evento: "Avviso" };
+    rows = (data ?? []).map((m) => ({
+      key: `t${m.id}`,
+      at: m.created_at,
+      who: m.sender ? `${m.sender.character?.name ?? m.sender.display_name} (+${m.sender.digits})` : "Telefono",
+      to: null,
+      where: m.thread?.is_group ? m.thread.name : null,
+      kind: MODE[m.mode] ?? m.mode,
+      body: m.body,
+      badge: m.thread?.is_group ? "gruppo" : undefined,
     }));
   } else {
     let dm = supabase.from("private_messages").select("id, sender_id, recipient_id, body, created_at").eq("kind", tab).order("created_at", { ascending: false }).limit(LIMIT);
@@ -132,7 +162,7 @@ async function Content({ searchParams }: { searchParams: PageProps<"/gestione/lo
 
       <form className="glass grid grid-cols-1 gap-2 rounded-2xl p-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto_auto_auto]">
         <input type="hidden" name="scheda" value={tab} />
-        <input name="chi" defaultValue={chi} placeholder={tab === "chat" ? "Personaggio" : "Nome e cognome"} className={inputClass} />
+        <input name="chi" defaultValue={chi} placeholder={tab === "off" ? "Nome e cognome" : "Personaggio"} className={inputClass} />
         {tab === "chat" ? (
           <select name="stanza" defaultValue={stanza} className={inputClass}>
             <option value="">Tutte le chat</option>
