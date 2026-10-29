@@ -15,7 +15,6 @@ import {
   Map as MapIcon,
   Menu,
   MessagesSquare,
-  Newspaper,
   RefreshCw,
   Users,
   X,
@@ -26,6 +25,7 @@ import { ComingSoon, WindowButton } from "@/components/game/info-window";
 import { isModalPath } from "@/components/game/page-modal";
 import { TicketIcon } from "@/components/game/ticket-icon";
 import { ForumIcon } from "@/components/game/forum-icon";
+import { SocialIcon } from "@/components/social/social-icon";
 import { usePresence } from "@/components/game/presence";
 import { sidebarIconClass } from "@/components/game/sidebar-styles";
 import { FloatingWindow } from "@/components/floating-window";
@@ -210,9 +210,7 @@ function FeatureIcons() {
           <p>Il calendario accademico e gli eventi della land: lezioni, feste, partite e appuntamenti dello staff.</p>
         </ComingSoon>
       </WindowButton>
-      <Link href="/social" className={iconCls}>
-        <Newspaper /> Social
-      </Link>
+      <SocialIcon />
       <ForumIcon />
       <Link href="/scheda" className={iconCls}>
         <CircleUserRound /> Scheda

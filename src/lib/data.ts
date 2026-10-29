@@ -22,8 +22,6 @@ import type {
   RoomGroup,
   SheetOption,
   Skill,
-  SocialComment,
-  SocialPost,
 } from "@/lib/types";
 
 // Tutte le letture passano dal client Supabase dell'utente collegato:
@@ -332,28 +330,6 @@ export async function getPosts(threadId: string) {
     .order("created_at")
     .limit(500)
     .overrideTypes<PostWithAuthor[], { merge: false }>();
-  return data ?? [];
-}
-
-/* ------------------------------- Social ------------------------------- */
-
-export type FeedPost = SocialPost & {
-  character: { id: string; name: string } | null;
-  social_likes: { character_id: string }[];
-  social_comments: (SocialComment & { character: { id: string; name: string } | null })[];
-};
-
-export async function getFeed(limit = 30) {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("social_posts")
-    .select(
-      "*, character:characters(id, name), social_likes(character_id), social_comments(*, character:characters(id, name))",
-    )
-    .order("created_at", { ascending: false })
-    .order("created_at", { referencedTable: "social_comments", ascending: true })
-    .limit(limit)
-    .overrideTypes<FeedPost[], { merge: false }>();
   return data ?? [];
 }
 

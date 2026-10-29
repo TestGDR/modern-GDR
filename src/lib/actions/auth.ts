@@ -92,7 +92,10 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
   let email: string | null = login.includes("@") ? login : null;
   if (!email) {
     try {
-      email = await findEmailByName(login);
+      const found = await findEmailByName(login);
+      // più personaggi con lo stesso nome: serve anche il cognome
+      if (found === "ambiguous") return fail("Più personaggi si chiamano così: scrivi anche il cognome.");
+      email = found;
     } catch {
       return fail("Accesso non disponibile: manca la configurazione del server (chiave segreta di Supabase).");
     }

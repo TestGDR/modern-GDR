@@ -118,6 +118,8 @@ export function CharacterSheetWindow({
   const section = SECTIONS.find((s) => s.key === view.section) ?? SECTIONS[0];
   // gli affetti si modificano direttamente nella sezione (aggiungi, sposta, dedica)
   const canEdit = isOwner && section.key !== "caratteristiche" && section.key !== "abilita" && section.key !== "affetti";
+  // l'Amministratore cambia caratteristiche e abilità dall'Amministrazione della scheda
+  const staffEdit = isAdmin && (section.key === "caratteristiche" || section.key === "abilita");
 
   const open = (key: string) => setView({ section: key, mode: "view" });
 
@@ -167,10 +169,22 @@ export function CharacterSheetWindow({
                   <Settings />
                 </IconButton>
                 <IconButton
-                  label={canEdit ? `Modifica ${section.label}` : "Le caratteristiche le modifica lo staff"}
-                  active={view.mode === "edit"}
-                  disabled={!canEdit}
-                  onClick={() => setView((v) => ({ ...v, mode: v.mode === "edit" ? "view" : "edit" }))}
+                  label={
+                    canEdit
+                      ? `Modifica ${section.label}`
+                      : staffEdit
+                        ? "Modifica caratteristiche e abilità (Amministrazione della scheda)"
+                        : section.key === "affetti"
+                          ? "Gli affetti si modificano direttamente nella sezione"
+                          : "Dopo l'approvazione caratteristiche e abilità le modifica lo staff"
+                  }
+                  active={view.mode === "edit" || (staffEdit && view.mode === "admin")}
+                  disabled={!canEdit && !staffEdit}
+                  onClick={() =>
+                    setView((v) =>
+                      staffEdit ? { ...v, mode: v.mode === "admin" ? "view" : "admin" } : { ...v, mode: v.mode === "edit" ? "view" : "edit" },
+                    )
+                  }
                 >
                   <Pencil />
                 </IconButton>
