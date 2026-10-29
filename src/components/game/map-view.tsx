@@ -80,18 +80,21 @@ export function MapView({ maps, districts, groups, rooms, activity, initialDistr
         </div>
       )}
 
-      <div className="glass rounded-3xl p-3 sm:p-4">
+      {/* la mappa sta sempre tutta nello schermo: altezza = schermo meno barra in alto, margini e casella della password */}
+      <div className="glass rounded-3xl p-3 sm:p-4" style={{ "--map-extra": maps.length > 1 ? "3.25rem" : "0rem" } as React.CSSProperties}>
         <div
           className={cn(
             "relative mx-auto overflow-hidden rounded-2xl",
             // al massimo 800px di altezza, sempre in proporzione (i punti dei quartieri restano al loro posto):
             // il riquadro prende la misura dell'immagine; la Miami disegnata (3:4) al massimo 600x800
-            map.image_url ? "w-fit max-w-full" : "w-full max-w-[600px]",
+            map.image_url
+              ? "w-fit max-w-full"
+              : "w-full max-w-[min(600px,calc((100dvh-15.5rem-var(--map-extra))*0.75))] lg:max-w-[min(600px,calc((100dvh-17.5rem-var(--map-extra))*0.75))]",
           )}
         >
             {map.image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={map.image_url} alt={map.name} className="block h-auto max-h-[800px] w-auto max-w-full select-none" draggable={false} />
+              <img src={map.image_url} alt={map.name} className="block h-auto max-h-[min(800px,calc(100dvh-15.5rem-var(--map-extra)))] w-auto max-w-full select-none lg:max-h-[min(800px,calc(100dvh-17.5rem-var(--map-extra)))]" draggable={false} />
             ) : (
               <MiamiIllustration className="block h-auto w-full" />
             )}
@@ -285,7 +288,9 @@ function SecretRoomForm({ mapId }: { mapId: string }) {
       {error ? (
         <p className="text-xs text-destructive">{error}</p>
       ) : (
-        <p className="text-[0.7rem] text-muted-foreground">Chi usa la stessa password entra nella stessa chat. Dopo un&apos;ora senza nessuno si autodistrugge.</p>
+        <p className="w-full truncate text-center text-[0.7rem] text-muted-foreground" title="Chi usa la stessa password entra nella stessa chat. Dopo un&apos;ora senza nessuno si autodistrugge.">
+          Stessa password, stessa chat · si autodistrugge dopo un&apos;ora senza nessuno
+        </p>
       )}
     </form>
   );
