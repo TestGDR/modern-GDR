@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Lock, MapPin } from "lucide-react";
 import { FloatingWindow } from "@/components/floating-window";
 import { MiamiIllustration } from "@/components/game/miami-illustration";
@@ -28,6 +29,14 @@ export function MapView({ maps, districts, groups, rooms, activity, initialDistr
   const initial = districts.find((d) => d.id === initialDistrictId) ?? null;
   const [mapId, setMapId] = useState(initial?.map_id ?? maps[0]?.id ?? null);
   const [openId, setOpenId] = useState<string | null>(initial?.id ?? null);
+  // La pagina della mappa resta in memoria mentre si è altrove: uscendo dalla mappa la finestra si chiude,
+  // così tornando non si riapre da sola
+  const pathname = usePathname();
+  const [lastPath, setLastPath] = useState(pathname);
+  if (pathname !== lastPath) {
+    setLastPath(pathname);
+    if (pathname !== "/mappa") setOpenId(null);
+  }
   const map = maps.find((m) => m.id === mapId) ?? maps[0];
   const open = districts.find((d) => d.id === openId) ?? null;
 
@@ -109,6 +118,7 @@ export function MapView({ maps, districts, groups, rooms, activity, initialDistr
             rooms={rooms.filter((r) => r.location_id === open.id)}
             groups={groups.filter((g) => g.location_id === open.id)}
             activity={activity}
+            onEnter={() => setOpenId(null)}
           />
         </FloatingWindow>
       )}
@@ -148,7 +158,20 @@ function MapDot({ district: d, people, onOpen }: { district: District; people: n
 }
 
 /** Chat del quartiere: prima quelle senza gruppo, poi un blocco per gruppo */
-function RoomList({ district, rooms, groups, activity }: { district: District; rooms: Room[]; groups: RoomGroup[]; activity: Record<string, number> }) {
+function RoomList({
+  district,
+  rooms,
+  groups,
+  activity,
+  onEnter,
+}: {
+  district: District;
+  rooms: Room[];
+  groups: RoomGroup[];
+  activity: Record<string, number>;
+  /** Entrando in una chat la finestra del quartiere si chiude */
+  onEnter: () => void;
+}) {
   const sections = [
     { id: "senza-gruppo", name: null as string | null, rooms: rooms.filter((r) => !groups.some((g) => g.id === r.group_id)) },
     ...groups.map((g) => ({ id: g.id, name: g.name as string | null, rooms: rooms.filter((r) => r.group_id === g.id) })),
@@ -166,7 +189,7 @@ function RoomList({ district, rooms, groups, activity }: { district: District; r
               const n = activity[room.id] ?? 0;
               return (
                 <li key={room.id}>
-                  <Link href={`/chat/${room.id}`} className="flex gap-3 rounded-xl border border-border bg-white/5 p-3 transition-colors hover:bg-white/10">
+                  <Link href={`/chat/${room.id}`} onClick={onEnter} className="flex gap-3 rounded-xl border border-border bg-white/5 p-3 transition-colors hover:bg-white/10">
                     {room.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={room.image_url} alt="" className="size-14 shrink-0 rounded-lg object-cover" />
