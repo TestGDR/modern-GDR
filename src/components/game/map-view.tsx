@@ -83,14 +83,15 @@ export function MapView({ maps, districts, groups, rooms, activity, initialDistr
       <div className="glass rounded-3xl p-3 sm:p-4">
         <div
           className={cn(
-            "relative mx-auto w-full overflow-hidden rounded-2xl",
-            // grande: tutta la larghezza (la Miami disegnata è verticale, l'area centrale scorre)
-            map.image_url ? "max-w-6xl" : "max-w-3xl",
+            "relative mx-auto overflow-hidden rounded-2xl",
+            // al massimo 800px di altezza, sempre in proporzione (i punti dei quartieri restano al loro posto):
+            // il riquadro prende la misura dell'immagine; la Miami disegnata (3:4) al massimo 600x800
+            map.image_url ? "w-fit max-w-full" : "w-full max-w-[600px]",
           )}
         >
             {map.image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={map.image_url} alt={map.name} className="block w-full select-none" draggable={false} />
+              <img src={map.image_url} alt={map.name} className="block h-auto max-h-[800px] w-auto max-w-full select-none" draggable={false} />
             ) : (
               <MiamiIllustration className="block h-auto w-full" />
             )}
