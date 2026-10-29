@@ -75,6 +75,38 @@ function listTime(iso: string) {
     : d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", timeZone: "Europe/Rome" });
 }
 
+// Link a immagini (.png, .jpg, .jpeg, .gif, .webp): nella chat si vedono come foto
+const IMAGE_URL = /https?:\/\/[^\s<>"]+?\.(?:png|jpe?g|gif|webp)(?:\?[^\s<>"]*)?(?=$|[\s)\],.!?;:])/gi;
+
+function splitImages(body: string) {
+  const images = body.match(IMAGE_URL) ?? [];
+  const text = body.replace(IMAGE_URL, "").replace(/[ \t]+\n/g, "\n").trim();
+  return { text, images };
+}
+
+/** Anteprima nell'elenco delle chat: le foto diventano "📷 Foto" */
+function previewText(body: string) {
+  const { text, images } = splitImages(body);
+  if (images.length === 0) return body;
+  return text ? `📷 ${text}` : "📷 Foto";
+}
+
+/** Testo del messaggio con le immagini incollate come link */
+function MessageBody({ body, mode }: { body: string; mode: string }) {
+  const { text, images } = splitImages(body);
+  return (
+    <>
+      {images.map((src, i) => (
+        <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="mb-1 block">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={src} alt="Foto" loading="lazy" referrerPolicy="no-referrer" className="max-h-72 w-auto max-w-full rounded-xl object-contain" />
+        </a>
+      ))}
+      {text && <p className="break-words whitespace-pre-line">{mode === "testo" ? text : <FormattedText text={text} />}</p>}
+    </>
+  );
+}
+
 function Avatar({ name, url, size = "size-10" }: { name: string; url: string | null; size?: string }) {
   return url ? (
     // eslint-disable-next-line @next/next/no-img-element
@@ -531,7 +563,7 @@ function ChatList({
                   <span className="flex items-center gap-2">
                     <span className="truncate text-xs text-muted-foreground">
                       {last
-                        ? `${last.mode === "evento" ? "" : last.sender_number_id === current ? "Tu: " : t.is_group ? `${nameOf(last.sender_number_id)}: ` : ""}${MODE_LABEL[last.mode] && last.mode === "vocale" ? "🎤 " : ""}${last.body}`
+                        ? `${last.mode === "evento" ? "" : last.sender_number_id === current ? "Tu: " : t.is_group ? `${nameOf(last.sender_number_id)}: ` : ""}${MODE_LABEL[last.mode] && last.mode === "vocale" ? "🎤 " : ""}${previewText(last.body)}`
                         : v.sub}
                     </span>
                     {unread > 0 && <span className="ml-auto grid min-w-5 shrink-0 place-items-center rounded-full bg-flamingo px-1 text-[0.65rem] font-bold text-white">{unread}</span>}
@@ -695,7 +727,7 @@ function ThreadView({
                           {MODE_LABEL[m.mode]!.icon} {MODE_LABEL[m.mode]!.label}
                         </p>
                       )}
-                      <p className="break-words whitespace-pre-line">{m.mode === "testo" ? m.body : <FormattedText text={m.body} />}</p>
+                      <MessageBody body={m.body} mode={m.mode} />
                       <p className="mt-0.5 flex items-center justify-end gap-1 text-[0.65rem] text-muted-foreground">
                         {formatTime(m.created_at)}
                         {mine && !thread.is_group && (otherRead && otherRead >= m.created_at ? <CheckCheck className="size-3.5 text-mint" /> : <Check className="size-3.5" />)}
