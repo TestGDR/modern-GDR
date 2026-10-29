@@ -14,7 +14,6 @@ import {
   Heart,
   IdCard,
   KeyRound,
-  Mail,
   Pencil,
   ScanFace,
   Send,
@@ -128,15 +127,6 @@ export function CharacterSheetWindow({
         <aside className="flex flex-col border-white/10 @2xl:min-h-0 @2xl:border-r">
           <div className="flex items-end gap-3 p-4 @2xl:justify-center @2xl:pb-3">
             <Portrait character={character} />
-            {/* Messaggi OFF: con il giocatore di questa scheda (o i propri, sulla propria) */}
-            <Link
-              href={isOwner ? "/messaggi" : `/messaggi?a=${character.owner_id}`}
-              title={isOwner ? "Messaggi OFF" : `Messaggio OFF al giocatore di ${character.name}`}
-              aria-label={isOwner ? "Messaggi OFF" : `Messaggio OFF al giocatore di ${character.name}`}
-              className="grid size-8 shrink-0 place-items-center rounded-lg border border-white/15 bg-night/60 text-lavender transition-colors hover:border-flamingo/60 hover:text-white [&_svg]:size-4"
-            >
-              <Mail />
-            </Link>
           </div>
 
           <nav className="flex gap-1 overflow-x-auto px-3 pb-3 @2xl:flex-1 @2xl:flex-col @2xl:overflow-y-auto @2xl:px-0 @2xl:pb-0" aria-label="Sezioni della scheda">
