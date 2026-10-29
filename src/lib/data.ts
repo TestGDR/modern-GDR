@@ -51,7 +51,8 @@ export async function getWorld(): Promise<World> {
     supabase.from("maps").select("*").order("sort_order").order("name").overrideTypes<GameMap[], { merge: false }>(),
     supabase.from("locations").select("*").order("sort_order").order("name").overrideTypes<District[], { merge: false }>(),
     supabase.from("room_groups").select("*").order("sort_order").order("name").overrideTypes<RoomGroup[], { merge: false }>(),
-    supabase.from("rooms").select("*").order("sort_order").order("name").overrideTypes<Room[], { merge: false }>(),
+    // le chat con password non compaiono mai negli elenchi (si entra solo dalla mappa)
+    supabase.from("rooms").select("*").neq("access", "password").order("sort_order").order("name").overrideTypes<Room[], { merge: false }>(),
   ]);
   return {
     maps: maps.data ?? [],

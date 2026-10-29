@@ -436,7 +436,7 @@ function GossipForm({ rollId, onDone }: { rollId: string; onDone: () => void }) 
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    Promise.all([supabase.from("locations").select("id, name").order("sort_order"), supabase.from("rooms").select("id, name, location_id").order("sort_order")]).then(
+    Promise.all([supabase.from("locations").select("id, name").order("sort_order"), supabase.from("rooms").select("id, name, location_id").neq("access", "password").order("sort_order")]).then(
       ([l, r]) => {
         setDistricts((l.data ?? []) as Place[]);
         setRooms((r.data ?? []) as RoomPlace[]);

@@ -460,6 +460,14 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
               {groups.map((g) => (
                 <section key={g.key}>
                   {/* nome del posto: cliccando si entra in quella chat (o si va alla mappa) */}
+                  {g.name === "Chat privata" ? (
+                    <p className="mb-1 flex w-fit items-center gap-2 px-1 font-heading text-lg tracking-[0.12em] text-lavender uppercase">
+                      <MessagesSquare className="size-4" />
+                      {g.name}
+                      <span className="font-sans text-xs tracking-normal text-muted-foreground normal-case">({g.count})</span>
+                      {g.key === placeKey && <span className="font-sans text-[0.65rem] tracking-normal text-mint normal-case">· sei qui</span>}
+                    </p>
+                  ) : (
                   <Link
                     href={g.chatId ? `/chat/${g.chatId}` : "/mappa"}
                     onClick={() => setOpen(false)}
@@ -471,6 +479,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
                     <span className="font-sans text-xs tracking-normal text-muted-foreground normal-case">({g.count})</span>
                     {g.key === placeKey && <span className="font-sans text-[0.65rem] tracking-normal text-mint normal-case">· sei qui</span>}
                   </Link>
+                  )}
                   {g.members.length > 0 ? (
                     <ul className="flex flex-col gap-1">{g.members.map((c) => playerRow(c, false))}</ul>
                   ) : (

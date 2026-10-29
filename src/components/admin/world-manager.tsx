@@ -523,7 +523,8 @@ function RoomForm({ room, districtId, groups, ownerName = "", onDone }: { room?:
     groupId: room?.group_id ?? null,
     imageUrl: room?.image_url ?? null,
     isOpen: room?.is_open ?? true,
-    access: room?.access ?? ("pubblica" as Room["access"]),
+    // le chat con password non si gestiscono da qui
+    access: (room?.access === "su_invito" ? "su_invito" : "pubblica") as "pubblica" | "su_invito",
     ownerName,
   });
   const { pending, error, execute } = useAdminAction();
@@ -556,7 +557,7 @@ function RoomForm({ room, districtId, groups, ownerName = "", onDone }: { room?:
       </FieldLabel>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <FieldLabel label="Accesso">
-          <select className={inputClass} value={form.access} onChange={(e) => setForm({ ...form, access: e.target.value as Room["access"] })}>
+          <select className={inputClass} value={form.access} onChange={(e) => setForm({ ...form, access: e.target.value as "pubblica" | "su_invito" })}>
             <option value="pubblica">Pubblica</option>
             <option value="su_invito">Su invito (case, appartamenti, locali privati)</option>
           </select>

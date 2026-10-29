@@ -124,7 +124,8 @@ export type RoomGroup = {
   sort_order: number;
 };
 
-export type RoomAccess = "pubblica" | "su_invito";
+/** "password": chat privata creata dalla mappa con una password (non compare negli elenchi) */
+export type RoomAccess = "pubblica" | "su_invito" | "password";
 
 /** Chat di gioco dentro un quartiere */
 export type Room = {

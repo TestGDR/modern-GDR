@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Lock, MapPin } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { KeyRound, Lock, MapPin } from "lucide-react";
 import { FloatingWindow } from "@/components/floating-window";
 import { MiamiIllustration } from "@/components/game/miami-illustration";
+import { createClient } from "@/lib/supabase/client";
 import type { District, GameMap, Room, RoomGroup } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -97,7 +98,7 @@ export function MapView({ maps, districts, groups, rooms, activity, initialDistr
               <MapDot key={d.id} district={d} people={people(d.id)} onOpen={() => setOpenId(d.id)} />
             ))}
         </div>
-        {map.description && <p className="mt-3 text-center text-sm text-muted-foreground">{map.description}</p>}
+        <SecretRoomForm mapId={map.id} />
       </div>
 
       {open && (
@@ -220,5 +221,61 @@ function RoomList({
         <MapPin className="size-3.5" /> Apri una chat per entrare in giocata.
       </p>
     </div>
+  );
+}
+
+/**
+ * Chat privata con password: chi scrive la stessa password su questa mappa
+ * entra nella stessa chat; nessun altro la vede. Dopo un'ora senza nessuno
+ * dentro si autodistrugge (i messaggi restano nei log dello staff).
+ */
+function SecretRoomForm({ mapId }: { mapId: string }) {
+  const router = useRouter();
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function open() {
+    const pass = password.trim();
+    if (pass.length < 4) return setError("La password deve avere almeno 4 caratteri.");
+    setBusy(true);
+    setError(null);
+    const { data, error: e } = await createClient().rpc("open_secret_room", { p_map: mapId, p_password: pass });
+    setBusy(false);
+    if (e || !data) return setError(e?.code === "42501" || e?.code === "P0001" ? e.message : "Non è stato possibile aprire la chat.");
+    setPassword("");
+    router.push(`/chat/${data as string}`);
+  }
+
+  return (
+    <form
+      className="mx-auto mt-3 flex w-full max-w-md flex-col items-center gap-1.5"
+      onSubmit={(e) => {
+        e.preventDefault();
+        open();
+      }}
+    >
+      <div className="flex w-full items-center gap-2">
+        <KeyRound className="size-4 shrink-0 text-peach" aria-hidden />
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          maxLength={64}
+          autoComplete="off"
+          placeholder="Password per una chat privata…"
+          aria-label="Password della chat privata"
+          className="h-9 min-w-0 flex-1 rounded-full border border-white/15 bg-night/50 px-4 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-peach/60"
+        />
+        <button type="submit" disabled={busy} className="h-9 shrink-0 rounded-full bg-flamingo/80 px-4 text-sm font-medium text-white hover:bg-flamingo disabled:opacity-50">
+          {busy ? "…" : "Entra"}
+        </button>
+      </div>
+      {error ? (
+        <p className="text-xs text-destructive">{error}</p>
+      ) : (
+        <p className="text-[0.7rem] text-muted-foreground">Chi usa la stessa password entra nella stessa chat. Dopo un&apos;ora senza nessuno si autodistrugge.</p>
+      )}
+    </form>
   );
 }
