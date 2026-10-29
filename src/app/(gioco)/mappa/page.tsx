@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LoadingBlocks } from "@/components/game/loading";
 import { MapView } from "@/components/game/map-view";
-import { PageHeader } from "@/components/game/page-header";
 import { requirePlayer } from "@/lib/auth";
 import { getRoomActivity, getWorld } from "@/lib/data";
 
@@ -11,7 +10,6 @@ export const metadata: Metadata = { title: "Mappa" };
 export default function MappaPage({ searchParams }: PageProps<"/mappa">) {
   return (
     <>
-      <PageHeader title="Mappa di Miami" subtitle="Scegli un quartiere e raggiungi le sue chat." />
       <Suspense fallback={<LoadingBlocks count={4} />}>
         <Content searchParams={searchParams} />
       </Suspense>
