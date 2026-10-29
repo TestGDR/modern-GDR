@@ -104,10 +104,14 @@ export function useCloseModal() {
     const from = window.location.pathname + window.location.search;
     window.dispatchEvent(new Event(CLOSE_EVENT));
     router.push(target, { scroll: false });
-    // Se il sito non è tornato alla pagina di sotto, la si ricarica
-    setTimeout(() => {
-      if (window.location.pathname + window.location.search === from) window.location.assign(target);
-    }, 1500);
+    // La finestra è già sparita: se il ritorno tarda (server lento) si riprova
+    // in silenzio, senza mai ricaricare la pagina
+    const still = () => window.location.pathname + window.location.search === from;
+    for (const delay of [4000, 10000]) {
+      setTimeout(() => {
+        if (still()) router.push(target, { scroll: false });
+      }, delay);
+    }
   }, [router]);
 }
 
