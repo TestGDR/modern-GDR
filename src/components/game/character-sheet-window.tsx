@@ -27,6 +27,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { FormMessage } from "@/components/auth/auth-forms";
+import { AffectionsSection } from "@/components/game/affections";
 import { AdminSheetPanel } from "@/components/game/admin-sheet";
 import { useCloseModal } from "@/components/game/page-modal";
 import { PrefsPanel } from "@/components/game/prefs-panel";
@@ -63,7 +64,7 @@ const SECTIONS: Section[] = [
   { key: "principale", label: "Principale", icon: Sparkles },
   { key: "dati", label: "Dati", icon: IdCard },
   { key: "si-sa-che", label: "Si sa che", icon: Eye, field: "known_facts", hint: "Voci, fatti noti, reputazione: ciò che a Miami si dice di lui o di lei." },
-  { key: "affetti", label: "Affetti", icon: Heart, field: "relationships", hint: "Famiglia, amici, amori, nemici." },
+  { key: "affetti", label: "Affetti", icon: Heart },
   { key: "caratteristiche", label: "Caratteristiche", icon: Gauge },
   { key: "abilita", label: "Abilità", icon: Zap },
   { key: "tratti", label: "Tratti", icon: Fingerprint, field: "traits", hint: "Carattere: personalità, abitudini, pregi e difetti." },
@@ -115,7 +116,8 @@ export function CharacterSheetWindow({
 }: CharacterSheetWindowProps) {
   const [view, setView] = useState<View>({ section: "principale", mode: "view" });
   const section = SECTIONS.find((s) => s.key === view.section) ?? SECTIONS[0];
-  const canEdit = isOwner && section.key !== "caratteristiche" && section.key !== "abilita";
+  // gli affetti si modificano direttamente nella sezione (aggiungi, sposta, dedica)
+  const canEdit = isOwner && section.key !== "caratteristiche" && section.key !== "abilita" && section.key !== "affetti";
 
   const open = (key: string) => setView({ section: key, mode: "view" });
 
@@ -228,6 +230,10 @@ export function CharacterSheetWindow({
             <MainSection character={character} />
           ) : section.key === "dati" ? (
             <DataList character={character} rules={rules} affiliations={affiliations} />
+          ) : section.key === "affetti" ? (
+            <SectionFrame title="Affetti">
+              <AffectionsSection characterId={character.id} canEdit={isOwner || isAdmin} legacyText={character.relationships} />
+            </SectionFrame>
           ) : PRIVATE_SECTIONS.includes(section.key) && !canSeePrivate ? (
             <SectionFrame title={section.label}>
               <p className="text-sm text-muted-foreground">Non hai i permessi necessari.</p>

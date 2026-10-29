@@ -93,12 +93,14 @@ async function Content({ searchParams }: { searchParams: PageProps<"/gestione/lo
       created_at: string;
       mode: string;
       body: string;
+      deleted_at: string | null;
+      original: { body: string } | null;
       sender: { display_name: string; digits: string; character: { name: string } | null } | null;
       thread: { is_group: boolean; name: string } | null;
     };
     let q = supabase
       .from("phone_messages")
-      .select(`id, created_at, mode, body, sender:phone_numbers${chi ? "!inner" : ""}(display_name, digits, character:characters${chi ? "!inner" : ""}(name)), thread:phone_threads(is_group, name)`)
+      .select(`id, created_at, mode, body, deleted_at, original:phone_deleted_bodies(body), sender:phone_numbers${chi ? "!inner" : ""}(display_name, digits, character:characters${chi ? "!inner" : ""}(name)), thread:phone_threads(is_group, name)`)
       .order("created_at", { ascending: false })
       .limit(LIMIT);
     if (chi) q = q.ilike("sender.character.name", `%${chi}%`);
@@ -113,7 +115,8 @@ async function Content({ searchParams }: { searchParams: PageProps<"/gestione/lo
       to: null,
       where: m.thread?.is_group ? m.thread.name : null,
       kind: MODE[m.mode] ?? m.mode,
-      body: m.body,
+      // messaggio eliminato dal mittente: lo staff vede il testo originale
+      body: m.deleted_at ? `[eliminato] ${m.original?.body ?? m.body}` : m.body,
       badge: m.thread?.is_group ? "gruppo" : undefined,
     }));
   } else {

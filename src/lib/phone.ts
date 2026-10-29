@@ -30,6 +30,22 @@ export type PhoneThread = {
 
 export type PhoneMember = { thread_id: string; number_id: string; last_read_at: string };
 
+/** Riga dell'elenco delle chat (funzione phone_inbox): ultimo messaggio e non letti */
+export type PhoneInbox = {
+  thread_id: string;
+  last_id: number | null;
+  last_sender: string | null;
+  last_mode: PhoneMode | null;
+  last_body: string | null;
+  last_at: string | null;
+  last_deleted: boolean;
+  unread: number;
+  /** Quando l'ho svuotata (null = mai) */
+  cleared_at: string | null;
+  /** Chat a due eliminata dall'altra persona: non si scrive più */
+  closed: boolean;
+};
+
 export type PhoneMode = "testo" | "vocale" | "chiamata" | "videochiamata" | "evento";
 
 export type PhoneMessage = {
@@ -39,6 +55,8 @@ export type PhoneMessage = {
   mode: PhoneMode;
   body: string;
   created_at: string;
+  /** Eliminato dal mittente: al posto del testo "Messaggio eliminato" */
+  deleted_at?: string | null;
 };
 
 export type PhoneCallStatus = "squilla" | "attiva" | "terminata" | "rifiutata" | "persa";

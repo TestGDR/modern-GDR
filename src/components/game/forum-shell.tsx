@@ -14,7 +14,7 @@ export async function ForumShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="@container">
-      <div className="grid gap-4 @3xl:grid-cols-[15rem_minmax(0,1fr)] @3xl:gap-6">
+      <div className="grid gap-4 @3xl:grid-cols-[15rem_minmax(0,1fr)] @3xl:items-start @3xl:gap-6">
         <ForumSidebar
           sections={nav.map((s) => ({
             id: s.id,

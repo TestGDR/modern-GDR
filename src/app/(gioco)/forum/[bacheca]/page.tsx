@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { Lock, Pin, Plus, Star } from "lucide-react";
 import { NewThreadForm } from "@/components/game/forum-forms";
-import { ForumShell } from "@/components/game/forum-shell";
 import { LoadingBlocks } from "@/components/game/loading";
 import { activeCharacter, can, requirePlayer } from "@/lib/auth";
 import { getBoard, getForumUnread, getThreads } from "@/lib/data";
@@ -16,9 +15,7 @@ export const metadata: Metadata = { title: "Forum" };
 export default function BoardPage({ params }: PageProps<"/forum/[bacheca]">) {
   return (
     <Suspense fallback={<LoadingBlocks />}>
-      <ForumShell>
-        <Content params={params} />
-      </ForumShell>
+      <Content params={params} />
     </Suspense>
   );
 }

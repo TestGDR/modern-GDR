@@ -6,7 +6,6 @@ import { ArrowLeft, Lock, Megaphone, Pin, Star } from "lucide-react";
 import { CharacterAvatar } from "@/components/game/character-avatar";
 import { MarkThreadRead } from "@/components/game/forum-client";
 import { ReplyForm } from "@/components/game/forum-forms";
-import { ForumShell } from "@/components/game/forum-shell";
 import { PostBody, ThreadModeration } from "@/components/game/forum-thread";
 import { LoadingBlocks } from "@/components/game/loading";
 import { activeCharacter, can, requirePlayer } from "@/lib/auth";
@@ -19,9 +18,7 @@ export const metadata: Metadata = { title: "Forum" };
 export default function ThreadPage({ params }: PageProps<"/forum/[bacheca]/[discussione]">) {
   return (
     <Suspense fallback={<LoadingBlocks />}>
-      <ForumShell>
-        <Content params={params} />
-      </ForumShell>
+      <Content params={params} />
     </Suspense>
   );
 }

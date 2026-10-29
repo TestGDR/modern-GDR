@@ -42,7 +42,7 @@ export function ForumSidebar({
 
   const btn = "flex h-10 w-full items-center justify-center gap-2 rounded-xl border text-xs font-semibold tracking-[0.18em] uppercase transition-colors";
   return (
-    <nav aria-label="Sezioni del forum" className="flex flex-col gap-2">
+    <nav aria-label="Sezioni del forum" className="flex flex-col gap-2 @3xl:sticky @3xl:top-0">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

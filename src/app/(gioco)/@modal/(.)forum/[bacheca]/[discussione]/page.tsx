@@ -1,11 +1,6 @@
 import Page from "@/app/(gioco)/forum/[bacheca]/[discussione]/page";
-import { PageModal } from "@/components/game/page-modal";
 
-// Cliccando dentro il gioco, /forum/[bacheca]/[discussione] si apre in una finestra sopra la pagina
+// Cliccando dentro il gioco, /forum/[bacheca]/[discussione] si apre in una finestra (vedi ../../layout.tsx)
 export default function Modal(props: PageProps<"/forum/[bacheca]/[discussione]">) {
-  return (
-    <PageModal label="Forum" width={1100} height={720}>
-      <Page {...props} />
-    </PageModal>
-  );
+  return <Page {...props} />;
 }

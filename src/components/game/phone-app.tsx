@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Ban,
@@ -9,9 +9,12 @@ import {
   Check,
   CheckCheck,
   Copy,
+  Eraser,
+  FileDown,
   LogOut,
   MessageCircle,
   Mic,
+  MoreVertical,
   Phone,
   PhoneCall,
   PhoneOff,
@@ -32,6 +35,7 @@ import {
   type PhoneBlock,
   type PhoneCall as Call,
   type PhoneContact,
+  type PhoneInbox,
   type PhoneMember,
   type PhoneMessage,
   type PhoneNumber,
@@ -55,6 +59,10 @@ type Props = {
   initialNumber: string | null;
   initialThread: string | null;
 };
+
+// Messaggi caricati per volta in una conversazione
+const PAGE = 50;
+const MSG_COLS = "id, thread_id, sender_number_id, mode, body, created_at, deleted_at";
 
 const inputCls =
   "h-10 w-full rounded-lg border border-input bg-night/40 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
@@ -127,7 +135,15 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
   const [openThread, setOpenThread] = useState<string | null>(initialThread);
   const [threads, setThreads] = useState<PhoneThread[]>([]);
   const [members, setMembers] = useState<PhoneMember[]>([]);
-  const [messages, setMessages] = useState<PhoneMessage[]>([]);
+  // elenco delle chat: ultimo messaggio e non letti (senza scaricare tutti i messaggi)
+  const [inbox, setInbox] = useState<Record<string, PhoneInbox>>({});
+  // conversazione aperta: gli ultimi 50 messaggi, gli altri a richiesta
+  const [threadMessages, setThreadMessages] = useState<PhoneMessage[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const openThreadRef = useRef(openThread);
+  useEffect(() => {
+    openThreadRef.current = openThread;
+  }, [openThread]);
   const [profiles, setProfiles] = useState<Record<string, PhoneProfile>>({});
   const [contacts, setContacts] = useState<PhoneContact[]>([]);
   const [blocks, setBlocks] = useState<PhoneBlock[]>([]);
@@ -144,16 +160,62 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
     setCurrent((c) => (c && list.some((n) => n.id === c) ? c : (list[0]?.id ?? null)));
   }, [supabase]);
 
+  const loadInbox = useCallback(async () => {
+    if (!current) return;
+    const { data } = await supabase.rpc("phone_inbox", { p_from: current });
+    setInbox(Object.fromEntries(((data ?? []) as PhoneInbox[]).map((r) => [r.thread_id, r])));
+  }, [supabase, current]);
+
+  const loadThread = useCallback(
+    async (threadId: string) => {
+      const { data } = await supabase
+        .from("phone_messages")
+        .select(MSG_COLS)
+        .eq("thread_id", threadId)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(PAGE + 1);
+      if (openThreadRef.current !== threadId) return;
+      const rows = (data ?? []) as PhoneMessage[];
+      setHasMore(rows.length > PAGE);
+      setThreadMessages(rows.slice(0, PAGE).reverse());
+    },
+    [supabase],
+  );
+
+  /** Carica i 50 messaggi precedenti al più vecchio già caricato */
+  const loadOlder = useCallback(
+    async (threadId: string, before: string) => {
+      const { data } = await supabase
+        .from("phone_messages")
+        .select(MSG_COLS)
+        .eq("thread_id", threadId)
+        .lt("created_at", before)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(PAGE + 1);
+      if (openThreadRef.current !== threadId) return;
+      const rows = (data ?? []) as PhoneMessage[];
+      setHasMore(rows.length > PAGE);
+      setThreadMessages((prev) => [...rows.slice(0, PAGE).reverse(), ...prev.filter((m) => m.thread_id === threadId)]);
+    },
+    [supabase],
+  );
+
+  useEffect(() => {
+    if (!openThread) return;
+    const t = setTimeout(() => loadThread(openThread), 0);
+    return () => clearTimeout(t);
+  }, [openThread, loadThread]);
+
   const loadAll = useCallback(async () => {
     if (!current) return;
     const { data: mine } = await supabase.from("phone_members").select("thread_id").eq("number_id", current);
     const ids = ((mine ?? []) as { thread_id: string }[]).map((m) => m.thread_id);
-    const [t, m, msg, dir, c, b, k] = await Promise.all([
+    const [t, m, , dir, c, b, k] = await Promise.all([
       ids.length ? supabase.from("phone_threads").select("*").in("id", ids) : Promise.resolve({ data: [] }),
       ids.length ? supabase.from("phone_members").select("thread_id, number_id, last_read_at").in("thread_id", ids) : Promise.resolve({ data: [] }),
-      ids.length
-        ? supabase.from("phone_messages").select("id, thread_id, sender_number_id, mode, body, created_at").in("thread_id", ids).order("created_at", { ascending: false }).limit(1500)
-        : Promise.resolve({ data: [] }),
+      loadInbox(),
       supabase.rpc("phone_directory"),
       supabase.from("phone_contacts").select("id, number_id, digits, name").eq("number_id", current).order("name"),
       supabase.from("phone_blocks").select("number_id, digits").eq("number_id", current),
@@ -161,12 +223,11 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
     ]);
     setThreads((t.data ?? []) as PhoneThread[]);
     setMembers((m.data ?? []) as PhoneMember[]);
-    setMessages(((msg.data ?? []) as PhoneMessage[]).reverse());
     setProfiles(Object.fromEntries(((dir.data ?? []) as PhoneProfile[]).map((p) => [p.number_id, p])));
     setContacts((c.data ?? []) as PhoneContact[]);
     setBlocks((b.data ?? []) as PhoneBlock[]);
     setCalls((k.data ?? []) as Call[]);
-  }, [supabase, current]);
+  }, [supabase, current, loadInbox]);
 
   useEffect(() => {
     const t = setTimeout(loadNumbers, 0);
@@ -181,6 +242,7 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
   useResync(() => {
     loadNumbers();
     loadAll();
+    if (openThreadRef.current) loadThread(openThreadRef.current);
   });
 
   // Tempo reale: messaggi, partecipanti, conversazioni e chiamate
@@ -195,8 +257,15 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
       .channel(`telefono:${current}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "phone_messages" }, (p) => {
         const m = p.new as PhoneMessage;
-        if (threadIdsRef.current.has(m.thread_id)) setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
+        if (m.thread_id === openThreadRef.current) setThreadMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
+        if (threadIdsRef.current.has(m.thread_id)) loadInbox();
         else loadAll(); // conversazione nuova
+      })
+      // messaggio eliminato: al suo posto "Messaggio eliminato"
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "phone_messages" }, (p) => {
+        const m = p.new as PhoneMessage;
+        setThreadMessages((prev) => prev.map((x) => (x.id === m.id ? { ...x, ...m } : x)));
+        loadInbox();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "phone_members" }, () => loadAll())
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "phone_threads" }, () => loadAll())
@@ -211,12 +280,13 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [supabase, current, loadAll]);
+  }, [supabase, current, loadAll, loadInbox]);
 
   // Conversazione aperta e letta: il contatore della lista si azzera subito
   const markLocalRead = useCallback(() => {
     const now = new Date().toISOString();
     setMembers((prev) => prev.map((m) => (m.thread_id === openThread && m.number_id === current ? { ...m, last_read_at: now } : m)));
+    setInbox((prev) => (openThread && prev[openThread] ? { ...prev, [openThread]: { ...prev[openThread], unread: 0 } } : prev));
   }, [openThread, current]);
 
   // ----- nomi -----
@@ -294,11 +364,7 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
   }
 
   const thread = openThread ? threads.find((t) => t.id === openThread) : null;
-  const unreadOf = (threadId: string) => {
-    const mine = members.find((m) => m.thread_id === threadId && m.number_id === current);
-    if (!mine) return 0;
-    return messages.filter((m) => m.thread_id === threadId && m.sender_number_id !== current && m.created_at > mine.last_read_at).length;
-  };
+  const unreadOf = (threadId: string) => inbox[threadId]?.unread ?? 0;
 
   return (
     <div className="glass mx-auto flex h-[min(42rem,calc(100dvh-12rem))] w-full max-w-3xl flex-col overflow-hidden rounded-3xl">
@@ -347,7 +413,19 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
             me={me}
             view={threadView(thread)}
             members={members.filter((m) => m.thread_id === thread.id)}
-            messages={messages.filter((m) => m.thread_id === thread.id)}
+            messages={threadMessages.filter((m) => m.thread_id === thread.id)}
+            hasMore={hasMore}
+            inbox={inbox[thread.id] ?? null}
+            onLoadOlder={(before) => loadOlder(thread.id, before)}
+            onCleared={() => {
+              setThreadMessages([]);
+              setHasMore(false);
+              loadAll();
+            }}
+            onDeleted={() => {
+              setOpenThread(null);
+              loadAll();
+            }}
             call={calls.find((c) => c.thread_id === thread.id) ?? null}
             busy={calls.some((c) => c.caller_number_id === current || c.callee_number_id === current)}
             nameOf={nameOf}
@@ -361,7 +439,7 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
         ) : screen === "chats" ? (
           <ChatList
             threads={[...threads].sort((a, b) => b.last_message_at.localeCompare(a.last_message_at))}
-            messages={messages}
+            inbox={inbox}
             view={threadView}
             unreadOf={unreadOf}
             nameOf={nameOf}
@@ -427,7 +505,7 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
 
 function ChatList({
   threads,
-  messages,
+  inbox,
   view,
   unreadOf,
   nameOf,
@@ -438,7 +516,7 @@ function ChatList({
   onNewGroup,
 }: {
   threads: PhoneThread[];
-  messages: PhoneMessage[];
+  inbox: Record<string, PhoneInbox>;
   view: (t: PhoneThread) => { name: string; avatar: string | null; sub: string };
   unreadOf: (id: string) => number;
   nameOf: (id: string | null) => string;
@@ -549,7 +627,8 @@ function ChatList({
       <ul className="min-h-0 flex-1 overflow-y-auto">
         {threads.map((t) => {
           const v = view(t);
-          const last = [...messages].reverse().find((m) => m.thread_id === t.id);
+          const row = inbox[t.id];
+          const last = row?.last_id && row.last_at ? { mode: row.last_mode ?? "testo", sender_number_id: row.last_sender, body: row.last_body ?? "", created_at: row.last_at, deleted: row.last_deleted } : null;
           const unread = unreadOf(t.id);
           return (
             <li key={t.id}>
@@ -564,8 +643,10 @@ function ChatList({
                   <span className="flex items-center gap-2">
                     <span className="truncate text-xs text-muted-foreground">
                       {last
-                        ? `${last.mode === "evento" ? "" : last.sender_number_id === current ? "Tu: " : t.is_group ? `${nameOf(last.sender_number_id)}: ` : ""}${MODE_LABEL[last.mode] && last.mode === "vocale" ? "🎤 " : ""}${previewText(last.body)}`
-                        : v.sub}
+                        ? `${last.mode === "evento" ? "" : last.sender_number_id === current ? "Tu: " : t.is_group ? `${nameOf(last.sender_number_id)}: ` : ""}${last.deleted ? "🚫 Messaggio eliminato" : `${last.mode === "vocale" ? "🎤 " : ""}${previewText(last.body)}`}`
+                        : row?.cleared_at
+                          ? "La chat è stata svuotata"
+                          : v.sub}
                     </span>
                     {unread > 0 && <span className="ml-auto grid min-w-5 shrink-0 place-items-center rounded-full bg-flamingo px-1 text-[0.65rem] font-bold text-white">{unread}</span>}
                   </span>
@@ -592,6 +673,11 @@ function ThreadView({
   view,
   members,
   messages,
+  hasMore,
+  inbox,
+  onLoadOlder,
+  onCleared,
+  onDeleted,
   call,
   busy,
   nameOf,
@@ -608,6 +694,12 @@ function ThreadView({
   view: { name: string; avatar: string | null; sub: string; other: string | null };
   members: PhoneMember[];
   messages: PhoneMessage[];
+  /** Ci sono messaggi più vecchi da caricare */
+  hasMore: boolean;
+  inbox: PhoneInbox | null;
+  onLoadOlder: (before: string) => Promise<void>;
+  onCleared: () => void;
+  onDeleted: () => void;
   call: Call | null;
   busy: boolean;
   nameOf: (id: string | null) => string;
@@ -622,10 +714,55 @@ function ThreadView({
   const [text, setText] = useState("");
   const [mode, setMode] = useState<"testo" | "vocale">("testo");
   const [sending, setSending] = useState(false);
-  const [panel, setPanel] = useState<"none" | "members">("none");
+  const [panel, setPanel] = useState<"none" | "members" | "menu">("none");
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const lastId = messages[messages.length - 1]?.id;
+  const firstId = messages[0]?.id;
   // sempre puntata sull'ultimo messaggio arrivato
   const { ref: scrollRef, onScroll: onThreadScroll, onLoadCapture: onImageLoad } = useStickToBottom<HTMLDivElement>(`${thread.id}:${lastId ?? ""}`);
+  // caricando i messaggi precedenti la vista resta dov'era (non salta in cima)
+  const heightBefore = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el && heightBefore.current !== null) {
+      el.scrollTop += el.scrollHeight - heightBefore.current;
+      heightBefore.current = null;
+    }
+  }, [firstId, scrollRef]);
+
+  async function older() {
+    const first = messages[0];
+    if (!first || loadingOlder) return;
+    heightBefore.current = scrollRef.current?.scrollHeight ?? null;
+    setLoadingOlder(true);
+    await onLoadOlder(first.created_at);
+    setLoadingOlder(false);
+  }
+
+  async function exportPdf() {
+    setExporting(true);
+    try {
+      // tutti i messaggi visibili, a blocchi
+      const all: PhoneMessage[] = [];
+      for (let page = 0; page < 20; page++) {
+        const { data } = await supabase
+          .from("phone_messages")
+          .select(MSG_COLS)
+          .eq("thread_id", thread.id)
+          .order("created_at")
+          .order("id")
+          .range(page * 1000, page * 1000 + 999);
+        const rows = (data ?? []) as PhoneMessage[];
+        all.push(...rows);
+        if (rows.length < 1000) break;
+      }
+      await savePdf(all, { title: view.name, me, isGroup: thread.is_group, nameOf });
+    } finally {
+      setExporting(false);
+      setPanel("none");
+    }
+  }
 
   // Letto a ogni messaggio nuovo
   useEffect(() => {
@@ -686,7 +823,57 @@ function ThreadView({
             <Users className="size-5" />
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => setPanel(panel === "menu" ? "none" : "menu")}
+          aria-expanded={panel === "menu"}
+          className="grid size-9 place-items-center rounded-full hover:bg-white/10"
+          aria-label="Altre azioni"
+          title="Salva, svuota o elimina la chat"
+        >
+          <MoreVertical className="size-5" />
+        </button>
       </div>
+
+      {panel === "menu" && (
+        <div className="flex flex-wrap gap-2 border-b border-white/10 bg-night/40 px-3 py-2">
+          <Button type="button" size="sm" variant="outline" className="rounded-full" disabled={exporting} onClick={exportPdf}>
+            <FileDown /> {exporting ? "Preparazione…" : "Salva in PDF"}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="rounded-full"
+            onClick={async () => {
+              if (!window.confirm("Svuotare la chat? I messaggi spariscono solo per te; gli altri continuano a vederli.")) return;
+              if (await rpc("phone_clear_chat", { p_thread: thread.id, p_from: me.id })) {
+                setPanel("none");
+                onCleared();
+              }
+            }}
+          >
+            <Eraser /> Svuota chat
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="rounded-full border-destructive/40 text-destructive"
+            onClick={async () => {
+              if (
+                !window.confirm(
+                  `Eliminare la chat «${view.name}»? Ne esci e non potrai più rientrarci${thread.is_group ? " (nessuno potrà aggiungerti di nuovo al gruppo)" : ""}.`,
+                )
+              )
+                return;
+              if (await rpc("phone_delete_chat", { p_thread: thread.id, p_from: me.id })) onDeleted();
+            }}
+          >
+            <Trash2 /> Elimina chat
+          </Button>
+        </div>
+      )}
 
       {call && <CallBanner call={call} me={me.id} name={view.name} rpc={rpc} />}
 
@@ -696,6 +883,18 @@ function ThreadView({
 
       <div ref={scrollRef} onScroll={onThreadScroll} onLoadCapture={onImageLoad} className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         <ul className="flex flex-col gap-1.5">
+          {hasMore && (
+            <li className="mb-1 text-center">
+              <button type="button" onClick={older} disabled={loadingOlder} className="rounded-full bg-white/10 px-3 py-1 text-xs hover:bg-white/15 disabled:opacity-50">
+                {loadingOlder ? "Caricamento…" : "Carica messaggi precedenti"}
+              </button>
+            </li>
+          )}
+          {!hasMore && inbox?.cleared_at && (
+            <li className="mx-auto mb-1 flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs text-muted-foreground">
+              <Eraser className="size-3.5" /> La chat è stata svuotata
+            </li>
+          )}
           {messages.map((m, i) => {
             const prev = messages[i - 1];
             const day = new Date(m.created_at).toDateString();
@@ -714,7 +913,7 @@ function ThreadView({
                     {m.body} · {formatTime(m.created_at)}
                   </li>
                 ) : (
-                  <li className={cn("flex max-w-[85%] flex-col", mine ? "items-end self-end" : "items-start self-start")}>
+                  <li className={cn("group flex max-w-[85%] flex-col", mine ? "items-end self-end" : "items-start self-start")}>
                     <div
                       className={cn(
                         "rounded-2xl px-3 py-2 text-sm",
@@ -723,13 +922,32 @@ function ThreadView({
                       )}
                     >
                       {thread.is_group && !mine && <p className="mb-0.5 text-xs font-semibold text-peach">{nameOf(m.sender_number_id)}</p>}
-                      {MODE_LABEL[m.mode] && (
-                        <p className="mb-0.5 flex items-center gap-1 text-[0.7rem] font-medium text-mint">
-                          {MODE_LABEL[m.mode]!.icon} {MODE_LABEL[m.mode]!.label}
+                      {m.deleted_at ? (
+                        <p className="flex items-center gap-1.5 text-muted-foreground italic">
+                          <Ban className="size-3.5" /> Messaggio eliminato
                         </p>
+                      ) : (
+                        <>
+                          {MODE_LABEL[m.mode] && (
+                            <p className="mb-0.5 flex items-center gap-1 text-[0.7rem] font-medium text-mint">
+                              {MODE_LABEL[m.mode]!.icon} {MODE_LABEL[m.mode]!.label}
+                            </p>
+                          )}
+                          <MessageBody body={m.body} mode={m.mode} />
+                        </>
                       )}
-                      <MessageBody body={m.body} mode={m.mode} />
                       <p className="mt-0.5 flex items-center justify-end gap-1 text-[0.65rem] text-muted-foreground">
+                        {mine && !m.deleted_at && (
+                          <button
+                            type="button"
+                            onClick={() => window.confirm("Eliminare questo messaggio? Al suo posto comparirà «Messaggio eliminato».") && rpc("phone_delete_message", { p_message: m.id, p_from: me.id })}
+                            className="mr-1 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100 hover:text-destructive"
+                            aria-label="Elimina il messaggio"
+                            title="Elimina il messaggio"
+                          >
+                            <Trash2 className="size-3" />
+                          </button>
+                        )}
                         {formatTime(m.created_at)}
                         {mine && !thread.is_group && (otherRead && otherRead >= m.created_at ? <CheckCheck className="size-3.5 text-mint" /> : <Check className="size-3.5" />)}
                       </p>
@@ -739,10 +957,15 @@ function ThreadView({
               </Fragment>
             );
           })}
-          {messages.length === 0 && <li className="py-6 text-center text-sm text-muted-foreground">Scrivi il primo messaggio.</li>}
+          {messages.length === 0 && !inbox?.cleared_at && <li className="py-6 text-center text-sm text-muted-foreground">Scrivi il primo messaggio.</li>}
         </ul>
       </div>
 
+      {inbox?.closed ? (
+        <p className="border-t border-white/10 p-3 text-center text-sm text-muted-foreground">
+          {view.name} ha eliminato questa chat: non si può più scrivere qui. Per riprendere a parlare apri una nuova chat con il suo numero.
+        </p>
+      ) : (
       <form
         className="flex flex-col gap-1.5 border-t border-white/10 p-2"
         onSubmit={(e) => {
@@ -793,8 +1016,57 @@ function ThreadView({
           </Button>
         </div>
       </form>
+      )}
     </div>
   );
+}
+
+/** Salva la conversazione in PDF (testo, con data e ora di ogni messaggio) */
+async function savePdf(
+  messages: PhoneMessage[],
+  opts: { title: string; me: PhoneNumber; isGroup: boolean; nameOf: (id: string | null) => string },
+) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const margin = 40;
+  const width = doc.internal.pageSize.getWidth() - margin * 2;
+  const bottom = doc.internal.pageSize.getHeight() - margin;
+  let y = margin;
+  // i caratteri del PDF non hanno le emoji: si tolgono
+  const clean = (t: string) => t.replace(/[^\u0000-\u00FF\u2013-\u201E\u2026\u20AC]/g, "").trim();
+  const when = (iso: string) =>
+    new Date(iso).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
+
+  function line(text: string, size: number, style: "normal" | "bold" | "italic", color: [number, number, number], gap = 4) {
+    doc.setFont("helvetica", style);
+    doc.setFontSize(size);
+    doc.setTextColor(...color);
+    for (const part of doc.splitTextToSize(text, width) as string[]) {
+      if (y + size > bottom) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.text(part, margin, y + size);
+      y += size + 2;
+    }
+    y += gap;
+  }
+
+  line(clean(opts.title) || "Chat", 16, "bold", [60, 40, 120], 2);
+  line(`Telefono di ${clean(opts.me.display_name)} · ${formatPhone(opts.me.digits)} · salvata il ${when(new Date().toISOString())}`, 9, "normal", [120, 120, 120], 12);
+  for (const m of messages) {
+    if (m.mode === "evento") {
+      line(`- ${clean(m.body)} (${when(m.created_at)})`, 9, "italic", [120, 120, 120]);
+      continue;
+    }
+    const who = m.sender_number_id === opts.me.id ? "Tu" : clean(opts.nameOf(m.sender_number_id)) || "Sconosciuto";
+    const tag = m.mode === "vocale" ? " · vocale" : m.mode === "chiamata" ? " · in chiamata" : m.mode === "videochiamata" ? " · in videochiamata" : "";
+    line(`${who} · ${when(m.created_at)}${tag}`, 9, "bold", [150, 70, 110], 0);
+    line(m.deleted_at ? "Messaggio eliminato" : clean(m.body) || "(foto o emoji)", 11, m.deleted_at ? "italic" : "normal", [30, 30, 30], 8);
+  }
+  if (messages.length === 0) line("Nessun messaggio.", 11, "italic", [120, 120, 120]);
+  const safe = (clean(opts.title) || "chat").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").slice(0, 40) || "chat";
+  doc.save(`chat-${safe}.pdf`);
 }
 
 /** Chiamata in corso o che squilla, in cima alla conversazione */
