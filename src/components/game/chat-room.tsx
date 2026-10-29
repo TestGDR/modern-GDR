@@ -9,6 +9,7 @@ import {
   DicePanel,
   EditBox,
   MasterPanel,
+  LookWindow,
   MessageRow,
   RoomAccessBar,
   type DiceAttribute,
@@ -60,6 +61,9 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
   const [present, setPresent] = useState<ChatPresent[]>(data.present);
   const [hidden, setHidden] = useState(data.hiddenCount);
   const [messages, setMessages] = useState<Message[]>(data.messages);
+  // ritratti dei personaggi che scrivono (per le azioni) e look aperto
+  const [avatars, setAvatars] = useState<Record<string, string | null>>({});
+  const [look, setLook] = useState<{ name: string; avatar: string | null; appearance: string | null } | null>(null);
   // Dopo router.refresh() arrivano dal server i dati nuovi
   const [lastData, setLastData] = useState(data);
   if (data !== lastData) {
@@ -299,6 +303,30 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
     setMessages((prev) => prev.filter((x) => x.id !== m.id));
   }
 
+  // Ritratti: si leggono una volta per ogni personaggio che compare
+  const missing = useMemo(() => [...new Set(messages.filter((m) => m.kind === "azione").map((m) => m.character_id))].filter((id) => !(id in avatars)), [messages, avatars]);
+  useEffect(() => {
+    if (!missing.length) return;
+    let alive = true;
+    supabase
+      .from("characters")
+      .select("id, avatar_url")
+      .in("id", missing)
+      .then(({ data: rows }) => {
+        if (!alive) return;
+        const found = Object.fromEntries(((rows ?? []) as { id: string; avatar_url: string | null }[]).map((r) => [r.id, r.avatar_url]));
+        setAvatars((prev) => ({ ...prev, ...Object.fromEntries(missing.map((id) => [id, found[id] ?? null])) }));
+      });
+    return () => {
+      alive = false;
+    };
+  }, [supabase, missing]);
+
+  async function openLook(m: Message) {
+    const { data: c } = await supabase.from("characters").select("name, avatar_url, appearance").eq("id", m.character_id).maybeSingle<{ name: string; avatar_url: string | null; appearance: string | null }>();
+    setLook({ name: c?.name ?? m.character_name, avatar: c?.avatar_url ?? null, appearance: c?.appearance ?? null });
+  }
+
   // alla mappa senza riaprire il riquadro del quartiere
   const back = "/mappa";
   const blurred = !joined && !invisible;
@@ -307,16 +335,14 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
     <div className="fixed inset-x-0 bottom-0 top-[calc(5rem+env(safe-area-inset-top))] z-10 p-[10px] lg:top-24 lg:left-72">
     <div className="glass flex h-full min-h-0 flex-col overflow-hidden rounded-2xl">
       {/* Intestazione */}
-      <header className={cn("relative shrink-0 overflow-hidden bg-gradient-to-r px-4 py-3 sm:px-6", room.district.gradient)}>
+      <header className={cn("relative shrink-0 overflow-hidden bg-gradient-to-r px-3 py-1.5 sm:px-5", room.district.gradient)}>
         <div className="absolute inset-0 bg-night/35" />
         <div className="relative flex items-center gap-3">
           <Link href={back} className="rounded-full p-1.5 text-white/90 hover:bg-white/15" aria-label="Torna alla mappa">
             <ArrowLeft className="size-5" />
           </Link>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs tracking-widest text-white/80 uppercase">{room.district.name}</p>
-            <h1 className="truncate font-heading text-3xl leading-none tracking-wide text-white">{room.name}</h1>
-          </div>
+          {/* solo il nome della chat */}
+          <h1 className="min-w-0 flex-1 truncate font-heading text-xl leading-none tracking-wide text-white">{room.name}</h1>
           {canInvisible && (
             <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={toggleInvisible} className="rounded-full text-white hover:bg-white/15" title="Staff: leggi e scrivi senza comparire tra i presenti">
               {invisible ? <EyeOff /> : <Eye />}
@@ -324,8 +350,9 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
             </Button>
           )}
         </div>
-        {room.description && <p className="relative mt-1 hidden text-sm text-white/85 sm:block">{room.description}</p>}
       </header>
+
+      <LookWindow person={look} onClose={() => setLook(null)} />
 
       {room.access === "su_invito" && (
         <RoomAccessBar roomId={roomId} ownerName={ownerName} guests={data.guests} canManage={isOwner || canModerate} onChanged={() => router.refresh()} />
@@ -395,6 +422,8 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
                   now={now}
                   onEdit={setEditing}
                   onDelete={remove}
+                  avatar={avatars[m.character_id] ?? null}
+                  onLook={openLook}
                 />
               ),
             )

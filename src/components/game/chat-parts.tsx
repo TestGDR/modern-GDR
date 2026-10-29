@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Dices, Lock, Pencil, Trash2, UserPlus, X } from "lucide-react";
+import { Check, Dices, Lock, Pencil, Shirt, Trash2, UserPlus, X } from "lucide-react";
+import { FloatingWindow } from "@/components/floating-window";
 import { Button } from "@/components/ui/button";
 import { expelFromRoom, inviteToRoom, rollDice, setMasterMode } from "@/lib/actions/chat";
 import { EDIT_WINDOW_MS } from "@/lib/chat";
-import { formatTime } from "@/lib/format";
+import { formatTime, initials } from "@/lib/format";
 import type { Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -65,9 +66,13 @@ type RowProps = {
   now: number;
   onEdit: (m: Message) => void;
   onDelete: (m: Message) => void;
+  /** Ritratto del personaggio (azioni) */
+  avatar?: string | null;
+  /** Apre il "look" del personaggio (sezione Aspetto della scheda) */
+  onLook?: (m: Message) => void;
 };
 
-export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit, onDelete }: RowProps) {
+export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit, onDelete, avatar, onLook }: RowProps) {
   const time = formatTime(m.created_at);
   const names = mine ? [] : myNames;
   const editable =
@@ -162,21 +167,44 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
     );
   }
 
-  // azione
+  // azione: ritratto tondo e, accanto, il pallino della maglia (il look)
   return (
-    <article className={cn("group rounded-2xl px-4 py-3", mine ? "bg-flamingo/10" : "bg-white/5")}>
-      <header className="mb-1 flex items-baseline gap-2">
-        <span className={cn("font-heading text-lg tracking-wide", mine ? "text-flamingo" : "text-peach")}>
-          {m.character_name}
-          {to}
-        </span>
-        <span className="ml-auto text-xs text-muted-foreground">{time}</span>
-        {tools}
-      </header>
-      <p className="text-[0.95rem] leading-relaxed whitespace-pre-line" style={{ color: "var(--chat-action, #e4dfdb)" }}>
-        <FormattedText text={m.content} names={names} />
-        {edited}
-      </p>
+    <article className={cn("group flex gap-3 rounded-2xl px-3 py-3 sm:px-4", mine ? "bg-flamingo/10" : "bg-white/5")}>
+      <div className="relative shrink-0 self-start">
+        {avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={avatar} alt="" className="size-[70px] rounded-full object-cover ring-2 ring-white/15" />
+        ) : (
+          <span className="grid size-[70px] place-items-center rounded-full bg-gradient-to-br from-violet via-orchid to-peach font-heading text-2xl text-white ring-2 ring-white/15">
+            {initials(m.character_name || "?")}
+          </span>
+        )}
+        {onLook && (
+          <button
+            type="button"
+            onClick={() => onLook(m)}
+            className="absolute -right-1 -bottom-1 grid size-7 place-items-center rounded-full border border-white/20 bg-night/90 text-peach shadow transition-colors hover:bg-flamingo hover:text-white"
+            aria-label={`Il look di ${m.character_name}`}
+            title={`Il look di ${m.character_name}`}
+          >
+            <Shirt className="size-3.5" />
+          </button>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <header className="mb-1 flex items-baseline gap-2">
+          <span className={cn("font-heading text-lg tracking-wide", mine ? "text-flamingo" : "text-peach")}>
+            {m.character_name}
+            {to}
+          </span>
+          <span className="ml-auto text-xs text-muted-foreground">{time}</span>
+          {tools}
+        </header>
+        <p className="text-[0.95rem] leading-relaxed whitespace-pre-line" style={{ color: "var(--chat-action, #e4dfdb)" }}>
+          <FormattedText text={m.content} names={names} />
+          {edited}
+        </p>
+      </div>
     </article>
   );
 }
@@ -443,5 +471,41 @@ export function RoomAccessBar({
       )}
       {error && <p className="text-destructive">{error}</p>}
     </div>
+  );
+}
+
+/* ------------------------------ Look del personaggio ------------------------------ */
+
+/** Finestra con il "look": la sezione Aspetto della scheda */
+export function LookWindow({ person, onClose }: { person: { name: string; avatar: string | null; appearance: string | null } | null; onClose: () => void }) {
+  if (!person) return null;
+  return (
+    <FloatingWindow
+      label={`Il look di ${person.name}`}
+      onClose={onClose}
+      initialWidth={460}
+      header={
+        <div className="flex items-center gap-3 pb-4">
+          {person.avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={person.avatar} alt="" className="size-14 rounded-full object-cover ring-2 ring-peach/40" />
+          ) : (
+            <span className="grid size-14 place-items-center rounded-full bg-gradient-to-br from-violet via-orchid to-peach font-heading text-xl text-white">{initials(person.name)}</span>
+          )}
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-xs tracking-widest text-peach uppercase">
+              <Shirt className="size-3.5" /> Look
+            </p>
+            <h2 className="truncate font-heading text-2xl tracking-wide">{person.name}</h2>
+          </div>
+        </div>
+      }
+    >
+      {person.appearance?.trim() ? (
+        <p className="text-sm leading-relaxed whitespace-pre-line text-foreground/90">{person.appearance}</p>
+      ) : (
+        <p className="text-sm text-muted-foreground">Questo personaggio non ha ancora descritto il suo aspetto.</p>
+      )}
+    </FloatingWindow>
   );
 }
