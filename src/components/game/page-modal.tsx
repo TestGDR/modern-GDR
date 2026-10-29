@@ -29,10 +29,25 @@ function savedOrigin() {
   }
 }
 
+// Evento della X: la finestra sparisce subito, anche prima che la pagina cambi
+const CLOSE_EVENT = "gdr:chiudi-finestra";
+
 /** Ricorda la pagina sotto le finestre e mostra lo slot solo sugli indirizzi delle finestre */
 export function ModalGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const modal = isModalPath(pathname);
+  // Finestra chiusa con la X su questo indirizzo: resta nascosta finché l'indirizzo non cambia
+  const [hiddenAt, setHiddenAt] = useState<string | null>(null);
+  const [lastPath, setLastPath] = useState(pathname);
+  if (pathname !== lastPath) {
+    setLastPath(pathname);
+    setHiddenAt(null);
+  }
+  useEffect(() => {
+    const onClose = () => setHiddenAt(window.location.pathname);
+    window.addEventListener(CLOSE_EVENT, onClose);
+    return () => window.removeEventListener(CLOSE_EVENT, onClose);
+  }, []);
   useEffect(() => {
     if (modal) return;
     origin = pathname + window.location.search;
@@ -42,11 +57,12 @@ export function ModalGate({ children }: { children: React.ReactNode }) {
       // archivio del browser non disponibile: si torna alla mappa
     }
   }, [pathname, modal]);
-  return modal ? children : null;
+  return modal && hiddenAt !== pathname ? children : null;
 }
 
 // Finestra da riaprire dopo essere tornati alla pagina di sotto
 let reopen: string | null = null;
+let reopenFinished = false;
 
 /**
  * Pagina caricata direttamente su una finestra (link, F5, ricaricamento):
@@ -60,7 +76,7 @@ export function ModalReopen() {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    if (!startedOnModal || done) return;
+    if (!startedOnModal || done || reopenFinished) return;
     if (isModalPath(pathname)) {
       if (reopen) return; // già in corso
       reopen = pathname + window.location.search;
@@ -68,12 +84,12 @@ export function ModalReopen() {
       router.replace(origin, { scroll: false });
       return;
     }
-    // arrivati alla pagina di sotto: si riapre la finestra
+    // arrivati alla pagina di sotto: si riapre la finestra (una volta sola)
     const target = reopen;
     reopen = null;
-    const t = setTimeout(() => setDone(true), 0);
+    reopenFinished = true;
     if (target) router.push(target, { scroll: false });
-    return () => clearTimeout(t);
+    setTimeout(() => setDone(true), 0);
   }, [pathname, router, startedOnModal, done]);
 
   if (!startedOnModal || done) return null;
@@ -83,7 +99,16 @@ export function ModalReopen() {
 /** Chiude la finestra tornando alla pagina che c'era sotto */
 export function useCloseModal() {
   const router = useRouter();
-  return useCallback(() => router.push(origin, { scroll: false }), [router]);
+  return useCallback(() => {
+    const target = origin;
+    const from = window.location.pathname + window.location.search;
+    window.dispatchEvent(new Event(CLOSE_EVENT));
+    router.push(target, { scroll: false });
+    // Se il sito non è tornato alla pagina di sotto, la si ricarica
+    setTimeout(() => {
+      if (window.location.pathname + window.location.search === from) window.location.assign(target);
+    }, 1500);
+  }, [router]);
 }
 
 /** Finestra trascinabile e ridimensionabile con dentro una pagina del gioco */

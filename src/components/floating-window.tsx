@@ -57,15 +57,33 @@ export function FloatingWindow({
   const drag = useRef<Gesture | null>(null);
   const resize = useRef<Gesture | null>(null);
 
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
+
   // Esc chiude; il focus entra nella finestra all'apertura
   useEffect(() => {
     windowRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") closeRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
+
+  // Un clic fuori chiude; un clic su un'altra finestra aperta invece no
+  // (niente strato invisibile sopra lo schermo: le X delle altre finestre restano cliccabili)
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as Element | null;
+      if (!target || windowRef.current?.contains(target)) return;
+      if (target.closest('[role="dialog"], [role="alertdialog"]')) return;
+      closeRef.current();
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, []);
 
   /** Posizione attuale: quella salvata o, la prima volta, quella misurata sullo schermo */
   function currentRect(): Rect {
@@ -159,10 +177,8 @@ export function FloatingWindow({
     : {};
 
   const content = (
-    <div className="fixed inset-0 z-50">
-      {/* Sfondo: un clic fuori chiude */}
-      {/* Niente sfondo scuro: la pagina sotto resta visibile; cliccando fuori la finestra si chiude */}
-      <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
+    <div className="pointer-events-none fixed inset-0 z-50">
+      {/* Niente sfondo: la pagina sotto resta visibile e cliccabile; un clic fuori chiude la finestra */}
 
       <div
         ref={windowRef}
@@ -172,7 +188,7 @@ export function FloatingWindow({
         tabIndex={-1}
         style={style}
         className={cn(
-          "absolute flex flex-col overflow-hidden rounded-3xl border border-white/20 bg-night/80 shadow-[0_24px_70px_rgb(0_0_0/0.6)] outline-none backdrop-blur-2xl backdrop-saturate-150 animate-in fade-in-0 zoom-in-95 sm:bg-night/65",
+          "pointer-events-auto absolute flex flex-col overflow-hidden rounded-3xl border border-white/20 bg-night/80 shadow-[0_24px_70px_rgb(0_0_0/0.6)] outline-none backdrop-blur-2xl backdrop-saturate-150 animate-in fade-in-0 zoom-in-95 sm:bg-night/65",
           className,
         )}
         {...chromelessDrag}
