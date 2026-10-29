@@ -257,12 +257,22 @@ function SecretRoomForm({ mapId }: { mapId: string }) {
     >
       <div className="flex w-full items-center gap-2">
         <KeyRound className="size-4 shrink-0 text-peach" aria-hidden />
+        {/* campo di testo con i pallini (non "password"): così il browser non propone
+            di salvare o aggiornare la password dell'account */}
         <input
-          type="password"
+          type="text"
+          name="chat-segreta"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           maxLength={64}
           autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          data-1p-ignore
+          data-lpignore="true"
+          data-form-type="other"
+          style={{ WebkitTextSecurity: "disc" } as React.CSSProperties}
           placeholder="Password per una chat privata…"
           aria-label="Password della chat privata"
           className="h-9 min-w-0 flex-1 rounded-full border border-white/15 bg-night/50 px-4 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-peach/60"
