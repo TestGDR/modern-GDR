@@ -17,6 +17,7 @@ import {
   ScanFace,
   Send,
   Settings,
+  ShieldAlert,
   Sparkles,
   UserRoundPlus,
   X,
@@ -24,6 +25,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { FormMessage } from "@/components/auth/auth-forms";
+import { AdminSheetPanel } from "@/components/game/admin-sheet";
 import { useCloseModal } from "@/components/game/page-modal";
 import { PrefsPanel } from "@/components/game/prefs-panel";
 import { Palm } from "@/components/scenery/palm";
@@ -68,7 +70,7 @@ const SECTIONS: Section[] = [
   { key: "equipaggiamento", label: "Equipaggiamento", icon: Backpack, field: "equipment", hint: "Cosa porta con sé: auto, telefono, oggetti." },
 ];
 
-type View = { section: string; mode: "view" | "edit" | "settings" };
+type View = { section: string; mode: "view" | "edit" | "settings" | "admin" };
 
 type CharacterSheetWindowProps = {
   character: SheetCharacter;
@@ -85,6 +87,8 @@ type CharacterSheetWindowProps = {
   rules: RulesData;
   /** Chi può approvare vede i pulsanti Approva/Rifiuta sulle schede in attesa */
   canReview?: boolean;
+  /** Amministratore: sblocca, resetta e modifica tutta la scheda */
+  isAdmin?: boolean;
 };
 
 /** Scheda del personaggio a sezioni, nello stile "finestra" del gioco */
@@ -98,6 +102,7 @@ export function CharacterSheetWindow({
   build,
   rules,
   canReview = false,
+  isAdmin = false,
 }: CharacterSheetWindowProps) {
   const [view, setView] = useState<View>({ section: "principale", mode: "view" });
   const section = SECTIONS.find((s) => s.key === view.section) ?? SECTIONS[0];
@@ -141,6 +146,11 @@ export function CharacterSheetWindow({
 
           {/* Pulsanti in fondo */}
           <div className="hidden justify-center gap-3 border-t border-white/10 p-4 @2xl:flex">
+            {isAdmin && (
+              <IconButton label="Amministrazione della scheda" active={view.mode === "admin"} onClick={() => setView((v) => ({ ...v, mode: v.mode === "admin" ? "view" : "admin" }))}>
+                <ShieldAlert />
+              </IconButton>
+            )}
             {isOwner ? (
               <>
                 <IconButton label="Impostazioni" active={view.mode === "settings"} onClick={() => setView((v) => ({ ...v, mode: "settings" }))}>
@@ -167,6 +177,13 @@ export function CharacterSheetWindow({
         <section className="relative min-h-[24rem] overflow-y-auto">
           {/* Su mobile i pulsanti stanno in alto a destra */}
           <div className="absolute top-3 right-3 z-10 flex gap-2">
+            {isAdmin && view.mode !== "admin" && (
+              <span className="@2xl:hidden">
+                <IconButton label="Amministrazione della scheda" onClick={() => setView((v) => ({ ...v, mode: "admin" }))}>
+                  <ShieldAlert />
+                </IconButton>
+              </span>
+            )}
             {isOwner && canEdit && view.mode !== "edit" && (
               <IconButton label={`Modifica ${section.label}`} onClick={() => setView((v) => ({ ...v, mode: "edit" }))}>
                 <Pencil />
@@ -186,7 +203,9 @@ export function CharacterSheetWindow({
             )}
           </div>
 
-          {view.mode === "settings" ? (
+          {view.mode === "admin" && isAdmin ? (
+            <AdminSheetPanel character={character} build={build} rules={rules} districts={districts} onClose={() => setView((v) => ({ ...v, mode: "view" }))} />
+          ) : view.mode === "settings" ? (
             <SettingsPanel name={character.name} onClose={() => setView((v) => ({ ...v, mode: "view" }))} />
           ) : view.mode === "edit" ? (
             <SectionEditor

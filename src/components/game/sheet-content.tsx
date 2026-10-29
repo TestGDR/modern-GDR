@@ -47,6 +47,7 @@ export async function OwnSheet({ variant }: { variant: SheetVariant }) {
       build={build}
       rules={rules}
       canReview={can(player, "personaggi.approvare")}
+      isAdmin={player.level.is_admin}
     />
   );
 }
@@ -57,7 +58,8 @@ export async function OtherSheet({ id, variant }: { id: string; variant: SheetVa
   if (id === player.character?.id) redirect("/scheda");
   const character = await getCharacter(id);
   if (!character) notFound();
-  const [build, rules, now] = await Promise.all([getCharacterBuild(id), getRulesData(), requestTime()]);
+  const isAdmin = player.level.is_admin;
+  const [build, rules, now, districts] = await Promise.all([getCharacterBuild(id), getRulesData(), requestTime(), isAdmin ? getDistricts() : Promise.resolve([])]);
 
   return (
     <CharacterSheetWindow
@@ -65,10 +67,12 @@ export async function OtherSheet({ id, variant }: { id: string; variant: SheetVa
       isOwner={false}
       online={isOnline(character.last_seen_at, now)}
       since={formatDateTime(character.created_at)}
+      districts={districts}
       variant={variant}
       build={build}
       rules={rules}
       canReview={can(player, "personaggi.approvare")}
+      isAdmin={isAdmin}
     />
   );
 }
