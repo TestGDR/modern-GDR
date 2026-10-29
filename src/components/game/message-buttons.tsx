@@ -111,15 +111,21 @@ export function MessageButtons({ userId }: { userId: string | null }) {
   const incoming = phone.call?.status === "squilla" && phone.call.incoming;
 
   // Suoni: subito quando sale un conteggio, poi ogni 15 secondi finché resta
-  // qualcosa da leggere; il telefono che squilla suona ogni 3 secondi
+  // qualcosa da leggere; il telefono che squilla suona ogni 3 secondi.
+  // Durante una chiamata il telefono suona solo quando arriva una risposta,
+  // senza ripetersi (si può chiudere la finestra e riaprirla al suono).
+  const inCall = phone.call?.status === "attiva";
+  const phoneReminder = inCall ? 0 : phone.unread;
   const previous = useRef({ off: 0, phone: 0 });
   useEffect(() => {
     if (phone.unread > previous.current.phone) playEvent("on");
     else if (off > previous.current.off) playEvent("off");
     previous.current = { off, phone: phone.unread };
-    if (off + phone.unread === 0) return;
-    return everyEvenInBackground(() => playEvent(phone.unread > 0 ? "on" : "off"), 15_000);
   }, [off, phone.unread]);
+  useEffect(() => {
+    if (off + phoneReminder === 0) return;
+    return everyEvenInBackground(() => playEvent(phoneReminder > 0 ? "on" : "off"), 15_000);
+  }, [off, phoneReminder]);
   useEffect(() => {
     if (!incoming) return;
     playEvent("on");
