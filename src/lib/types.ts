@@ -220,6 +220,8 @@ export type Character = {
   px: number;
   /** Prestavolto: unico, una volta registrato lo cambia solo lo staff */
   face_claim: string | null;
+  /** Prestatalento: unico, registrato una volta (poi lo cambia lo staff) */
+  talent_claim: string | null;
   /** Aspetto fisico, scritto dal giocatore in Scheda → Dati */
   height: string | null;
   weight: string | null;
@@ -253,8 +255,14 @@ export type ForumBoard = {
   name: string;
   description: string | null;
   staff_only: boolean;
+  /** Chi la legge: tutti, solo alcuni livelli (ruoli) o solo alcuni gruppi (corporazioni) */
+  access: ForumAccess;
+  level_ids: string[];
+  group_ids: string[];
   sort_order: number;
 };
+
+export type ForumAccess = "pubblica" | "livelli" | "gruppi";
 
 export type ForumSection = {
   id: string;

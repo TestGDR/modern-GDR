@@ -2,6 +2,7 @@
 
 import { refresh } from "next/cache";
 import type { ActionResult } from "@/lib/actions/admin";
+import type { ForumAccess } from "@/lib/types";
 import { requirePlayer } from "@/lib/auth";
 import { isUuid } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
@@ -53,11 +54,33 @@ export async function deleteForumSection(id: string): Promise<ActionResult> {
   return run((supabase) => supabase.from("forum_sections").delete().eq("id", id).then((r) => r));
 }
 
-export async function saveForumBoard(input: { id?: string; sectionId: string; name: string; description: string; staffOnly: boolean }): Promise<ActionResult> {
+export async function saveForumBoard(input: {
+  id?: string;
+  sectionId: string;
+  name: string;
+  description: string;
+  staffOnly: boolean;
+  access: ForumAccess;
+  levelIds: string[];
+  groupIds: string[];
+}): Promise<ActionResult> {
   const name = input.name.trim().slice(0, 80);
-  if (name.length < 2) return { ok: false, error: "Il nome della bacheca deve avere almeno 2 caratteri." };
-  if (!isUuid(input.sectionId)) return { ok: false, error: "Scegli la sezione." };
-  const row = { section_id: input.sectionId, name, description: input.description.trim().slice(0, 300) || null, staff_only: input.staffOnly };
+  if (name.length < 2) return { ok: false, error: "Il nome della sezione deve avere almeno 2 caratteri." };
+  if (!isUuid(input.sectionId)) return { ok: false, error: "Scegli la categoria." };
+  if (!["pubblica", "livelli", "gruppi"].includes(input.access)) return { ok: false, error: "Scegli chi può leggere la sezione." };
+  const levelIds = input.access === "livelli" ? input.levelIds.filter(isUuid) : [];
+  const groupIds = input.access === "gruppi" ? input.groupIds.filter(isUuid) : [];
+  if (input.access === "livelli" && levelIds.length === 0) return { ok: false, error: "Scegli almeno un livello." };
+  if (input.access === "gruppi" && groupIds.length === 0) return { ok: false, error: "Scegli almeno un gruppo." };
+  const row = {
+    section_id: input.sectionId,
+    name,
+    description: input.description.trim().slice(0, 300) || null,
+    staff_only: input.staffOnly,
+    access: input.access,
+    level_ids: levelIds,
+    group_ids: groupIds,
+  };
   return run(async (supabase) => {
     if (input.id) return supabase.from("forum_boards").update(row).eq("id", input.id);
     const base = slugify(name) || "bacheca";

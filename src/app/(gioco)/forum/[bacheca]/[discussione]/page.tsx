@@ -6,12 +6,11 @@ import { ArrowLeft, Lock, Megaphone, Pin, Star } from "lucide-react";
 import { CharacterAvatar } from "@/components/game/character-avatar";
 import { MarkThreadRead } from "@/components/game/forum-client";
 import { ReplyForm } from "@/components/game/forum-forms";
+import { ForumShell } from "@/components/game/forum-shell";
+import { PostBody, ThreadModeration } from "@/components/game/forum-thread";
 import { LoadingBlocks } from "@/components/game/loading";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { highlightPost, toggleThreadFlag } from "@/lib/actions/forum";
 import { activeCharacter, can, requirePlayer } from "@/lib/auth";
-import { getBoard, getPosts, getThread } from "@/lib/data";
+import { getBoard, getForumNav, getPosts, getThread } from "@/lib/data";
 import { formatDateTime, initials } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +19,9 @@ export const metadata: Metadata = { title: "Forum" };
 export default function ThreadPage({ params }: PageProps<"/forum/[bacheca]/[discussione]">) {
   return (
     <Suspense fallback={<LoadingBlocks />}>
-      <Content params={params} />
+      <ForumShell>
+        <Content params={params} />
+      </ForumShell>
     </Suspense>
   );
 }
@@ -31,109 +32,91 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]/[discus
   const character = activeCharacter(player);
   const [thread, board] = await Promise.all([getThread(discussione), getBoard(bacheca)]);
   if (!thread || !board || thread.board_id !== board.id) notFound();
-  const posts = await getPosts(thread.id);
-  const staff = can(player, "forum.moderare");
+  const moderator = can(player, "forum.moderare");
   const canHighlight = can(player, "forum.segnalare");
+  const [posts, nav] = await Promise.all([getPosts(thread.id), moderator ? getForumNav() : Promise.resolve([])]);
+  const first = posts[0] ?? null;
 
   return (
-    <div className="mx-auto w-full max-w-3xl">
+    <>
       <MarkThreadRead threadId={thread.id} lastPost={posts.at(-1)?.created_at ?? null} />
-      <Link href={`/forum/${board.slug}`} className="mb-3 flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link href={`/forum/${board.slug}`} className="mb-2 flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" /> {board.name}
       </Link>
+      <h1 className="mb-4 flex items-center gap-2 font-heading text-4xl tracking-wide text-sunset">
+        {thread.is_pinned && <Pin className="size-6 shrink-0 text-peach" aria-label="Fissata in alto" />}
+        {thread.is_important && <Star className="size-6 shrink-0 fill-peach text-peach" aria-label="Importante" />}
+        {thread.is_locked && <Lock className="size-6 shrink-0 text-muted-foreground" aria-label="Chiusa" />}
+        <span className="min-w-0 break-words">{thread.title}</span>
+      </h1>
 
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <h1 className="flex items-center gap-2 font-heading text-4xl tracking-wide text-sunset">
-          {thread.is_pinned && <Pin className="size-6 shrink-0 text-peach" />}
-          {thread.is_important && <Star className="size-6 shrink-0 fill-peach text-peach" />}
-          {thread.is_locked && <Lock className="size-6 shrink-0 text-muted-foreground" />}
-          {thread.title}
-        </h1>
-        {staff && (
-          <div className="flex flex-wrap gap-2">
-            <form action={toggleThreadFlag}>
-              <input type="hidden" name="thread_id" value={thread.id} />
-              <input type="hidden" name="flag" value="is_pinned" />
-              <input type="hidden" name="value" value={String(!thread.is_pinned)} />
-              <Button type="submit" variant="outline" size="sm">
-                <Pin /> {thread.is_pinned ? "Sblocca dall'alto" : "Fissa in alto"}
-              </Button>
-            </form>
-            <form action={toggleThreadFlag}>
-              <input type="hidden" name="thread_id" value={thread.id} />
-              <input type="hidden" name="flag" value="is_important" />
-              <input type="hidden" name="value" value={String(!thread.is_important)} />
-              <Button type="submit" variant="outline" size="sm">
-                <Star /> {thread.is_important ? "Non importante" : "Importante"}
-              </Button>
-            </form>
-            <form action={toggleThreadFlag}>
-              <input type="hidden" name="thread_id" value={thread.id} />
-              <input type="hidden" name="flag" value="is_locked" />
-              <input type="hidden" name="value" value={String(!thread.is_locked)} />
-              <Button type="submit" variant="outline" size="sm">
-                <Lock /> {thread.is_locked ? "Riapri" : "Chiudi"}
-              </Button>
-            </form>
-          </div>
-        )}
-      </header>
+      {(moderator || canHighlight) && (
+        <ThreadModeration
+          thread={thread}
+          boardSlug={board.slug}
+          boards={nav.flatMap((s) => s.forum_boards.map((b) => ({ id: b.id, label: `${s.title} · ${b.name}` })))}
+          canModerate={moderator}
+          canHighlight={canHighlight}
+          firstPost={first ? { id: first.id, highlighted: Boolean(first.highlighted_at) } : null}
+        />
+      )}
 
-      <ol className="flex flex-col gap-4">
+      <ol className="flex flex-col gap-3">
         {posts.map((post) => {
-          const name = post.character?.name ?? `@${post.author?.username ?? "utente"}`;
+          const name = post.character?.name ?? post.author?.username ?? "utente";
           const level = post.author?.level;
+          const canEdit = moderator || post.author_id === player.userId;
           return (
-            <li key={post.id} id={`post-${post.id}`} className={cn("glass scroll-mt-4 rounded-2xl p-5", post.highlighted_at && "border-peach/60")}>
-              {post.highlighted_at && (
-                <p className="mb-3 flex items-center gap-1.5 text-xs text-peach">
-                  <Megaphone className="size-3.5" /> Segnalato a tutti{post.highlighted_by ? ` da ${post.highlighted_by}` : ""}
-                </p>
-              )}
-              <div className="mb-3 flex items-center gap-3">
-                <CharacterAvatar initials={initials(post.character?.name ?? post.author?.username ?? "?")} className="size-9" />
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-2 font-semibold">
-                    {post.character ? (
-                      <Link href={`/scheda/${post.character.id}`} className="text-peach hover:underline">
-                        {name}
-                      </Link>
-                    ) : (
-                      name
-                    )}
-                    {/* Badge del livello, se il livello ha un colore (es. Master, Moderatore) */}
-                    {level?.color && (
-                      <Badge style={{ backgroundColor: `${level.color}33`, color: level.color }}>{level.name}</Badge>
-                    )}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDateTime(post.created_at)}
-                    {post.edited_at && " · modificato"}
-                  </p>
-                </div>
+            <li
+              key={post.id}
+              id={`post-${post.id}`}
+              className={cn("glass flex scroll-mt-4 flex-col gap-3 rounded-2xl p-4 @xl:flex-row @xl:gap-4", post.highlighted_at && "border-peach/60")}
+            >
+              {/* autore: ritratto e nome */}
+              <div className="flex shrink-0 items-center gap-2 @xl:w-20 @xl:flex-col @xl:gap-1 @xl:text-center">
+                {post.character?.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={post.character.avatar_url} alt="" className="size-10 rounded-xl object-cover ring-1 ring-white/15 @xl:size-16" />
+                ) : (
+                  <CharacterAvatar initials={initials(name)} className="size-10 rounded-xl @xl:size-16" />
+                )}
+                {post.character ? (
+                  <Link href={`/scheda/${post.character.id}`} className="font-heading text-sm leading-tight tracking-wide break-words text-peach hover:underline">
+                    {name}
+                  </Link>
+                ) : (
+                  <span className="font-heading text-sm leading-tight tracking-wide break-words text-lavender">{name}</span>
+                )}
+                {level?.color && (
+                  <span className="rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold" style={{ backgroundColor: `${level.color}33`, color: level.color }}>
+                    {level.name}
+                  </span>
+                )}
               </div>
-              <p className="text-sm leading-relaxed whitespace-pre-line">{post.body}</p>
-              {canHighlight && (
-                <form action={highlightPost} className="mt-3 flex justify-end">
-                  <input type="hidden" name="post_id" value={post.id} />
-                  <input type="hidden" name="value" value={String(!post.highlighted_at)} />
-                  <Button type="submit" variant="ghost" size="sm" className="rounded-full text-xs">
-                    <Megaphone /> {post.highlighted_at ? "Togli la segnalazione" : "Segnala a tutti"}
-                  </Button>
-                </form>
-              )}
+              <div className="min-w-0 flex-1">
+                <p className="mb-2 border-b border-white/10 pb-1.5 text-xs text-muted-foreground">
+                  {formatDateTime(post.created_at)}
+                  {post.edited_at && <i> · modificato il {formatDateTime(post.edited_at)}</i>}
+                </p>
+                {post.highlighted_at && (
+                  <p className="mb-2 flex items-center gap-1.5 text-xs text-peach">
+                    <Megaphone className="size-3.5" /> Segnalato a tutti{post.highlighted_by ? ` da ${post.highlighted_by}` : ""}
+                  </p>
+                )}
+                <PostBody key={`${post.id}-${post.edited_at ?? ""}`} postId={post.id} body={post.body} canEdit={canEdit} />
+              </div>
             </li>
           );
         })}
       </ol>
 
-      <div className="glass mt-6 rounded-2xl p-5">
-        {thread.is_locked && !staff ? (
+      <div className="glass mt-4 rounded-2xl p-4">
+        {thread.is_locked && !moderator ? (
           <p className="text-center text-sm text-muted-foreground">Discussione chiusa: non si può più rispondere.</p>
         ) : (
           <ReplyForm threadId={thread.id} characterName={character?.name ?? null} onGame={board.section.is_on_game} />
         )}
       </div>
-    </div>
+    </>
   );
 }

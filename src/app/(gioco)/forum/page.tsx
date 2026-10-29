@@ -1,83 +1,67 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { CheckCheck, ChevronRight, Lock, MessagesSquare } from "lucide-react";
+import { Lock, Pin, Star } from "lucide-react";
 import { ForumReadSignal } from "@/components/game/forum-client";
+import { ForumShell } from "@/components/game/forum-shell";
 import { LoadingBlocks } from "@/components/game/loading";
-import { PageHeader } from "@/components/game/page-header";
-import { Button } from "@/components/ui/button";
-import { markForumRead } from "@/lib/actions/forum";
 import { requirePlayer } from "@/lib/auth";
-import { getBoardStats, getForumSections, getForumUnread } from "@/lib/data";
+import { getForumUnread, getLatestThreads } from "@/lib/data";
 import { formatDateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Forum" };
 
 export default function ForumPage() {
   return (
-    <>
-      <PageHeader title="Forum" subtitle="Discussioni on game e off game." />
-      <Suspense fallback={<LoadingBlocks />}>
-        <Content />
-      </Suspense>
-    </>
+    <Suspense fallback={<LoadingBlocks />}>
+      <ForumShell>
+        <Latest />
+      </ForumShell>
+    </Suspense>
   );
 }
 
-async function Content() {
+/** Al centro: le ultime 5 discussioni (per attività) */
+async function Latest() {
   await requirePlayer();
-  const [sections, stats, unread] = await Promise.all([getForumSections(), getBoardStats(), getForumUnread()]);
-  const unreadByBoard = new Map<string, number>();
-  for (const u of unread) unreadByBoard.set(u.board_id, (unreadByBoard.get(u.board_id) ?? 0) + 1);
-
+  const [threads, unread] = await Promise.all([getLatestThreads(5), getForumUnread()]);
+  const unreadIds = new Set(unread.map((u) => u.thread_id));
   return (
-    <div className="flex flex-col gap-6">
+    <>
       <ForumReadSignal />
-      {unread.length > 0 && (
-        <form action={markForumRead} className="flex items-center justify-end gap-3 text-sm">
-          <span className="text-muted-foreground">
-            {unread.length} {unread.length === 1 ? "discussione con messaggi nuovi" : "discussioni con messaggi nuovi"}
-          </span>
-          <Button type="submit" variant="outline" size="sm" className="rounded-full">
-            <CheckCheck /> Segna tutto come letto
-          </Button>
-        </form>
+      <header className="mb-4">
+        <h1 className="font-heading text-4xl tracking-wide text-sunset">Forum ON e OFF</h1>
+        <p className="text-sm text-muted-foreground">Le ultime discussioni della città.</p>
+      </header>
+      {threads.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Ancora nessuna discussione.</p>
+      ) : (
+        <ul className="divide-y divide-white/10 border-y border-white/10">
+          {threads.map((t) => {
+            const replies = Math.max(0, (t.forum_posts[0]?.count ?? 1) - 1);
+            return (
+              <li key={t.id}>
+                <Link href={`/forum/${t.board?.slug}/${t.id}`} className="flex items-start gap-3 px-2 py-3 transition-colors hover:bg-white/5">
+                  <div className="min-w-0 flex-1">
+                    <p className={cn("flex items-center gap-2 font-heading text-xl tracking-wide", t.is_important ? "text-peach" : "text-foreground")}>
+                      {unreadIds.has(t.id) && <span className="size-2.5 shrink-0 rounded-full bg-flamingo" aria-label="Messaggi nuovi" />}
+                      {t.is_pinned && <Pin className="size-4 shrink-0 text-peach" aria-label="Fissata in alto" />}
+                      {t.is_important && <Star className="size-4 shrink-0 fill-peach text-peach" aria-label="Importante" />}
+                      {t.is_locked && <Lock className="size-4 shrink-0 text-muted-foreground" aria-label="Chiusa" />}
+                      <span className="truncate">{t.title}</span>
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      in {t.board?.name ?? "—"} · di {t.character?.name ?? t.author?.username ?? "utente"} · {replies} {replies === 1 ? "risposta" : "risposte"}
+                    </p>
+                  </div>
+                  <span className="shrink-0 pt-1 text-xs text-muted-foreground">{formatDateTime(t.updated_at)}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       )}
-      {sections.map((section) => (
-        <section key={section.id} className="glass overflow-hidden rounded-2xl">
-          <h2 className="border-b border-border bg-white/5 px-5 py-3 font-heading text-2xl tracking-wide text-peach">{section.title}</h2>
-          <ul className="divide-y divide-border">
-            {section.forum_boards.map((board) => {
-              const s = stats.get(board.id);
-              const n = unreadByBoard.get(board.id) ?? 0;
-              return (
-                <li key={board.id}>
-                  <Link href={`/forum/${board.slug}`} className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-white/5">
-                    <span className="relative grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-violet to-orchid">
-                      {board.staff_only ? <Lock className="size-5 text-white" /> : <MessagesSquare className="size-5 text-white" />}
-                      {n > 0 && <span className="absolute -top-1 -right-1 size-3 rounded-full bg-flamingo ring-2 ring-night" aria-label="Messaggi nuovi" />}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium">
-                        {board.name}
-                        {n > 0 && <span className="ml-2 rounded-full bg-flamingo/20 px-2 py-0.5 text-xs text-flamingo">{n} nuove</span>}
-                      </p>
-                      <p className="text-sm text-muted-foreground">{board.description}</p>
-                    </div>
-                    <div className="hidden shrink-0 text-right text-xs text-muted-foreground sm:block">
-                      <p>
-                        <span className="font-semibold text-foreground">{s?.threads ?? 0}</span> discussioni
-                      </p>
-                      {s && <p>ultima: {formatDateTime(s.lastActivity)}</p>}
-                    </div>
-                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ))}
-    </div>
+    </>
   );
 }

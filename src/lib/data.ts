@@ -224,6 +224,35 @@ export async function getForumSections() {
   return data ?? [];
 }
 
+/** Colonna di sinistra del forum: categorie con le sole sezioni che l'utente può leggere */
+export async function getForumNav() {
+  const supabase = await createClient();
+  const [sections, { data: mine }] = await Promise.all([getForumSections(), supabase.rpc("forum_my_boards")]);
+  const readable = new Set((mine ?? []) as string[]);
+  return sections
+    .map((s) => ({ ...s, forum_boards: s.forum_boards.filter((b) => readable.has(b.id)) }))
+    .filter((s) => s.forum_boards.length > 0);
+}
+
+export type LatestThread = ForumThread & {
+  author: { username: string } | null;
+  character: { name: string } | null;
+  board: { slug: string; name: string } | null;
+  forum_posts: { count: number }[];
+};
+
+/** Ultime discussioni (per attività) tra le sezioni leggibili */
+export async function getLatestThreads(limit = 5) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("forum_threads")
+    .select("*, author:profiles(username), character:characters(name), board:forum_boards(slug, name), forum_posts(count)")
+    .order("updated_at", { ascending: false })
+    .limit(limit)
+    .overrideTypes<LatestThread[], { merge: false }>();
+  return data ?? [];
+}
+
 /** Numero di discussioni e ultima attività per bacheca */
 export async function getBoardStats() {
   const supabase = await createClient();
@@ -291,14 +320,14 @@ export async function getThread(id: string) {
 
 export type PostWithAuthor = ForumPost & {
   author: { username: string; level: { name: string; color: string | null } | null } | null;
-  character: { id: string; name: string } | null;
+  character: { id: string; name: string; avatar_url: string | null } | null;
 };
 
 export async function getPosts(threadId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("forum_posts")
-    .select("*, author:profiles(username, level:user_levels(name, color)), character:characters(id, name)")
+    .select("*, author:profiles(username, level:user_levels(name, color)), character:characters(id, name, avatar_url)")
     .eq("thread_id", threadId)
     .order("created_at")
     .limit(500)

@@ -70,31 +70,6 @@ export async function replyToThread(_prev: FormState, formData: FormData): Promi
   return { success: "Risposta pubblicata." };
 }
 
-/** Chi modera il forum: fissa, chiude, rende importante (lo controlla anche il database) */
-export async function toggleThreadFlag(formData: FormData) {
-  const player = await getPlayer();
-  if (!player) redirect("/login");
-  const threadId = text(formData, "thread_id");
-  const flag = text(formData, "flag");
-  const value = text(formData, "value") === "true";
-  if (flag !== "is_pinned" && flag !== "is_locked" && flag !== "is_important") return;
-
-  const supabase = await createClient();
-  await supabase.from("forum_threads").update({ [flag]: value }).eq("id", threadId);
-  refresh();
-}
-
-/** Staff (forum.segnalare): segnala un post a tutti, o toglie la segnalazione */
-export async function highlightPost(formData: FormData) {
-  const player = await getPlayer();
-  if (!player) redirect("/login");
-  const postId = Number(text(formData, "post_id"));
-  if (!Number.isInteger(postId)) return;
-  const supabase = await createClient();
-  await supabase.rpc("forum_highlight_post", { p_post: postId, p_on: text(formData, "value") === "true" });
-  refresh();
-}
-
 /** Segna tutto il forum come letto */
 export async function markForumRead() {
   const player = await getPlayer();
@@ -102,4 +77,105 @@ export async function markForumRead() {
   const supabase = await createClient();
   await supabase.rpc("forum_mark_read", { p_thread: null });
   refresh();
+}
+
+/* ------------------------------ Moderazione (forum.moderare) ------------------------------ */
+// I controlli veri li fanno policy e trigger del database.
+
+type ModResult = { ok: true; slug?: string } | { ok: false; error: string };
+
+function modError(error: { message: string; code?: string } | null, fallback: string): ModResult {
+  if (!error) return { ok: true };
+  if (error.code === "42501" || error.code === "P0001" || error.message.includes("Solo chi modera")) return { ok: false, error: "Non hai il permesso di farlo." };
+  return { ok: false, error: fallback };
+}
+
+const isId = (v: string) => /^[0-9a-f-]{36}$/i.test(v);
+
+/** Fissa, rende importante o chiude (e il contrario) */
+export async function setThreadFlag(threadId: string, flag: "is_pinned" | "is_locked" | "is_important", value: boolean): Promise<ModResult> {
+  if (!isId(threadId) || !["is_pinned", "is_locked", "is_important"].includes(flag)) return { ok: false, error: "Richiesta non valida." };
+  await requirePlayerOrLogin();
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("forum_threads").update({ [flag]: value }).eq("id", threadId).select("id");
+  if (!error && !data?.length) return { ok: false, error: "Non hai il permesso di farlo." };
+  if (!error) refresh();
+  return modError(error, "Operazione non riuscita.");
+}
+
+export async function renameThread(threadId: string, title: string): Promise<ModResult> {
+  const clean = title.trim().replace(/\s+/g, " ").slice(0, 120);
+  if (!isId(threadId)) return { ok: false, error: "Discussione non valida." };
+  if (clean.length < 3) return { ok: false, error: "Il titolo deve avere almeno 3 caratteri." };
+  await requirePlayerOrLogin();
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("forum_threads").update({ title: clean }).eq("id", threadId).select("id");
+  if (!error && !data?.length) return { ok: false, error: "Non hai il permesso di farlo." };
+  if (!error) refresh();
+  return modError(error, "Titolo non salvato.");
+}
+
+/** Sposta in un'altra sezione: restituisce l'indirizzo della nuova sezione */
+export async function moveThread(threadId: string, boardId: string): Promise<ModResult> {
+  if (!isId(threadId) || !isId(boardId)) return { ok: false, error: "Scegli la sezione." };
+  await requirePlayerOrLogin();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("forum_threads")
+    .update({ board_id: boardId })
+    .eq("id", threadId)
+    .select("board:forum_boards(slug)")
+    .overrideTypes<{ board: { slug: string } | null }[], { merge: false }>();
+  if (error) return modError(error, "Discussione non spostata.");
+  const slug = data?.[0]?.board?.slug;
+  if (!slug) return { ok: false, error: "Non hai il permesso di farlo." };
+  return { ok: true, slug };
+}
+
+export async function deleteThread(threadId: string): Promise<ModResult> {
+  if (!isId(threadId)) return { ok: false, error: "Discussione non valida." };
+  await requirePlayerOrLogin();
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("forum_threads").delete().eq("id", threadId).select("id");
+  if (!error && !data?.length) return { ok: false, error: "Non hai il permesso di farlo." };
+  return modError(error, "Discussione non eliminata.");
+}
+
+/** Segnala (o toglie la segnalazione) dell'intera discussione: si segnala il primo messaggio */
+export async function highlightThread(firstPostId: number, on: boolean): Promise<ModResult> {
+  if (!Number.isInteger(firstPostId)) return { ok: false, error: "Discussione non valida." };
+  await requirePlayerOrLogin();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("forum_highlight_post", { p_post: firstPostId, p_on: on });
+  if (!error) refresh();
+  return modError(error, "Segnalazione non riuscita.");
+}
+
+/** Modifica un messaggio: l'autore il proprio, chi modera tutti */
+export async function editPost(postId: number, body: string): Promise<ModResult> {
+  const clean = body.trim().slice(0, 20000);
+  if (!Number.isInteger(postId)) return { ok: false, error: "Messaggio non valido." };
+  if (!clean) return { ok: false, error: "Il messaggio è vuoto." };
+  await requirePlayerOrLogin();
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("forum_posts").update({ body: clean }).eq("id", postId).select("id");
+  if (!error && !data?.length) return { ok: false, error: "Non puoi modificare questo messaggio." };
+  if (!error) refresh();
+  return modError(error, "Messaggio non salvato.");
+}
+
+export async function deletePost(postId: number): Promise<ModResult> {
+  if (!Number.isInteger(postId)) return { ok: false, error: "Messaggio non valido." };
+  await requirePlayerOrLogin();
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("forum_posts").delete().eq("id", postId).select("id");
+  if (!error && !data?.length) return { ok: false, error: "Non puoi eliminare questo messaggio." };
+  if (!error) refresh();
+  return modError(error, "Messaggio non eliminato.");
+}
+
+async function requirePlayerOrLogin() {
+  const player = await getPlayer();
+  if (!player) redirect("/login");
+  return player;
 }

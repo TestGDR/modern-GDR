@@ -81,8 +81,9 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     id: "comunita",
     title: "Comunità",
     items: [
-      { key: "forum.moderare", label: "Moderare il forum", description: "Fissare, chiudere e rendere importanti le discussioni, modificare ed eliminare i post altrui" },
-      { key: "forum.sezioni", label: "Gestire sezioni e bacheche del forum" },
+      { key: "forum.moderare", label: "Moderare il forum", description: "Fissare, chiudere, rendere importanti, spostare, rinominare ed eliminare le discussioni; modificare ed eliminare i post di tutti" },
+      { key: "forum.sezioni", label: "Gestire categorie e sezioni del forum" },
+      { key: "forum.riservate", label: "Leggere le sezioni riservate del forum", description: "Vede e scrive in tutte le sezioni riservate a livelli o gruppi" },
       { key: "forum.segnalare", label: "Segnalare un post a tutti", description: "A tutti compare un avviso con il link al post" },
       { key: "assenze.gestire", label: "Gestire le assenze", description: "Togliere le assenze di chiunque" },
       { key: "ricerca.moderare", label: "Moderare la ricerca di gioco", description: "Togliere le richieste di chiunque" },
@@ -93,6 +94,7 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     id: "utility",
     title: "Utility",
     items: [
+      { key: "prestatalento.gestire", label: "Cambiare i prestatalento", description: "Modificare o togliere il prestatalento registrato da un giocatore" },
       { key: "prestavolti.gestire", label: "Cambiare i prestavolti", description: "Modificare o togliere il prestavolto registrato da un giocatore" },
       { key: "lavori.gestire", label: "Gestire i lavori", description: "Creare lavori e ruoli con lo stipendio, assegnarli ai personaggi" },
       { key: "gruppi.gestire", label: "Gestire i gruppi", description: "Creare gruppi e ruoli con lo stipendio, assegnarli ai personaggi" },

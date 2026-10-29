@@ -26,7 +26,7 @@ async function Content() {
   // Approvati di tutti, più i propri (anche in bozza); lo staff vede anche le altre schede
   const { data } = await supabase
     .from("characters")
-    .select("id, name, avatar_url, occupation, face_claim, status")
+    .select("id, name, avatar_url, occupation, face_claim, talent_claim, status")
     .not("face_claim", "is", null)
     .order("face_claim")
     .overrideTypes<UtilityPerson[], { merge: false }>();
@@ -34,7 +34,7 @@ async function Content() {
   return (
     <FaceClaims
       people={data ?? []}
-      mine={c ? { id: c.id, name: c.name, face_claim: c.face_claim } : null}
+      mine={c ? { id: c.id, name: c.name, face_claim: c.face_claim, talent_claim: c.talent_claim } : null}
       canManage={can(player, "prestavolti.gestire")}
     />
   );

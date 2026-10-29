@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowDownLeft, ArrowLeft, ArrowUpRight, Check, HandCoins, Pencil, Search, SendHorizontal, Wallet, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NeedsCharacter } from "@/components/game/needs-character";
-import { bankTransfer, renameCharacter, setFaceClaim } from "@/lib/actions/utility";
+import { bankTransfer, renameCharacter, setFaceClaim, setTalentClaim } from "@/lib/actions/utility";
 import { formatDay, formatDollars, formatMoment, periodLabel } from "@/lib/bank";
 import type { BankOverview, BankTransaction, CharacterStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ export type UtilityPerson = {
   avatar_url: string | null;
   occupation: string | null;
   face_claim: string | null;
+  talent_claim: string | null;
   status: CharacterStatus;
 };
 
@@ -193,56 +194,84 @@ export function Registry({ people }: { people: RegistryEntry[] }) {
   );
 }
 
-/* ------------------------------ Prestavolti ------------------------------ */
+/* ------------------------------ Prestavolti e prestatalento ------------------------------ */
+
+/** Anagrafe: prestavolto (il volto) o prestatalento (il talento) */
+export type ClaimKind = "volto" | "talento";
+
+const CLAIM = {
+  volto: {
+    label: "prestavolto",
+    title: "Prestavolto",
+    field: "face_claim",
+    what: "la persona reale che dà il volto al personaggio",
+    placeholder: "Nome e cognome, es. Zendaya",
+    search: "Cerca un prestavolto o un personaggio…",
+  },
+  talento: {
+    label: "prestatalento",
+    title: "Prestatalento",
+    field: "talent_claim",
+    what: "la persona reale che presta il suo talento al personaggio (la voce, lo sport, l'arte…)",
+    placeholder: "Nome e cognome, es. Ariana Grande",
+    search: "Cerca un prestatalento o un personaggio…",
+  },
+} as const;
+
+const claimOf = (p: Pick<UtilityPerson, "face_claim" | "talent_claim">, kind: ClaimKind) => p[CLAIM[kind].field];
 
 type FaceClaimsProps = {
+  kind?: ClaimKind;
   people: UtilityPerson[];
   /** Il personaggio del giocatore (null se non l'ha ancora creato) */
-  mine: Pick<UtilityPerson, "id" | "name" | "face_claim"> | null;
+  mine: Pick<UtilityPerson, "id" | "name" | "face_claim" | "talent_claim"> | null;
   canManage: boolean;
 };
 
-export function FaceClaims({ people, mine, canManage }: FaceClaimsProps) {
+export function FaceClaims({ kind = "volto", people, mine, canManage }: FaceClaimsProps) {
   const idx = useIndex(
     people,
-    (p) => p.face_claim ?? "",
-    (p) => `${p.face_claim ?? ""} ${p.name}`,
+    (p) => claimOf(p, kind) ?? "",
+    (p) => `${claimOf(p, kind) ?? ""} ${p.name}`,
   );
+  const t = CLAIM[kind];
   return (
     <div className="flex flex-col gap-5">
-      <MyFaceClaim mine={mine} />
-      <IndexBar {...idx} placeholder="Cerca un prestavolto o un personaggio…" />
+      <MyFaceClaim kind={kind} mine={mine} />
+      <IndexBar {...idx} placeholder={t.search} />
       {idx.groups.map((g) => (
         <section key={g.letter}>
           <h2 className="mb-1 border-b border-white/10 pb-1 font-heading text-2xl tracking-wide text-peach">{g.letter}</h2>
           <ul className="divide-y divide-white/5">
             {g.items.map((p) => (
-              <FaceClaimRow key={p.id} person={p} canManage={canManage} />
+              <FaceClaimRow key={p.id} kind={kind} person={p} canManage={canManage} />
             ))}
           </ul>
         </section>
       ))}
       {idx.groups.length === 0 && (
-        <p className="text-sm text-muted-foreground">{people.length === 0 ? "Nessun prestavolto registrato." : "Nessun prestavolto trovato."}</p>
+        <p className="text-sm text-muted-foreground">{people.length === 0 ? `Nessun ${t.label} registrato.` : `Nessun ${t.label} trovato.`}</p>
       )}
     </div>
   );
 }
 
-function MyFaceClaim({ mine }: { mine: FaceClaimsProps["mine"] }) {
+function MyFaceClaim({ kind, mine }: { kind: ClaimKind; mine: FaceClaimsProps["mine"] }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const t = CLAIM[kind];
 
-  if (!mine) return <NeedsCharacter className="glass rounded-2xl" text="Per registrare il tuo prestavolto crea prima il personaggio." />;
-  if (mine.face_claim) {
+  if (!mine) return <NeedsCharacter className="glass rounded-2xl" text={`Per registrare il tuo ${t.label} crea prima il personaggio.`} />;
+  const current = claimOf(mine, kind);
+  if (current) {
     return (
       <div className="glass rounded-2xl p-4 text-sm">
         <p>
-          Il prestavolto di <strong>{mine.name}</strong> è <strong className="text-peach">{mine.face_claim}</strong>.
+          Il {t.label} di <strong>{mine.name}</strong> è <strong className="text-peach">{current}</strong>.
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Per cambiarlo scrivi allo staff con un <Link href="/ticket" className="text-lavender underline">ticket</Link>.
+          Per cambiarlo scrivi alla gestione con un <Link href="/ticket" className="text-lavender underline">ticket</Link>.
         </p>
       </div>
     );
@@ -253,26 +282,26 @@ function MyFaceClaim({ mine }: { mine: FaceClaimsProps["mine"] }) {
       onSubmit={(e) => {
         e.preventDefault();
         const name = value.trim();
-        if (name.length < 2) return setError("Scrivi il nome del prestavolto.");
-        if (!window.confirm(`Registrare «${name}» come prestavolto di ${mine.name}? Una volta salvato potrà cambiarlo solo lo staff.`)) return;
+        if (name.length < 2) return setError(`Scrivi il nome del ${t.label}.`);
+        if (!window.confirm(`Registrare «${name}» come ${t.label} di ${mine.name}? Si registra una volta sola: dopo potrà cambiarlo solo la gestione.`)) return;
         setError(null);
         start(async () => {
-          const r = await setFaceClaim(mine.id, name);
+          const r = kind === "talento" ? await setTalentClaim(mine.id, name) : await setFaceClaim(mine.id, name);
           if (!r.ok) setError(r.error ?? "Operazione non riuscita.");
         });
       }}
     >
       <p className="text-sm">
-        Registra il prestavolto di <strong>{mine.name}</strong>: la persona reale che dà il volto al personaggio. Ognuno è unico in città.
+        Registra il {t.label} di <strong>{mine.name}</strong>: {t.what}. Ognuno è unico in città: non può averlo un altro personaggio.
       </p>
       <ErrorLine error={error} />
       <div className="flex flex-col gap-2 sm:flex-row">
-        <input value={value} onChange={(e) => setValue(e.target.value)} maxLength={80} placeholder="Nome e cognome, es. Zendaya" className={inputCls} aria-label="Prestavolto" />
+        <input value={value} onChange={(e) => setValue(e.target.value)} maxLength={80} placeholder={t.placeholder} className={inputCls} aria-label={t.title} />
         <Button type="submit" disabled={pending} className="h-10 rounded-full px-5">
           {pending ? "Salvataggio…" : "Registra"}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">Attenzione: una volta salvato non si cambia più, se non dallo staff.</p>
+      <p className="text-xs text-muted-foreground">Attenzione: si registra una volta sola. Per cambiarlo bisogna contattare la gestione.</p>
     </form>
   );
 }
@@ -353,16 +382,18 @@ export function NameChange({ current, changedAt }: { current: string; changedAt:
   );
 }
 
-function FaceClaimRow({ person, canManage }: { person: UtilityPerson; canManage: boolean }) {
+function FaceClaimRow({ kind, person, canManage }: { kind: ClaimKind; person: UtilityPerson; canManage: boolean }) {
+  const t = CLAIM[kind];
+  const current = claimOf(person, kind);
   const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(person.face_claim ?? "");
+  const [value, setValue] = useState(current ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   function save(next: string) {
     setError(null);
     start(async () => {
-      const r = await setFaceClaim(person.id, next);
+      const r = kind === "talento" ? await setTalentClaim(person.id, next) : await setFaceClaim(person.id, next);
       if (r.ok) setEditing(false);
       else setError(r.error ?? "Operazione non riuscita.");
     });
@@ -373,7 +404,7 @@ function FaceClaimRow({ person, canManage }: { person: UtilityPerson; canManage:
       <li className="flex flex-col gap-2 py-2">
         <ErrorLine error={error} />
         <div className="flex flex-wrap items-center gap-2">
-          <input value={value} onChange={(e) => setValue(e.target.value)} maxLength={80} className={cn(inputCls, "min-w-48 flex-1")} aria-label={`Prestavolto di ${person.name}`} />
+          <input value={value} onChange={(e) => setValue(e.target.value)} maxLength={80} className={cn(inputCls, "min-w-48 flex-1")} aria-label={`${t.title} di ${person.name}`} />
           <Button type="button" size="sm" disabled={pending} onClick={() => save(value)} className="rounded-full">
             <Check /> Salva
           </Button>
@@ -382,7 +413,7 @@ function FaceClaimRow({ person, canManage }: { person: UtilityPerson; canManage:
             size="sm"
             variant="ghost"
             disabled={pending}
-            onClick={() => window.confirm(`Togliere il prestavolto a ${person.name}? Potrà sceglierne un altro.`) && save("")}
+            onClick={() => window.confirm(`Togliere il ${t.label} a ${person.name}? Potrà sceglierne un altro.`) && save("")}
           >
             Togli
           </Button>
@@ -395,13 +426,13 @@ function FaceClaimRow({ person, canManage }: { person: UtilityPerson; canManage:
   }
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
-      <span className="min-w-40 flex-1 font-medium">{person.face_claim}</span>
+      <span className="min-w-40 flex-1 font-medium">{current}</span>
       <Link href={`/scheda/${person.id}`} className="text-sm text-lavender hover:underline">
         {person.name}
       </Link>
       {person.status !== "approvata" && <span className="text-xs text-muted-foreground">(scheda non ancora approvata)</span>}
       {canManage && (
-        <button type="button" onClick={() => setEditing(true)} className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-white/10 hover:text-foreground" aria-label={`Cambia il prestavolto di ${person.name}`}>
+        <button type="button" onClick={() => setEditing(true)} className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-white/10 hover:text-foreground" aria-label={`Cambia il ${t.label} di ${person.name}`}>
           <Pencil className="size-4" />
         </button>
       )}

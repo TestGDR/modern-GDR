@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Lock, Pin, Star } from "lucide-react";
+import { Lock, Pin, Plus, Star } from "lucide-react";
 import { NewThreadForm } from "@/components/game/forum-forms";
-import { EmptyState, LoadingBlocks } from "@/components/game/loading";
-import { PageHeader } from "@/components/game/page-header";
+import { ForumShell } from "@/components/game/forum-shell";
+import { LoadingBlocks } from "@/components/game/loading";
 import { activeCharacter, can, requirePlayer } from "@/lib/auth";
 import { getBoard, getForumUnread, getThreads } from "@/lib/data";
 import { formatDateTime } from "@/lib/format";
@@ -16,7 +16,9 @@ export const metadata: Metadata = { title: "Forum" };
 export default function BoardPage({ params }: PageProps<"/forum/[bacheca]">) {
   return (
     <Suspense fallback={<LoadingBlocks />}>
-      <Content params={params} />
+      <ForumShell>
+        <Content params={params} />
+      </ForumShell>
     </Suspense>
   );
 }
@@ -25,68 +27,66 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]">["para
   const { bacheca } = await params;
   const player = await requirePlayer();
   const character = activeCharacter(player);
+  // le sezioni riservate a chi non può leggerle non arrivano proprio (policy del database)
   const board = await getBoard(bacheca);
   if (!board) notFound();
   const [threads, unread] = await Promise.all([getThreads(board.id), getForumUnread()]);
   const unreadIds = new Set(unread.map((u) => u.thread_id));
-  // Le bacheche riservate (es. Regolamento) sono per chi pubblica annunci
+  // Nelle sezioni "solo staff" aprono discussioni solo chi pubblica annunci
   const canPost = !board.staff_only || can(player, "annunci.globali");
 
   return (
     <>
-      <Link href="/forum" className="mb-3 flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" /> {board.section.title}
-      </Link>
-      <PageHeader title={board.name} subtitle={board.description ?? undefined} />
+      <header className="mb-4">
+        <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">{board.section.title}</p>
+        <h1 className="flex items-center gap-2 font-heading text-4xl tracking-wide text-sunset">
+          {board.name}
+          {board.access !== "pubblica" && <Lock className="size-5 text-lavender" aria-label="Sezione riservata" />}
+        </h1>
+        {board.description && <p className="text-sm text-muted-foreground">{board.description}</p>}
+      </header>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="flex flex-col gap-3">
-          {threads.length === 0 && <EmptyState title="Nessuna discussione">Apri tu la prima.</EmptyState>}
-          {threads.map((t) => (
-            <Link
-              key={t.id}
-              href={`/forum/${board.slug}/${t.id}`}
-              className={cn(
-                "glass flex items-center gap-4 rounded-2xl px-5 py-4 transition-colors hover:bg-white/10",
-                t.is_important && "border-peach/50 shadow-[0_0_16px_rgb(255_176_138/0.15)]",
-              )}
-            >
-              <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-2 font-medium">
-                  {unreadIds.has(t.id) && <span className="size-2.5 shrink-0 rounded-full bg-flamingo" aria-label="Messaggi nuovi" />}
-                  {t.is_pinned && <Pin className="size-4 shrink-0 text-peach" aria-label="Fissata in alto" />}
-                  {t.is_important && <Star className="size-4 shrink-0 fill-peach text-peach" aria-label="Importante" />}
-                  {t.is_locked && <Lock className="size-4 shrink-0 text-muted-foreground" aria-label="Chiusa" />}
-                  <span className="truncate">{t.title}</span>
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  di {t.character?.name ?? `@${t.author?.username ?? "utente"}`} · {formatDateTime(t.created_at)}
-                </p>
-              </div>
-              <div className="shrink-0 text-right text-xs text-muted-foreground">
-                <p>
-                  <span className="font-semibold text-foreground">{t.forum_posts[0]?.count ?? 0}</span> messaggi
-                </p>
-                <p>{formatDateTime(t.updated_at)}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
+      {canPost ? (
+        <details className="group mb-4 rounded-2xl border border-white/10 bg-white/5">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-2.5 text-sm font-medium text-peach hover:text-flamingo">
+            <Plus className="size-4 transition-transform group-open:rotate-45" /> Nuova discussione
+          </summary>
+          <div className="border-t border-white/10 p-4">
+            <NewThreadForm boardId={board.id} boardSlug={board.slug} characterName={character?.name ?? null} onGame={board.section.is_on_game} />
+          </div>
+        </details>
+      ) : (
+        <p className="mb-4 text-xs text-muted-foreground">In questa sezione aprono discussioni solo i membri dello staff.</p>
+      )}
 
-        <aside className="glass h-fit rounded-2xl p-5">
-          <h2 className="mb-3 font-heading text-2xl tracking-wide text-peach">Nuova discussione</h2>
-          {canPost ? (
-            <NewThreadForm
-              boardId={board.id}
-              boardSlug={board.slug}
-              characterName={character?.name ?? null}
-              onGame={board.section.is_on_game}
-            />
-          ) : (
-            <p className="text-sm text-muted-foreground">In questa bacheca scrive solo lo staff.</p>
-          )}
-        </aside>
-      </div>
+      {threads.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Nessuna discussione: apri tu la prima.</p>
+      ) : (
+        <ul className="divide-y divide-white/10 border-y border-white/10">
+          {threads.map((t) => {
+            const replies = Math.max(0, (t.forum_posts[0]?.count ?? 1) - 1);
+            return (
+              <li key={t.id}>
+                <Link href={`/forum/${board.slug}/${t.id}`} className={cn("flex items-start gap-3 px-2 py-3 transition-colors hover:bg-white/5", t.is_important && "bg-peach/5")}>
+                  <div className="min-w-0 flex-1">
+                    <p className={cn("flex items-center gap-2 font-heading text-xl tracking-wide", t.is_important ? "text-peach" : "text-foreground")}>
+                      {unreadIds.has(t.id) && <span className="size-2.5 shrink-0 rounded-full bg-flamingo" aria-label="Messaggi nuovi" />}
+                      {t.is_pinned && <Pin className="size-4 shrink-0 text-peach" aria-label="Fissata in alto" />}
+                      {t.is_important && <Star className="size-4 shrink-0 fill-peach text-peach" aria-label="Importante" />}
+                      {t.is_locked && <Lock className="size-4 shrink-0 text-muted-foreground" aria-label="Chiusa" />}
+                      <span className="truncate">{t.title}</span>
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      di {t.character?.name ?? t.author?.username ?? "utente"} · aperta il {formatDateTime(t.created_at)} · {replies} {replies === 1 ? "risposta" : "risposte"}
+                    </p>
+                  </div>
+                  <span className="shrink-0 pt-1 text-xs text-muted-foreground">{formatDateTime(t.updated_at)}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </>
   );
 }

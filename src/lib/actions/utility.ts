@@ -45,6 +45,16 @@ export async function renameCharacter(first: string, last: string): Promise<Acti
   return result(error);
 }
 
+/** Registra il prestatalento (il giocatore, una volta sola) o lo cambia/toglie (staff) */
+export async function setTalentClaim(characterId: string, talentClaim: string): Promise<ActionResult> {
+  if (!isUuid(characterId)) return { ok: false, error: "Personaggio non valido." };
+  await requirePlayer();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_talent_claim", { p_character: characterId, p_talent_claim: talentClaim.slice(0, 120) });
+  if (!error) refresh();
+  return result(error);
+}
+
 /** Manda dollari al personaggio di un altro giocatore */
 export async function bankTransfer(fromId: string, toId: string, amount: number, reason: string): Promise<ActionResult> {
   if (!isUuid(fromId) || !isUuid(toId)) return { ok: false, error: "Scegli a chi mandare i soldi." };
