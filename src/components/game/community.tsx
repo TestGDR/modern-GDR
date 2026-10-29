@@ -89,7 +89,7 @@ async function names(supabase: Supabase, ids: string[]) {
 }
 
 const smallBtn =
-  "relative flex flex-1 flex-col items-center gap-1 rounded-xl bg-white/5 py-2 text-[0.65rem] font-medium text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground [&_svg]:size-4";
+  "relative flex flex-1 items-center justify-center rounded-xl bg-white/5 py-1.5 text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground [&_svg]:size-4";
 
 export function CommunityButtons({
   canAbsences,
@@ -109,19 +109,19 @@ export function CommunityButtons({
   const [open, setOpen] = useState<"assenze" | "ricerca" | "pettegolezzi" | null>(null);
 
   const badge = (n: number) =>
-    n > 0 && <span className="absolute top-1 right-2 grid min-w-4 place-items-center rounded-full bg-flamingo px-1 text-[0.6rem] leading-4 font-bold text-white">{n}</span>;
+    n > 0 && <span className="absolute -top-1 right-1 grid min-w-4 place-items-center rounded-full bg-flamingo px-1 text-[0.6rem] leading-4 font-bold text-white">{n}</span>;
 
   return (
     <>
       <div className="flex gap-2">
-        <button type="button" className={cn(smallBtn, absences.n > 0 && "blink-call")} onClick={() => (setOpen("assenze"), absences.markSeen())}>
-          <CalendarX2 /> Assenze {badge(absences.n)}
+        <button type="button" title="Assenze" aria-label="Assenze" className={cn(smallBtn, absences.n > 0 && "blink-call")} onClick={() => (setOpen("assenze"), absences.markSeen())}>
+          <CalendarX2 /> {badge(absences.n)}
         </button>
-        <button type="button" className={cn(smallBtn, requests.n > 0 && "blink-call")} onClick={() => (setOpen("ricerca"), requests.markSeen())}>
-          <Search /> Cerco gioco {badge(requests.n)}
+        <button type="button" title="Cerco gioco" aria-label="Cerco gioco" className={cn(smallBtn, requests.n > 0 && "blink-call")} onClick={() => (setOpen("ricerca"), requests.markSeen())}>
+          <Search /> {badge(requests.n)}
         </button>
-        <button type="button" className={cn(smallBtn, gossip.n > 0 && "blink-call")} onClick={() => setOpen("pettegolezzi")}>
-          <Ear /> Pettegolezzi {badge(gossip.n)}
+        <button type="button" title="Pettegolezzi" aria-label="Pettegolezzi" className={cn(smallBtn, gossip.n > 0 && "blink-call")} onClick={() => setOpen("pettegolezzi")}>
+          <Ear /> {badge(gossip.n)}
         </button>
       </div>
       {open && (

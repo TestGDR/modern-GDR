@@ -136,7 +136,7 @@ function MapDot({ district: d, people, onOpen }: { district: District; people: n
       <span
         className={cn(
           // nome sempre visibile (non c'è più l'elenco a fianco); al passaggio si illumina
-          "pointer-events-none absolute top-6 z-10 rounded-md bg-night/80 px-1.5 py-0.5 font-heading text-[0.7rem] tracking-wide whitespace-nowrap text-white/90 transition group-hover:bg-flamingo group-hover:text-white group-focus-visible:bg-flamingo sm:text-sm",
+          "pointer-events-none absolute top-6 z-10 rounded-md bg-night/80 max-sm:hidden px-1.5 py-0.5 font-heading text-[0.7rem] tracking-wide whitespace-nowrap text-white/90 transition group-hover:bg-flamingo group-hover:text-white group-focus-visible:bg-flamingo sm:text-sm",
           // vicino ai bordi il nome si allinea al punto invece di uscire dalla mappa
           x < 15 ? "left-0" : x > 85 ? "right-0" : "left-1/2 -translate-x-1/2",
         )}

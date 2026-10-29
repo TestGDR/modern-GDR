@@ -12,7 +12,6 @@ import { activeCharacter, can, getPlayer, requirePlayer } from "@/lib/auth";
 import { initials } from "@/lib/format";
 import { requestTime } from "@/lib/request-time";
 import { createClient } from "@/lib/supabase/server";
-import { cn } from "@/lib/utils";
 
 const TOUCH_EVERY_MS = 2 * 60 * 1000;
 
@@ -43,10 +42,6 @@ export async function PlayerPortrait() {
           </span>
         )}
       </span>
-      <span
-        className={cn("absolute right-1 bottom-1 size-3.5 rounded-full ring-2 ring-night", character ? "bg-mint" : "bg-muted-foreground/60")}
-        aria-label={character ? "In gioco" : "Scheda non ancora approvata"}
-      />
     </Link>
   );
 }

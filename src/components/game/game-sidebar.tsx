@@ -267,27 +267,29 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
 
   return (
     <>
-      <div className="flex flex-col gap-2 rounded-2xl bg-white/5 p-3">
-        {/* Il titolo apre l'elenco esteso; icona e nome aprono la scheda */}
+      {/* Telefono: solo l'icona con il numero, che apre l'elenco */}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-2 rounded-2xl bg-white/5 p-3 text-sm font-medium transition-colors hover:bg-white/10 lg:hidden"
+        aria-label={`Presenti online: ${players ? list.length : "…"}`}
+      >
+        <Users className="size-5 text-mint" />
+        <span className="rounded-full bg-mint/15 px-2 py-0.5 text-xs text-mint">{players ? list.length : "…"}</span>
+      </button>
+      <div className="hidden max-h-[250px] flex-col gap-2 rounded-2xl bg-white/5 p-3 lg:flex">
+        {/* Il titolo apre l'elenco esteso; il nome apre la scheda */}
         <button type="button" onClick={() => setOpen(true)} className="flex items-center gap-2 rounded-lg text-left text-sm font-medium transition-colors hover:text-mint">
           <Users className="size-4 text-mint" />
           Presenti online
           <span className="ml-auto rounded-full bg-mint/15 px-2 py-0.5 text-xs text-mint">{players ? list.length : "…"}</span>
         </button>
         {list.length > 0 ? (
-          <span className="flex flex-col gap-0.5">
-            {list.slice(0, 8).map((c) => {
+          <span className="-mr-1 flex min-h-0 flex-col gap-0.5 overflow-y-auto pr-1">
+            {list.map((c) => {
               const inner = (
                 <>
-                  <span className="relative shrink-0">
-                    {c.avatar ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={c.avatar} alt="" className="size-6 rounded-full object-cover" />
-                    ) : (
-                      <span className="grid size-6 place-items-center rounded-full bg-gradient-to-br from-violet to-flamingo text-[0.6rem] font-bold text-white">{initials(c.name)}</span>
-                    )}
-                    <span className={cn("absolute -right-0.5 -bottom-0.5 size-2 rounded-full ring-2 ring-sidebar", AVAILABILITY[c.availability].dot)} />
-                  </span>
+                  <span className={cn("size-2 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} title={AVAILABILITY[c.availability].label} />
                   <span className="truncate">{c.name}</span>
                   {c.invisible && <EyeOff className="size-3 shrink-0" aria-label="Invisibile" />}
                 </>
@@ -307,11 +309,6 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
                 </span>
               );
             })}
-            {list.length > 8 && (
-              <button type="button" onClick={() => setOpen(true)} className="w-fit px-1 text-left text-xs text-lavender hover:underline">
-                e altri {list.length - 8}…
-              </button>
-            )}
           </span>
         ) : (
           <span className="text-xs text-muted-foreground">{players ? "Nessuno online in questo momento." : "Caricamento…"}</span>
@@ -435,12 +432,12 @@ export function GameSidebar({
       <div className="hidden justify-center lg:flex">
         <Logo href="/bacheca" size="sm" />
       </div>
-      {newsSlot}
       <PlaceCard info={info} />
       <MainButtons />
+      {newsSlot}
       <FeatureIcons adminSlot={adminSlot} />
-      <OnlineBox place={info?.name ?? (roomId ? "In chat" : "Mappa")} placeKey={roomId ? `chat:${roomId}` : "mappa"} />
       {communitySlot}
+      <OnlineBox place={info?.name ?? (roomId ? "In chat" : "Mappa")} placeKey={roomId ? `chat:${roomId}` : "mappa"} />
     </div>
   );
 }
