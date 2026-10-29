@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { CreationWizard } from "@/components/creation/creation-wizard";
 import { CharacterSheetWindow, NewCharacterSheet, type SheetVariant } from "@/components/game/character-sheet-window";
 import { can, requirePlayer } from "@/lib/auth";
-import { getCharacter, getCharacterBuild, getDistricts, getRulesData } from "@/lib/data";
+import { getCharacter, getCharacterAffiliations, getCharacterBuild, getDistricts, getRulesData } from "@/lib/data";
 import { formatDateTime, isOnline } from "@/lib/format";
 import { parseSettings } from "@/lib/interlock";
 import { requestTime } from "@/lib/request-time";
@@ -35,7 +35,7 @@ export async function OwnSheet({ variant }: { variant: SheetVariant }) {
     );
   }
 
-  const [districts, now] = await Promise.all([getDistricts(), requestTime()]);
+  const [districts, now, affiliations] = await Promise.all([getDistricts(), requestTime(), getCharacterAffiliations(character.id)]);
   return (
     <CharacterSheetWindow
       character={character}
@@ -46,6 +46,7 @@ export async function OwnSheet({ variant }: { variant: SheetVariant }) {
       variant={variant}
       build={build}
       rules={rules}
+      affiliations={affiliations}
       canReview={can(player, "personaggi.approvare")}
       isAdmin={player.level.is_admin}
     />
@@ -59,7 +60,13 @@ export async function OtherSheet({ id, variant }: { id: string; variant: SheetVa
   const character = await getCharacter(id);
   if (!character) notFound();
   const isAdmin = player.level.is_admin;
-  const [build, rules, now, districts] = await Promise.all([getCharacterBuild(id), getRulesData(), requestTime(), isAdmin ? getDistricts() : Promise.resolve([])]);
+  const [build, rules, now, districts, affiliations] = await Promise.all([
+    getCharacterBuild(id),
+    getRulesData(),
+    requestTime(),
+    isAdmin ? getDistricts() : Promise.resolve([]),
+    getCharacterAffiliations(id),
+  ]);
 
   return (
     <CharacterSheetWindow
@@ -71,6 +78,7 @@ export async function OtherSheet({ id, variant }: { id: string; variant: SheetVa
       variant={variant}
       build={build}
       rules={rules}
+      affiliations={affiliations}
       canReview={can(player, "personaggi.approvare")}
       isAdmin={isAdmin}
     />

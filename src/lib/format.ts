@@ -22,6 +22,11 @@ export function formatTime(iso: string) {
   }).format(new Date(iso));
 }
 
+/** Data con l'anno "1 ottobre 2026" */
+export function formatDate(iso: string) {
+  return new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: TIME_ZONE }).format(new Date(iso));
+}
+
 /** Data breve "28 ott, 19:42" */
 export function formatDateTime(iso: string) {
   return new Intl.DateTimeFormat("it-IT", {

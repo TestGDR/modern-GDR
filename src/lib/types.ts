@@ -190,8 +190,10 @@ export type Character = {
   quote: string | null;
   bio: string | null;
   avatar_url: string | null;
-  /** Immagine grande della sezione Principale */
+  /** Immagine grande della sezione Principale (computer, 640x560) */
   cover_url: string | null;
+  /** Immagine verticale della sezione Principale sul cellulare (720x1280) */
+  cover_mobile_url: string | null;
   appearance: string | null;
   traits: string | null;
   skills: string | null;
@@ -216,6 +218,13 @@ export type Character = {
   px: number;
   /** Prestavolto: unico, una volta registrato lo cambia solo lo staff */
   face_claim: string | null;
+  /** Aspetto fisico, scritto dal giocatore in Scheda → Dati */
+  height: string | null;
+  weight: string | null;
+  eye_color: string | null;
+  hair_color: string | null;
+  /** Minor (un indirizzo di studio); il Major è study_track_id */
+  minor_id: string | null;
 };
 
 /** Versione ridotta del personaggio, usata in elenchi e messaggi */

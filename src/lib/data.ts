@@ -363,6 +363,41 @@ export type CharacterBuild = {
   optionIds: string[];
 };
 
+/** Lavori e gruppi di un personaggio, per la scheda */
+export type CharacterAffiliations = {
+  jobs: { name: string; role: string; kind: "full_time" | "part_time" }[];
+  groups: { name: string; role: string }[];
+  /** Account del giocatore: iscrizione e ultimo accesso (date ISO) */
+  joinedAt: string | null;
+  lastLoginAt: string | null;
+};
+
+export async function getCharacterAffiliations(characterId: string): Promise<CharacterAffiliations> {
+  const supabase = await createClient();
+  const { data: owner } = await supabase.from("characters").select("owner_id").eq("id", characterId).maybeSingle<{ owner_id: string }>();
+  const [jobs, groups, profile] = await Promise.all([
+    supabase
+      .from("character_jobs")
+      .select("job:jobs(name, kind, active), role:job_roles(name)")
+      .eq("character_id", characterId)
+      .overrideTypes<{ job: { name: string; kind: "full_time" | "part_time"; active: boolean } | null; role: { name: string } | null }[], { merge: false }>(),
+    supabase
+      .from("character_groups")
+      .select("grp:game_groups(name, active), role:group_roles(name)")
+      .eq("character_id", characterId)
+      .overrideTypes<{ grp: { name: string; active: boolean } | null; role: { name: string } | null }[], { merge: false }>(),
+    owner
+      ? supabase.from("profiles").select("created_at, last_login_at").eq("id", owner.owner_id).maybeSingle<{ created_at: string; last_login_at: string | null }>()
+      : Promise.resolve({ data: null }),
+  ]);
+  return {
+    jobs: (jobs.data ?? []).filter((j) => j.job?.active).map((j) => ({ name: j.job!.name, role: j.role?.name ?? "", kind: j.job!.kind })),
+    groups: (groups.data ?? []).filter((g) => g.grp?.active).map((g) => ({ name: g.grp!.name, role: g.role?.name ?? "" })),
+    joinedAt: profile.data?.created_at ?? null,
+    lastLoginAt: profile.data?.last_login_at ?? null,
+  };
+}
+
 /** Valori di un personaggio: caratteristiche, abilità e scelte di creazione */
 export async function getCharacterBuild(characterId: string): Promise<CharacterBuild> {
   const supabase = await createClient();

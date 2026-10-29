@@ -16,8 +16,12 @@ const TEXT_FIELDS = {
   known_facts: 3000,
   relationships: 3000,
   equipment: 3000,
+  height: 20,
+  weight: 20,
+  eye_color: 30,
+  hair_color: 30,
 } as const;
-const URL_FIELDS = ["avatar_url", "cover_url"] as const;
+const URL_FIELDS = ["avatar_url", "cover_url", "cover_mobile_url"] as const;
 
 type Details = Record<string, string | number | null>;
 
@@ -45,6 +49,7 @@ function readDetails(formData: FormData): { details: Details; error?: string } {
     details[key] = url;
   }
   if (formData.has("district_id")) details.district_id = clean(formData.get("district_id"), 64);
+  if (formData.has("minor_id")) details.minor_id = clean(formData.get("minor_id"), 64);
 
   return { details };
 }

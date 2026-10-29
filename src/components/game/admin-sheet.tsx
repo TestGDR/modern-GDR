@@ -53,12 +53,18 @@ export function AdminSheetPanel({ character, build, rules, districts, onClose }:
     studyTrackId: character.study_track_id,
     yearId: character.year_id,
     clubId: character.club_id,
+    minorId: character.minor_id,
+    height: character.height ?? "",
+    weight: character.weight ?? "",
+    eyeColor: character.eye_color ?? "",
+    hairColor: character.hair_color ?? "",
     occupation: character.occupation ?? "",
     districtId: character.district_id,
     quote: character.quote ?? "",
     px: character.px,
     avatarUrl: character.avatar_url ?? "",
     coverUrl: character.cover_url ?? "",
+    coverMobileUrl: character.cover_mobile_url ?? "",
     texts: {
       bio: character.bio ?? "",
       appearance: character.appearance ?? "",
@@ -178,7 +184,8 @@ export function AdminSheetPanel({ character, build, rules, districts, onClose }:
             </Field>
             {(
               [
-                ["studyTrackId", "Indirizzo di studio", "indirizzo"],
+                ["studyTrackId", "Major", "indirizzo"],
+                ["minorId", "Minor", "indirizzo"],
                 ["yearId", "Anno di corso", "anno"],
                 ["clubId", "Squadra o club", "club"],
               ] as const
@@ -192,6 +199,18 @@ export function AdminSheetPanel({ character, build, rules, districts, onClose }:
                     </option>
                   ))}
                 </select>
+              </Field>
+            ))}
+            {(
+              [
+                ["height", "Altezza", 20],
+                ["weight", "Peso", 20],
+                ["eyeColor", "Colore occhi", 30],
+                ["hairColor", "Colore capelli", 30],
+              ] as const
+            ).map(([key, label, max]) => (
+              <Field key={key} label={label}>
+                <input className={inputCls} maxLength={max} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
               </Field>
             ))}
             <Field label="Quartiere">
@@ -212,8 +231,11 @@ export function AdminSheetPanel({ character, build, rules, districts, onClose }:
             <Field label="Ritratto (link https)">
               <input className={inputCls} value={form.avatarUrl} onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })} />
             </Field>
-            <Field label="Immagine grande (link https)">
+            <Field label="Immagine grande, computer 640×560 (link https)">
               <input className={inputCls} value={form.coverUrl} onChange={(e) => setForm({ ...form, coverUrl: e.target.value })} />
+            </Field>
+            <Field label="Immagine cellulare 720×1280 (link https)">
+              <input className={inputCls} value={form.coverMobileUrl} onChange={(e) => setForm({ ...form, coverMobileUrl: e.target.value })} />
             </Field>
           </div>
         </section>

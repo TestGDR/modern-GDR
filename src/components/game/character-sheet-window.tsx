@@ -10,8 +10,8 @@ import {
   Fingerprint,
   Gauge,
   GraduationCap,
+  BriefcaseBusiness,
   Heart,
-  House,
   IdCard,
   KeyRound,
   Mail,
@@ -38,9 +38,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { updateCharacter } from "@/lib/actions/character";
 import { reviewCharacter, startCharacter } from "@/lib/actions/creation";
-import type { CharacterBuild, RulesData } from "@/lib/data";
-import { formatBirthDate } from "@/lib/interlock";
-import { initials } from "@/lib/format";
+import type { CharacterAffiliations, CharacterBuild, RulesData } from "@/lib/data";
+import { formatBirthDate, parseSettings, skillCost } from "@/lib/interlock";
+import { formatDate, formatDateTime, initials } from "@/lib/format";
 import type { Character, District, FormState } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -92,20 +92,21 @@ type CharacterSheetWindowProps = {
   canReview?: boolean;
   /** Amministratore: sblocca, resetta e modifica tutta la scheda */
   isAdmin?: boolean;
+  /** Lavori e gruppi del personaggio */
+  affiliations?: CharacterAffiliations;
 };
 
 /** Scheda del personaggio a sezioni, nello stile "finestra" del gioco */
 export function CharacterSheetWindow({
   character,
   isOwner,
-  online,
-  since,
   districts = [],
   variant = "page",
   build,
   rules,
   canReview = false,
   isAdmin = false,
+  affiliations = { jobs: [], groups: [], joinedAt: null, lastLoginAt: null },
 }: CharacterSheetWindowProps) {
   const [view, setView] = useState<View>({ section: "principale", mode: "view" });
   const section = SECTIONS.find((s) => s.key === view.section) ?? SECTIONS[0];
@@ -224,12 +225,13 @@ export function CharacterSheetWindow({
               section={section}
               character={character}
               districts={districts}
+              majors={rules.sheetOptions.filter((o) => o.kind === "indirizzo")}
               onDone={() => setView((v) => ({ ...v, mode: "view" }))}
             />
           ) : section.key === "principale" ? (
             <MainSection character={character} />
           ) : section.key === "dati" ? (
-            <DataList character={character} online={online} since={since} rules={rules} />
+            <DataList character={character} build={build} rules={rules} affiliations={affiliations} />
           ) : section.key === "caratteristiche" ? (
             <SectionFrame title="Caratteristiche">
               <StatBars build={build} rules={rules} />
@@ -237,7 +239,7 @@ export function CharacterSheetWindow({
             </SectionFrame>
           ) : section.key === "abilita" ? (
             <SectionFrame title="Abilità">
-              <SkillList build={build} rules={rules} />
+              <SkillList character={character} build={build} rules={rules} />
             </SectionFrame>
           ) : section.key === "tratti" ? (
             <SectionFrame title="Tratti">
@@ -302,13 +304,31 @@ function Portrait({ character }: { character: SheetCharacter }) {
   );
 }
 
+/**
+ * Sezione Principale: sul computer immagine orizzontale 640x560 (8:7);
+ * sul cellulare (o con la finestra stretta) scheda verticale 720x1280 (9:16)
+ * con la sua immagine, o quella del computer se manca.
+ */
 function MainSection({ character }: { character: SheetCharacter }) {
+  return (
+    <>
+      <div className="hidden @2xl:block">
+        <MainCover character={character} src={character.cover_url} className="aspect-[8/7] max-w-[640px]" />
+      </div>
+      <div className="@2xl:hidden">
+        <MainCover character={character} src={character.cover_mobile_url ?? character.cover_url} className="aspect-[9/16] max-h-[85dvh] max-w-[720px]" />
+      </div>
+    </>
+  );
+}
+
+function MainCover({ character, src, className }: { character: SheetCharacter; src: string | null; className: string }) {
   const subtitle = [character.occupation, character.district?.name].filter(Boolean).join(" · ");
   return (
-    <div className="relative flex h-full min-h-[24rem] flex-col justify-end overflow-hidden">
-      {character.cover_url ? (
+    <div className={cn("relative mx-auto flex w-full flex-col justify-end overflow-hidden", className)}>
+      {src ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={character.cover_url} alt={`Immagine di ${character.name}`} className="absolute inset-0 size-full object-cover" />
+        <img src={src} alt={`Immagine di ${character.name}`} className="absolute inset-0 size-full object-cover" />
       ) : (
         <div className={cn("absolute inset-0 bg-gradient-to-b", character.district?.gradient ?? "from-violet via-flamingo to-peach")}>
           <div className="absolute bottom-[22%] left-1/2 size-40 -translate-x-1/2 rounded-full bg-sand/60 blur-md" />
@@ -349,69 +369,62 @@ function FreeText({ text, isOwner }: { text: string | null; isOwner: boolean }) 
 const SEX_LABELS: Record<string, string> = { M: "Maschile", F: "Femminile", X: "Non binario" };
 
 /** Sezione Dati: banner con il nome, poi i dati divisi in blocchi */
-function DataList({ character, online, since, rules }: { character: SheetCharacter; online: boolean; since: string; rules: RulesData }) {
-  const option = (id: string | null) => rules.sheetOptions.find((o) => o.id === id)?.name ?? "—";
-  const job = character.occupation || (character.study_track_id ? "Studente" : null);
-  const subtitle = ["Miami", character.age ? `${character.age} anni` : null, job].filter(Boolean);
+function DataList({ character, build, rules, affiliations }: { character: SheetCharacter; build: CharacterBuild; rules: RulesData; affiliations: CharacterAffiliations }) {
+  const option = (id: string | null) => (id ? (rules.sheetOptions.find((o) => o.id === id)?.name ?? "—") : "—");
+  // patrimonio (fascia di ricchezza) scelto in creazione
+  const wealth = rules.options.find((o) => o.kind === "tenore" && build.optionIds.includes(o.id))?.name ?? null;
+  // sotto il nome: età, quartiere di residenza, patrimonio
+  const subtitle = [character.age ? `${character.age} anni` : null, character.district?.name ?? null, wealth].filter(Boolean);
+  const born = character.birth_date ? `${formatBirthDate(character.birth_date)}${character.age ? ` (${character.age} anni)` : ""}` : "—";
+  const jobs = affiliations.jobs.map((j) => `${j.role ? `${j.role} · ` : ""}${j.name} (${j.kind === "full_time" ? "FT" : "PT"})`);
+  const groups = affiliations.groups.map((g) => (g.role ? `${g.name} · ${g.role}` : g.name));
   return (
     <div className="flex flex-col">
       <DataBanner name={character.name} subtitle={subtitle as string[]} />
       <div className="flex flex-col gap-3 px-4 py-3 @3xl:px-5">
-        <DataBlock icon={<UserRound />} title="Informazioni personali" cols={3}>
-          <DataCard label="Nome" value={character.name} />
+        <DataBlock icon={<UserRound />} title="Informazioni personali" cols={4}>
+          <DataCard label="Nato/a il" value={born} />
           <DataCard label="Sesso" value={character.sex ? SEX_LABELS[character.sex] : "—"} />
-          <DataCard label="Età" value={character.age ? `${character.age} anni` : "—"} />
-          <DataCard label="Nato/a il" value={formatBirthDate(character.birth_date)} />
           <DataCard label="Nazionalità" value={character.nationality || "—"} />
           <DataCard label="Prestavolto" value={character.face_claim || "—"} />
+          <DataCard label="Altezza" value={character.height || "—"} />
+          <DataCard label="Peso" value={character.weight || "—"} />
+          <DataCard label="Colore occhi" value={character.eye_color || "—"} />
+          <DataCard label="Colore capelli" value={character.hair_color || "—"} />
         </DataBlock>
-        <DataBlock icon={<GraduationCap />} title="Studio e lavoro" cols={4}>
-          <DataCard label="Indirizzo di studio" value={option(character.study_track_id)} />
+        <DataBlock icon={<GraduationCap />} title="Studio" cols={3}>
+          <DataCard label="Major" value={option(character.study_track_id)} />
+          <DataCard label="Minor" value={option(character.minor_id)} />
           <DataCard label="Anno di corso" value={option(character.year_id)} />
-          <DataCard label="Squadra o club" value={character.club_id ? option(character.club_id) : "—"} />
-          <DataCard label="Lavoro" value={character.occupation || "—"} />
         </DataBlock>
-        <DataBlock icon={<House />} title="Residenza e altro" cols={5}>
-          <DataCard label="Città di residenza" value="Miami" />
-          <DataCard label="Zona" value={character.district?.name ?? "—"} />
-          <DataCard label="A Miami dal" value={since} />
-          <DataCard label="PX da spendere" value={String(character.px)} />
-          <DataCard label="Stato" value={online ? "Online" : "Offline"} />
+        <DataBlock icon={<BriefcaseBusiness />} title="Gruppi e lavoro" cols={3}>
+          <DataCard label={jobs.length > 1 ? "Lavori" : "Lavoro"} value={jobs.length ? jobs.join("\n") : "—"} />
+          <DataCard label="Gruppi di gioco" value={groups.length ? groups.join("\n") : "—"} />
+          <DataCard label="Squadra o club" value={option(character.club_id)} />
         </DataBlock>
+        {/* in piccolo, fuori dalle categorie */}
+        <p className="flex flex-wrap gap-x-4 gap-y-0.5 px-1 text-[0.7rem] text-muted-foreground">
+          <span>
+            Iscritto il <span className="text-foreground/80">{affiliations.joinedAt ? formatDate(affiliations.joinedAt) : "—"}</span>
+          </span>
+          <span>
+            Ultimo accesso <span className="text-foreground/80">{affiliations.lastLoginAt ? formatDateTime(affiliations.lastLoginAt) : "—"}</span>
+          </span>
+        </p>
       </div>
     </div>
   );
 }
 
-/** Palazzi dello skyline: [larghezza, altezza] in % del banner */
-const SKYLINE: [number, number][] = [
-  [4, 38], [3, 56], [5, 30], [3.5, 72], [6, 44], [3, 62], [4.5, 34], [5, 52],
-  [3, 80], [4, 40], [6, 58], [3.5, 30], [4, 66], [5, 42], [3, 50],
-];
-
-/** Banner al tramonto: cielo, sole, skyline di Miami e palme in silhouette */
+/** Banner al tramonto (immagine di Miami), con il nome del personaggio */
 function DataBanner({ name, subtitle }: { name: string; subtitle: string[] }) {
   return (
     <div className="relative h-32 shrink-0 overflow-hidden border-b border-white/10">
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#3b2d86_0%,#6c56c2_35%,#c27bc9_65%,#ff8fb3_85%,#ffb48c_100%)]" />
-      {/* sole */}
-      <div className="absolute top-[38%] right-[14%] size-28 rounded-full bg-[radial-gradient(circle,#ffe2b0_0%,#ffc28f_45%,rgb(255_160_140/0.35)_70%,transparent_75%)] sm:size-36" />
-      {/* skyline */}
-      <div className="absolute right-0 bottom-0 left-[34%] flex h-[70%] items-end gap-[3px] opacity-85">
-        {SKYLINE.map(([w, h], i) => (
-          <span key={i} className="relative rounded-t-sm bg-gradient-to-b from-[#5b4a9c] to-[#3d2f78]" style={{ width: `${w}%`, height: `${h}%` }}>
-            {/* finestre accese */}
-            <span className="absolute inset-x-[22%] top-[12%] bottom-[18%] bg-[repeating-linear-gradient(to_bottom,rgb(255_210_170/0.35)_0_2px,transparent_2px_7px)]" />
-          </span>
-        ))}
-      </div>
-      {/* palme */}
-      <Palm className="absolute -bottom-3 left-[30%] h-[88%] text-palm" lean={10} />
-      <Palm className="absolute -bottom-3 left-[48%] h-[70%] text-palm/90" lean={-16} />
-      <Palm className="absolute -bottom-3 right-[22%] h-[60%] text-palm/90" lean={14} />
-      <Palm className="absolute -right-6 -bottom-3 h-[84%] text-palm" lean={-22} />
-      <div className="absolute inset-0 bg-gradient-to-r from-night/70 via-night/20 to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-t from-night/60 via-transparent to-transparent" />
+      {/* l'immagine riempie il banner; il taglio tiene il centro della scena */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/images/banner-miami.webp" alt="" aria-hidden className="absolute inset-0 size-full object-cover object-[center_60%]" />
+      <div className="absolute inset-0 bg-gradient-to-r from-night/55 via-night/15 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-night/45 via-transparent to-transparent" />
       <div className="relative flex h-full flex-col justify-end px-5 pb-3">
         <h2 className="font-heading text-4xl leading-none tracking-wide text-white drop-shadow-lg @3xl:text-5xl">{name}</h2>
         {subtitle.length > 0 && (
@@ -430,7 +443,7 @@ function DataBanner({ name, subtitle }: { name: string; subtitle: string[] }) {
 }
 
 /** Blocco di dati con titolo spaziato e linea, come nella scheda grafica */
-function DataBlock({ icon, title, cols, children }: { icon: React.ReactNode; title: string; cols: 3 | 4 | 5; children: React.ReactNode }) {
+function DataBlock({ icon, title, cols, children }: { icon: React.ReactNode; title: string; cols: 2 | 3 | 4; children: React.ReactNode }) {
   return (
     <section>
       <h3 className="mb-1.5 flex items-center gap-2">
@@ -438,7 +451,7 @@ function DataBlock({ icon, title, cols, children }: { icon: React.ReactNode; tit
         <span className="font-heading text-sm tracking-[0.18em] text-flamingo uppercase @3xl:text-base @3xl:tracking-[0.26em]">{title}</span>
         <span className="h-px flex-1 bg-gradient-to-r from-flamingo/60 to-flamingo/10" />
       </h3>
-      <dl className={cn("grid grid-cols-2 gap-2", cols === 3 && "@3xl:grid-cols-3", cols === 4 && "@3xl:grid-cols-4", cols === 5 && "@3xl:grid-cols-3 @6xl:grid-cols-5")}>{children}</dl>
+      <dl className={cn("grid grid-cols-2 gap-2", cols === 3 && "@3xl:grid-cols-3", cols === 4 && "@3xl:grid-cols-4")}>{children}</dl>
     </section>
   );
 }
@@ -447,7 +460,7 @@ function DataCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-1.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.04)]">
       <dt className="text-[0.6rem] font-medium tracking-wider text-lavender uppercase">{label}</dt>
-      <dd className="text-[0.8rem] font-medium break-words text-white">{value}</dd>
+      <dd className="text-[0.8rem] font-medium break-words whitespace-pre-line text-white">{value}</dd>
     </div>
   );
 }
@@ -459,11 +472,13 @@ function StatBars({ build, rules }: { build: CharacterBuild; rules: RulesData })
         const value = build.attributes[a.id] ?? 0;
         return (
           <li key={a.id}>
-            <div className="mb-1.5 flex justify-between text-sm">
+            <div className="mb-1.5 flex items-center gap-2 text-sm">
               <span className="tracking-wide uppercase">
                 <span className="text-peach">{a.code}</span> · {a.name}
               </span>
-              <span className="text-muted-foreground">{value}/10</span>
+              <span className="rounded-md bg-flamingo/20 px-1.5 text-xs font-semibold text-peach" title="Valore della caratteristica">
+                {value}/10
+              </span>
             </div>
             <div className="h-2.5 overflow-hidden rounded-full bg-white/10">
               <div className="h-full rounded-full bg-gradient-to-r from-violet via-flamingo to-peach" style={{ width: `${value * 10}%` }} />
@@ -476,28 +491,47 @@ function StatBars({ build, rules }: { build: CharacterBuild; rules: RulesData })
 }
 
 /** Abilità raggruppate per caratteristica, con il totale caratteristica + abilità */
-function SkillList({ build, rules }: { build: CharacterBuild; rules: RulesData }) {
+function SkillList({ character, build, rules }: { character: SheetCharacter; build: CharacterBuild; rules: RulesData }) {
+  // Tutte le abilità, anche a 0: i PX si spendono anche lì e i dadi si tirano anche lì
   const groups = rules.attributes
-    .map((a) => ({ attr: a, skills: rules.skills.filter((s) => s.attribute_id === a.id && (build.skills[s.id] ?? 0) > 0) }))
+    .map((a) => ({ attr: a, skills: rules.skills.filter((s) => s.attribute_id === a.id) }))
     .filter((g) => g.skills.length > 0);
-  if (groups.length === 0) return <p className="text-sm text-muted-foreground">Nessuna abilità addestrata.</p>;
+  // PX accumulati da sempre = da spendere + spesi nelle abilità + costo delle scelte
+  // (gli svantaggi hanno costo negativo: i PX che danno contano tra gli accumulati)
+  const settings = parseSettings(rules.settings);
+  const spentSkills = Object.values(build.skills).reduce((sum, level) => sum + skillCost(level, settings), 0);
+  const spentOptions = rules.options.filter((o) => build.optionIds.includes(o.id)).reduce((sum, o) => sum + o.cost_px, 0);
+  const total = character.px + spentSkills + spentOptions;
   return (
     <div className="flex max-w-2xl flex-col gap-5">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl border border-flamingo/30 bg-flamingo/10 px-4 py-2">
+          <p className="text-[0.65rem] font-medium tracking-wider text-lavender uppercase">PX da spendere</p>
+          <p className="font-heading text-3xl tracking-wide text-peach">{character.px}</p>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2">
+          <p className="text-[0.65rem] font-medium tracking-wider text-lavender uppercase">PX accumulati</p>
+          <p className="font-heading text-3xl tracking-wide text-white">{total}</p>
+        </div>
+      </div>
+      {groups.length === 0 && <p className="text-sm text-muted-foreground">Nessuna abilità nel sistema.</p>}
       {groups.map(({ attr, skills }) => {
         const attrValue = build.attributes[attr.id] ?? 0;
         return (
           <section key={attr.id}>
-            <h3 className="mb-2 flex justify-between font-heading text-xl tracking-wide">
+            <h3 className="mb-2 flex items-center gap-2 font-heading text-xl tracking-wide">
               <span>
                 <span className="text-peach">{attr.code}</span> · {attr.name}
               </span>
-              <span className="text-base text-muted-foreground">{attrValue}</span>
+              <span className="grid min-w-7 place-items-center rounded-md bg-flamingo/20 px-1.5 text-base text-peach" title="Valore della caratteristica">
+                {attrValue}
+              </span>
             </h3>
             <ul className="flex flex-col gap-1.5">
               {skills.map((s) => {
                 const level = build.skills[s.id] ?? 0;
                 return (
-                  <li key={s.id} className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3 py-2 text-sm">
+                  <li key={s.id} className={cn("flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3 py-1.5 text-sm", level === 0 && "text-muted-foreground")}>
                     <span className="min-w-0 truncate" title={s.description}>{s.name}</span>
                     <span className="flex shrink-0 items-center gap-2">
                       <span className="flex gap-0.5" aria-label={`Livello ${level}`}>
@@ -613,11 +647,14 @@ function SectionEditor({
   section,
   character,
   districts,
+  majors,
   onDone,
 }: {
   section: Section;
   character: SheetCharacter;
   districts: District[];
+  /** Indirizzi di studio, per scegliere il Minor */
+  majors: { id: string; name: string }[];
   onDone: () => void;
 }) {
   const [state, action, pending] = useActionState(updateCharacter, initial);
@@ -635,13 +672,23 @@ function SectionEditor({
         {section.key === "principale" && (
           <>
             <p className="text-sm text-muted-foreground">
-              Incolla i link delle immagini (devono iniziare con https://). Il ritratto è quadrato; l&apos;immagine grande è orizzontale.
+              Incolla i link delle immagini (devono iniziare con https://). Prepara le immagini con queste misure: se le proporzioni sono diverse, i bordi in eccesso vengono tagliati.
             </p>
             <EditField id="avatar_url" label="Ritratto (link immagine)">
+              <p className="-mt-1 text-xs text-muted-foreground">Quadrato: 400 × 400 pixel. Si vede nella scheda, in alto e tra i presenti.</p>
               <Input id="avatar_url" name="avatar_url" type="url" defaultValue={character.avatar_url ?? ""} placeholder="https://…" className="h-10 bg-night/40" />
             </EditField>
-            <EditField id="cover_url" label="Immagine grande (link immagine)">
+            <EditField id="cover_url" label="Immagine grande per il computer (link immagine)">
+              <p className="-mt-1 text-xs text-muted-foreground">
+                Orizzontale: 640 × 560 pixel (o 1280 × 1120 per la massima nitidezza). Tieni il soggetto al centro: in basso a sinistra c&apos;è il nome.
+              </p>
               <Input id="cover_url" name="cover_url" type="url" defaultValue={character.cover_url ?? ""} placeholder="https://…" className="h-10 bg-night/40" />
+            </EditField>
+            <EditField id="cover_mobile_url" label="Immagine per il cellulare (link immagine)">
+              <p className="-mt-1 text-xs text-muted-foreground">
+                Verticale: 720 × 1280 pixel (proporzioni 9:16, come lo schermo del telefono). Se manca, sul telefono si vede quella del computer, tagliata.
+              </p>
+              <Input id="cover_mobile_url" name="cover_mobile_url" type="url" defaultValue={character.cover_mobile_url ?? ""} placeholder="https://…" className="h-10 bg-night/40" />
             </EditField>
             <EditField id="quote" label="Frase che lo descrive">
               <Input id="quote" name="quote" maxLength={140} defaultValue={character.quote ?? ""} className="h-10 bg-night/40" />
@@ -651,8 +698,31 @@ function SectionEditor({
 
         {section.key === "dati" && (
           <>
-            <EditField id="occupation" label="Lavoro">
-              <Input id="occupation" name="occupation" maxLength={60} defaultValue={character.occupation ?? ""} className="h-10 bg-night/40" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <EditField id="height" label="Altezza">
+                <Input id="height" name="height" maxLength={20} defaultValue={character.height ?? ""} placeholder="Es. 1,82 m" className="h-10 bg-night/40" />
+              </EditField>
+              <EditField id="weight" label="Peso">
+                <Input id="weight" name="weight" maxLength={20} defaultValue={character.weight ?? ""} placeholder="Es. 78 kg" className="h-10 bg-night/40" />
+              </EditField>
+              <EditField id="eye_color" label="Colore occhi">
+                <Input id="eye_color" name="eye_color" maxLength={30} defaultValue={character.eye_color ?? ""} placeholder="Es. castani" className="h-10 bg-night/40" />
+              </EditField>
+              <EditField id="hair_color" label="Colore capelli">
+                <Input id="hair_color" name="hair_color" maxLength={30} defaultValue={character.hair_color ?? ""} placeholder="Es. neri, ricci" className="h-10 bg-night/40" />
+              </EditField>
+            </div>
+            <EditField id="minor_id" label="Minor">
+              <select id="minor_id" name="minor_id" defaultValue={character.minor_id ?? ""} className={selectClass}>
+                <option value="">— Nessuno —</option>
+                {majors
+                  .filter((m) => m.id !== character.study_track_id)
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+              </select>
             </EditField>
             <EditField id="district_id" label="Quartiere">
               <select id="district_id" name="district_id" defaultValue={character.district_id ?? ""} className={selectClass}>

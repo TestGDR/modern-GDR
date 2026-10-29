@@ -49,12 +49,18 @@ export type AdminSheetInput = {
   studyTrackId: string | null;
   yearId: string | null;
   clubId: string | null;
+  minorId: string | null;
+  height: string;
+  weight: string;
+  eyeColor: string;
+  hairColor: string;
   occupation: string;
   districtId: string | null;
   quote: string;
   px: number;
   avatarUrl: string;
   coverUrl: string;
+  coverMobileUrl: string;
   texts: { bio: string; appearance: string; traits: string; known_facts: string; relationships: string; equipment: string };
   attributes: Record<string, number>;
   skills: Record<string, number>;
@@ -71,7 +77,7 @@ export async function adminSaveCharacter(id: string, input: AdminSheetInput): Pr
   if (input.age !== null && (!Number.isInteger(input.age) || input.age < 10 || input.age > 120)) return { ok: false, error: "L'età va da 10 a 120." };
   if (input.birthDate && !/^\d{4}-\d{2}-\d{2}$/.test(input.birthDate)) return { ok: false, error: "Data di nascita non valida." };
   if (!Number.isInteger(input.px) || input.px < 0 || input.px > 100000) return { ok: false, error: "I PX vanno da 0 a 100.000." };
-  for (const url of [input.avatarUrl, input.coverUrl]) {
+  for (const url of [input.avatarUrl, input.coverUrl, input.coverMobileUrl]) {
     if (url.trim() && !/^https:\/\/\S+$/.test(url.trim())) return { ok: false, error: "I link delle immagini devono iniziare con https://" };
   }
   const row: Record<string, string | number | null> = {
@@ -82,12 +88,18 @@ export async function adminSaveCharacter(id: string, input: AdminSheetInput): Pr
     study_track_id: idOrNull(input.studyTrackId),
     year_id: idOrNull(input.yearId),
     club_id: idOrNull(input.clubId),
+    minor_id: idOrNull(input.minorId),
+    height: txt(input.height, 20),
+    weight: txt(input.weight, 20),
+    eye_color: txt(input.eyeColor, 30),
+    hair_color: txt(input.hairColor, 30),
     occupation: txt(input.occupation, 60),
     district_id: idOrNull(input.districtId),
     quote: txt(input.quote, 140),
     px: input.px,
     avatar_url: txt(input.avatarUrl, 500),
     cover_url: txt(input.coverUrl, 500),
+    cover_mobile_url: txt(input.coverMobileUrl, 500),
   };
   for (const [key, max] of Object.entries(LIMITS)) row[key] = txt(input.texts[key as keyof typeof LIMITS], max);
 
