@@ -349,128 +349,156 @@ type Report = {
 type Place = { id: string; name: string };
 type RoomPlace = Place & { location_id: string };
 
+type ArchiveRow = { id: string; kind: "voce" | "non_visto"; body: string; zone: string; author: string; created_at: string };
+
+/** Pettegolezzi: tab "Pettegolezzo" (dado e archivio) e, per lo staff, "Da approvare" */
 function GossipPanel({ canManage, characterId, onChanged }: { canManage: boolean; characterId: string | null; onChanged: () => void }) {
   const supabase = useMemo(() => createClient(), []);
-  const [reports, setReports] = useState<Report[] | null>(null);
+  const [tab, setTab] = useState<"pettegolezzo" | "approvare">("pettegolezzo");
+  const [archive, setArchive] = useState<ArchiveRow[] | null>(null);
+  const [waiting, setWaiting] = useState<Report[]>([]);
   const [pendingRoll, setPendingRoll] = useState<string | null>(null);
-  const [outcome, setOutcome] = useState<"notati" | "non-notati" | null>(null);
+  const [outcome, setOutcome] = useState<"scoperti" | "non-visti" | null>(null);
+  const [rolling, setRolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [{ data }, pending] = await Promise.all([
-      supabase.from("gossip_reports").select("*").order("created_at", { ascending: false }).limit(100),
+    const [{ data: arc }, pending, staff] = await Promise.all([
+      supabase.rpc("gossip_archive"),
       characterId ? supabase.rpc("gossip_pending", { p_character: characterId }) : Promise.resolve({ data: null }),
+      canManage ? supabase.from("gossip_reports").select("*").eq("status", "attesa").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
     ]);
-    setReports((data ?? []) as Report[]);
+    setArchive((arc ?? []) as ArchiveRow[]);
     setPendingRoll((pending.data as string | null) ?? null);
-  }, [supabase, characterId]);
+    setWaiting((staff.data ?? []) as Report[]);
+  }, [supabase, characterId, canManage]);
   useEffect(() => {
     const t = setTimeout(load, 0);
     return () => clearTimeout(t);
   }, [load]);
+  useResync(load);
 
   async function roll() {
     if (!characterId) return;
     setError(null);
+    setRolling(true);
     const { data, error: err } = await supabase.rpc("gossip_roll", { p_character: characterId });
+    setRolling(false);
     if (err) return setError(err.message);
     const row = ((data ?? []) as { id: string; seen: boolean }[])[0];
-    setOutcome(row?.seen ? "notati" : "non-notati");
+    setOutcome(row?.seen ? "scoperti" : "non-visti");
     if (row?.seen) setPendingRoll(row.id);
+    else load(); // il tiro finisce nell'archivio come "Visto e non visto"
   }
 
-  const voices = (reports ?? []).filter((r) => r.status === "approvato");
-  const waiting = (reports ?? []).filter((r) => r.status === "attesa");
+  const tabBtn = (active: boolean) =>
+    cn("rounded-full px-4 py-1.5 text-sm font-medium transition-colors", active ? "bg-flamingo/25 text-white" : "text-muted-foreground hover:bg-white/5");
 
   return (
     <div className="flex flex-col gap-4">
-      {characterId && (
-        <section className="flex flex-col gap-2 rounded-2xl bg-white/5 p-3">
-          <p className="text-sm font-medium">Fine giocata</p>
-          {pendingRoll ? (
-            <GossipForm rollId={pendingRoll} onDone={() => (setPendingRoll(null), setOutcome(null), load(), onChanged())} />
-          ) : (
-            <>
-              <p className="text-xs text-muted-foreground">
-                Alla fine di una giocata un partecipante tira il dado: se qualcuno vi ha notati, scrivete cosa è successo e lo staff decide se farlo diventare una voce.
-              </p>
-              <Button type="button" size="sm" onClick={roll} className="self-start rounded-full">
-                <Dices /> Tira a fine giocata
-              </Button>
-              {outcome === "non-notati" && <p className="text-sm text-mint">Nessuno vi ha notati: niente pettegolezzi questa volta.</p>}
-            </>
+      <div className="flex gap-1.5">
+        <button type="button" onClick={() => setTab("pettegolezzo")} className={tabBtn(tab === "pettegolezzo")}>
+          Pettegolezzo
+        </button>
+        {canManage && (
+          <button type="button" onClick={() => setTab("approvare")} className={cn(tabBtn(tab === "approvare"), "flex items-center gap-1.5")}>
+            Da approvare
+            {waiting.length > 0 && <span className="grid min-w-5 place-items-center rounded-full bg-flamingo px-1 text-[0.65rem] font-bold text-white">{waiting.length}</span>}
+          </button>
+        )}
+      </div>
+
+      {tab === "approvare" && canManage ? (
+        <GossipStaff reports={waiting} onChanged={() => (load(), onChanged())} />
+      ) : (
+        <>
+          {characterId && (
+            <section className="flex flex-col gap-2 rounded-2xl bg-white/5 p-3">
+              <p className="text-sm font-medium">Fine giocata</p>
+              {pendingRoll ? (
+                <>
+                  <p className="text-sm text-peach">Siete stati scoperti! Raccontate cosa è successo: lo staff deciderà se farlo diventare una voce.</p>
+                  <GossipForm rollId={pendingRoll} characterId={characterId} onDone={() => (setPendingRoll(null), setOutcome(null), load(), onChanged())} />
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Alla fine di una giocata tira il dado: se siete stati scoperti scrivete cosa è successo e lo mandate allo staff; altrimenti il tiro finisce in archivio come «Visto e non visto».
+                  </p>
+                  <Button type="button" size="sm" onClick={roll} disabled={rolling} className="self-start rounded-full">
+                    <Dices /> {rolling ? "Tiro…" : "Tira il dado"}
+                  </Button>
+                  {outcome === "non-visti" && <p className="text-sm text-mint">Visto e non visto: nessuno vi ha scoperti.</p>}
+                </>
+              )}
+              {error && <p className="text-xs text-destructive">{error}</p>}
+            </section>
           )}
-          {outcome === "notati" && pendingRoll && <p className="text-sm text-peach">Qualcuno vi ha notati! Raccontate cosa è successo.</p>}
-          {error && <p className="text-xs text-destructive">{error}</p>}
-        </section>
+
+          <section className="flex flex-col gap-2">
+            <h3 className="font-heading text-xl tracking-wide text-peach">Archivio</h3>
+            {archive === null && <p className="text-sm text-muted-foreground">Caricamento…</p>}
+            {archive !== null && archive.length === 0 && <p className="text-sm text-muted-foreground">Ancora nessun pettegolezzo.</p>}
+            <ul className="flex flex-col gap-2">
+              {(archive ?? []).map((r) =>
+                r.kind === "voce" ? (
+                  <li key={r.id} className="rounded-xl border border-peach/20 bg-white/5 p-3 text-sm">
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Ear className="size-3.5 text-peach" /> {r.zone} · {formatDateTime(r.created_at)}
+                    </p>
+                    <p className="mt-1 leading-relaxed whitespace-pre-line italic">«{r.body}»</p>
+                    {canManage && <DeleteReport id={r.id} onDone={() => (load(), onChanged())} />}
+                  </li>
+                ) : (
+                  <li key={r.id} className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2 text-xs text-muted-foreground">
+                    <Dices className="size-3.5 shrink-0" />
+                    <span className="font-medium text-foreground/80">{r.author}</span>
+                    <span className="italic">Visto e non visto</span>
+                    <span className="ml-auto shrink-0">{formatDateTime(r.created_at)}</span>
+                  </li>
+                ),
+              )}
+            </ul>
+          </section>
+        </>
       )}
-
-      {canManage && <GossipStaff reports={waiting} onChanged={() => (load(), onChanged())} />}
-
-      <section className="flex flex-col gap-2">
-        <h3 className="font-heading text-xl tracking-wide text-peach">Voci che girano</h3>
-        {reports === null && <p className="text-sm text-muted-foreground">Caricamento…</p>}
-        {reports !== null && voices.length === 0 && <p className="text-sm text-muted-foreground">Ancora nessuna voce.</p>}
-        <ul className="flex flex-col gap-2">
-          {voices.map((r) => (
-            <li key={r.id} className="rounded-xl bg-white/5 p-3 text-sm">
-              <p className="text-xs text-muted-foreground">
-                {r.zone_name} · {formatDateTime(r.reviewed_at ?? r.created_at)}
-              </p>
-              <p className="mt-1 leading-relaxed whitespace-pre-line italic">«{r.published_text}»</p>
-              {canManage && <DeleteReport id={r.id} onDone={() => (load(), onChanged())} />}
-            </li>
-          ))}
-        </ul>
-      </section>
     </div>
   );
 }
 
-function GossipForm({ rollId, onDone }: { rollId: string; onDone: () => void }) {
+/** Scoperti: riassunto, quartiere e chat, personaggi presenti (scelti dall'elenco) */
+function GossipForm({ rollId, characterId, onDone }: { rollId: string; characterId: string; onDone: () => void }) {
   const supabase = useMemo(() => createClient(), []);
   const [districts, setDistricts] = useState<Place[]>([]);
   const [rooms, setRooms] = useState<RoomPlace[]>([]);
-  const [form, setForm] = useState({ summary: "", location: "", room: "", people: "" });
+  const [characters, setCharacters] = useState<Place[]>([]);
+  const [form, setForm] = useState({ summary: "", location: "", room: "" });
+  const [people, setPeople] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    Promise.all([supabase.from("locations").select("id, name").order("sort_order"), supabase.from("rooms").select("id, name, location_id").neq("access", "password").order("sort_order")]).then(
-      ([l, r]) => {
-        setDistricts((l.data ?? []) as Place[]);
-        setRooms((r.data ?? []) as RoomPlace[]);
-      },
-    );
-  }, [supabase]);
+    Promise.all([
+      supabase.from("locations").select("id, name").order("sort_order"),
+      supabase.from("rooms").select("id, name, location_id").neq("access", "password").order("sort_order"),
+      supabase.from("characters").select("id, name").eq("status", "approvata").neq("id", characterId).order("name"),
+    ]).then(([l, r, c]) => {
+      setDistricts((l.data ?? []) as Place[]);
+      setRooms((r.data ?? []) as RoomPlace[]);
+      setCharacters((c.data ?? []) as Place[]);
+    });
+  }, [supabase, characterId]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setPending(true);
     setError(null);
-    const ids: string[] = [];
-    for (const n of form.people.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)) {
-      // basta il nome (vale anche nome e cognome)
-      const safe = n.replace(/[%_\\]/g, "\\$&");
-      const { data } = await supabase
-        .from("characters")
-        .select("id")
-        .or(`name.ilike.${safe},name.ilike.${safe} %`)
-        .eq("status", "approvata")
-        .limit(1)
-        .maybeSingle<{ id: string }>();
-      if (!data) {
-        setPending(false);
-        return setError(`Nessun personaggio approvato si chiama «${n}».`);
-      }
-      ids.push(data.id);
-    }
     const { error: err } = await supabase.rpc("gossip_report", {
       p_roll: rollId,
       p_summary: form.summary,
       p_location: form.location || null,
       p_room: form.room || null,
-      p_participants: ids,
+      p_participants: people,
     });
     setPending(false);
     if (err) return setError(err.message);
@@ -485,30 +513,63 @@ function GossipForm({ rollId, onDone }: { rollId: string; onDone: () => void }) 
         rows={3}
         maxLength={2000}
         required
-        placeholder="Cosa è successo, in breve (lo leggerà lo staff)"
+        placeholder="Riassunto: cosa è successo, in breve (lo leggerà lo staff)"
         className={field}
       />
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <select value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value, room: "" })} required className={cn(field, "h-10 py-0")}>
-          <option value="">Quartiere…</option>
+          <option value="" className="bg-night">
+            Quartiere…
+          </option>
           {districts.map((d) => (
-            <option key={d.id} value={d.id}>
+            <option key={d.id} value={d.id} className="bg-night">
               {d.name}
             </option>
           ))}
         </select>
         <select value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} className={cn(field, "h-10 py-0")}>
-          <option value="">Chat (facoltativa)</option>
+          <option value="" className="bg-night">
+            Chat (facoltativa)
+          </option>
           {rooms
             .filter((r) => r.location_id === form.location)
             .map((r) => (
-              <option key={r.id} value={r.id}>
+              <option key={r.id} value={r.id} className="bg-night">
                 {r.name}
               </option>
             ))}
         </select>
       </div>
-      <input value={form.people} onChange={(e) => setForm({ ...form, people: e.target.value })} placeholder="Altri personaggi presenti (il nome), separati da virgola" className={field} />
+      {/* personaggi presenti: si scelgono dall'elenco */}
+      <select
+        value=""
+        onChange={(e) => e.target.value && setPeople((prev) => (prev.includes(e.target.value) ? prev : [...prev, e.target.value]))}
+        className={cn(field, "h-10 py-0")}
+        aria-label="Aggiungi un personaggio presente"
+      >
+        <option value="" className="bg-night">
+          Altri personaggi presenti: aggiungi…
+        </option>
+        {characters
+          .filter((c) => !people.includes(c.id))
+          .map((c) => (
+            <option key={c.id} value={c.id} className="bg-night">
+              {c.name}
+            </option>
+          ))}
+      </select>
+      {people.length > 0 && (
+        <ul className="flex flex-wrap gap-1.5">
+          {people.map((id) => (
+            <li key={id} className="flex items-center gap-1 rounded-full bg-white/10 py-0.5 pr-1 pl-2.5 text-xs">
+              {firstName(characters.find((c) => c.id === id)?.name)}
+              <button type="button" onClick={() => setPeople(people.filter((x) => x !== id))} className="rounded-full p-0.5 hover:bg-white/15" aria-label="Togli">
+                <X className="size-3" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       {error && <p className="text-xs text-destructive">{error}</p>}
       <Button type="submit" size="sm" disabled={pending} className="self-end rounded-full">
         <Ear /> Manda allo staff
@@ -539,7 +600,7 @@ function GossipStaff({ reports, onChanged }: { reports: Report[]; onChanged: () 
 
   return (
     <section className="flex flex-col gap-3 rounded-2xl border border-peach/30 p-3">
-      <h3 className="font-heading text-xl tracking-wide text-peach">Staff · da controllare ({reports.length})</h3>
+      <h3 className="font-heading text-xl tracking-wide text-peach">Da approvare ({reports.length})</h3>
       {reports.length === 0 && <p className="text-sm text-muted-foreground">Nessun pettegolezzo in attesa.</p>}
       {reports.map((r) => (
         <ReviewItem key={r.id} report={r} onChanged={onChanged} />

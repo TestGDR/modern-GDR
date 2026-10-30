@@ -4,10 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import DOMPurify from "dompurify";
-import { ArrowDown, ArrowUp, Check, Pencil, Plus, Sparkle, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronDown, Pencil, Plus, Sparkle, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { initials } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
 // L'editor (TipTap) si carica solo quando serve
 const RichEditor = dynamic(() => import("@/components/guide/rich-editor").then((m) => m.RichEditor), {
@@ -112,7 +113,10 @@ export function AffectionsSection({ characterId, canEdit, legacyText }: { charac
   );
 }
 
-/** Tendina "Aggiungi un PG": tutti i personaggi iscritti, in ordine alfabetico */
+/**
+ * "Aggiungi un PG": elenco a discesa (disegnato dal sito, non quello del browser)
+ * con tutti i personaggi della land, approvati o no, e una casella per cercare.
+ */
 function AddPerson({
   characterId,
   onAdd,
@@ -125,66 +129,114 @@ function AddPerson({
   existing: string[];
 }) {
   const supabase = useMemo(() => createClient(), []);
-  const [people, setPeople] = useState<{ id: string; username: string; mine: boolean }[] | null>(null);
-  const [picked, setPicked] = useState("");
+  const [people, setPeople] = useState<{ userId: string; name: string; status: string }[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let alive = true;
     supabase
-      .from("profiles")
-      .select("id, username, characters(id)")
-      .order("username")
-      .limit(2000)
-      .then(({ data }) => {
-        if (!alive) return;
-        const rows = (data ?? []) as { id: string; username: string; characters: { id: string }[] | null }[];
-        // il proprietario della scheda non si aggiunge ai propri affetti
-        setPeople(rows.map((r) => ({ id: r.id, username: r.username, mine: (r.characters ?? []).some((c) => c.id === characterId) })));
-      });
+      .from("characters")
+      .select("id, name, owner_id, status")
+      .order("name")
+      .limit(3000)
+      .then(
+        ({ data, error }) => {
+          if (!alive) return;
+          if (error) {
+            setLoadError(true);
+            setPeople([]);
+            return;
+          }
+          const rows = (data ?? []) as { id: string; name: string; owner_id: string; status: string }[];
+          const owner = rows.find((r) => r.id === characterId)?.owner_id;
+          // una riga per giocatore (il suo personaggio), senza il proprietario della scheda
+          const seen = new Set<string>();
+          const list: { userId: string; name: string; status: string }[] = [];
+          for (const r of rows) {
+            if (r.owner_id === owner || seen.has(r.owner_id)) continue;
+            seen.add(r.owner_id);
+            list.push({ userId: r.owner_id, name: r.name, status: r.status });
+          }
+          setPeople(list);
+        },
+        () => {
+          if (!alive) return;
+          setLoadError(true);
+          setPeople([]);
+        },
+      );
     return () => {
       alive = false;
     };
   }, [supabase, characterId]);
 
-  const options = (people ?? []).filter((p) => !p.mine && !existing.includes(p.id));
-  const chosen = options.find((p) => p.id === picked) ?? null;
+  // un clic fuori dall'elenco lo chiude
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [open]);
+
+  const term = q.trim().toLowerCase();
+  const options = (people ?? []).filter((p) => !existing.includes(p.userId) && (!term || p.name.toLowerCase().includes(term)));
+  const STATUS: Record<string, string> = { bozza: "in creazione", in_attesa: "in attesa", rifiutata: "rifiutata" };
 
   return (
-    <form
-      className="flex gap-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (!chosen) return;
-        onAdd(chosen);
-        setPicked("");
-      }}
-    >
-      <select
-        value={picked}
-        onChange={(e) => setPicked(e.target.value)}
-        disabled={people === null}
-        aria-label="Aggiungi un PG agli affetti"
-        className="h-11 min-w-0 flex-1 rounded-xl border border-peach/30 bg-night/50 px-3 text-sm outline-none focus-visible:border-peach/70"
-      >
-        <option value="" className="bg-night">
-          {people === null ? "Caricamento dei personaggi…" : options.length === 0 ? "Nessun altro personaggio da aggiungere" : "Aggiungi un PG: scegli dall'elenco…"}
-        </option>
-        {options.map((p) => (
-          <option key={p.id} value={p.id} className="bg-night">
-            {p.username}
-          </option>
-        ))}
-      </select>
+    <div ref={boxRef} className="relative">
       <button
-        type="submit"
-        disabled={disabled || !chosen}
-        title={chosen ? `Aggiungi ${chosen.username}` : "Scegli un personaggio dall'elenco"}
-        aria-label="Aggiungi"
-        className="grid size-11 shrink-0 place-items-center rounded-xl border border-peach/30 bg-night/50 text-peach transition-colors hover:border-peach hover:bg-peach/10 disabled:opacity-40"
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className="flex h-11 w-full items-center gap-2 rounded-xl border border-peach/30 bg-night/50 px-4 text-left text-sm transition-colors hover:border-peach/60 disabled:opacity-50"
       >
-        <Plus className="size-5" />
+        <Plus className="size-4 shrink-0 text-peach" />
+        <span className="flex-1 text-muted-foreground">Aggiungi un PG: scegli dall&apos;elenco…</span>
+        <ChevronDown className={cn("size-4 shrink-0 text-peach transition-transform", open && "rotate-180")} />
       </button>
-    </form>
+      {open && (
+        <div className="absolute inset-x-0 top-12 z-30 overflow-hidden rounded-xl border border-white/15 bg-night/95 shadow-2xl backdrop-blur">
+          <input
+            autoFocus
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Cerca un nome…"
+            aria-label="Cerca un personaggio"
+            className="h-10 w-full border-b border-white/10 bg-transparent px-4 text-sm outline-none placeholder:text-muted-foreground"
+          />
+          <ul role="listbox" className="max-h-64 overflow-y-auto py-1">
+            {people === null && <li className="px-4 py-2 text-sm text-muted-foreground">Caricamento dei personaggi…</li>}
+            {loadError && <li className="px-4 py-2 text-sm text-destructive">Non è stato possibile caricare l&apos;elenco. Riprova più tardi.</li>}
+            {people !== null && !loadError && options.length === 0 && (
+              <li className="px-4 py-2 text-sm text-muted-foreground">{term ? "Nessun personaggio con questo nome." : "Nessun altro personaggio da aggiungere."}</li>
+            )}
+            {options.map((p) => (
+              <li key={p.userId} role="option" aria-selected={false}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onAdd({ id: p.userId, username: p.name });
+                    setOpen(false);
+                    setQ("");
+                  }}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm hover:bg-white/10"
+                >
+                  <span className="flex-1">{p.name}</span>
+                  {STATUS[p.status] && <span className="text-[0.65rem] text-muted-foreground">{STATUS[p.status]}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
 
