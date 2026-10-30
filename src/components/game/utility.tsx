@@ -177,13 +177,9 @@ export function Registry({ people }: { people: RegistryEntry[] }) {
               );
               return (
                 <li key={p.user_id}>
-                  {p.character_id ? (
-                    <Link href={`/scheda/${p.character_id}`} className="flex items-center gap-3 rounded-2xl bg-white/5 p-2.5 transition-colors hover:bg-white/10">
-                      {body}
-                    </Link>
-                  ) : (
-                    <div className="flex items-center gap-3 rounded-2xl bg-white/5 p-2.5 opacity-70">{body}</div>
-                  )}
+                  <Link href={`/scheda/${p.character_id ?? p.user_id}`} className="flex items-center gap-3 rounded-2xl bg-white/5 p-2.5 transition-colors hover:bg-white/10">
+                    {body}
+                  </Link>
                 </li>
               );
             })}

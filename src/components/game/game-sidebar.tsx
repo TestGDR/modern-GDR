@@ -242,6 +242,8 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
   const [note, setNote] = useState<string>(readPresenceNote);
   const [noteDraft, setNoteDraft] = useState(note);
   const { players, me, refresh } = usePresence({ availability, place, placeKey, note });
+  // tutti i nomi aprono la scheda; senza personaggio si apre quella dell'account
+  const sheetHref = (c: { characterId: string | null; userId: string }) => `/scheda/${c.characterId ?? c.userId}`;
   const [open, setOpen] = useState(false);
   const list = players ?? [];
   const here = list.filter((c) => c.placeKey === placeKey);
@@ -327,15 +329,9 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
     );
     return (
       <li key={c.userId}>
-        {c.characterId ? (
-          <Link href={`/scheda/${c.characterId}`} title={`Apri la scheda di ${c.name}`} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/5">
-            {row}
-          </Link>
-        ) : (
-          <div className="flex items-center gap-3 rounded-xl p-2" title="Non ha ancora creato il personaggio">
-            {row}
-          </div>
-        )}
+        <Link href={sheetHref(c)} title={`Apri la scheda di ${c.name}`} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/5">
+          {row}
+        </Link>
       </li>
     );
   }
@@ -371,19 +367,15 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
                   {c.invisible && <EyeOff className="size-3 shrink-0" aria-label="Invisibile" />}
                 </>
               );
-              return c.characterId ? (
+              return (
                 <Link
                   key={c.userId}
-                  href={`/scheda/${c.characterId}`}
+                  href={sheetHref(c)}
                   title={`Apri la scheda di ${c.name}`}
                   className="flex items-center gap-2 truncate rounded-lg px-1 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
                 >
                   {inner}
                 </Link>
-              ) : (
-                <span key={c.userId} title="Non ha ancora creato il personaggio" className="flex items-center gap-2 truncate px-1 py-0.5 text-xs text-muted-foreground">
-                  {inner}
-                </span>
               );
             })}
           </span>

@@ -186,6 +186,14 @@ export async function getCharacter(id: string) {
   return data;
 }
 
+/** Nome di un account (per la scheda di chi non ha ancora un personaggio) */
+export async function getAccountName(userId: string) {
+  if (!isUuid(userId)) return null;
+  const supabase = await createClient();
+  const { data } = await supabase.from("profiles").select("username").eq("id", userId).maybeSingle<{ username: string }>();
+  return data?.username ?? null;
+}
+
 export async function getDistricts() {
   const supabase = await createClient();
   const { data } = await supabase

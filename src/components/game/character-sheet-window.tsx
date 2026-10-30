@@ -930,6 +930,23 @@ export function SheetFrame({ title, variant, children }: { title: string; varian
 }
 
 /** Scheda di chi non ha ancora creato il personaggio: al centro il pulsante "Crea personaggio" */
+/** Account senza personaggio (aperto dagli online o dall'anagrafe) */
+export function NoCharacterSheet({ name, variant = "page" }: { name: string; variant?: SheetVariant }) {
+  return (
+    <SheetFrame title={`Scheda · ${name}`} variant={variant}>
+      <div className="relative grid min-h-[20rem] flex-1 place-items-center overflow-hidden p-6 text-center">
+        <div className="absolute inset-0 bg-gradient-to-b from-violet/40 via-flamingo/20 to-transparent" />
+        <Palm className="absolute -bottom-2 -left-8 h-[70%] text-palm/60" lean={20} />
+        <Palm className="absolute right-0 -bottom-2 h-[50%] text-palm/50" lean={-12} />
+        <div className="relative flex flex-col items-center gap-3">
+          <p className="font-heading text-4xl tracking-wide text-white">{name}</p>
+          <p className="max-w-sm text-sm text-white/80">Non ha ancora creato il suo personaggio.</p>
+        </div>
+      </div>
+    </SheetFrame>
+  );
+}
+
 export function NewCharacterSheet({ name, variant = "page" }: { name: string; variant?: SheetVariant }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);

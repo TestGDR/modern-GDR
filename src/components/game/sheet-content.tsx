@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { CreationWizard } from "@/components/creation/creation-wizard";
-import { CharacterSheetWindow, NewCharacterSheet, type SheetVariant } from "@/components/game/character-sheet-window";
+import { CharacterSheetWindow, NewCharacterSheet, NoCharacterSheet, type SheetVariant } from "@/components/game/character-sheet-window";
 import { can, requirePlayer } from "@/lib/auth";
-import { getCharacter, getCharacterAffiliations, getCharacterBuild, getDistricts, getRulesData } from "@/lib/data";
+import { getAccountName, getCharacter, getCharacterAffiliations, getCharacterBuild, getDistricts, getRulesData } from "@/lib/data";
 import { formatDateTime, isOnline } from "@/lib/format";
 import { parseSettings } from "@/lib/interlock";
 import { requestTime } from "@/lib/request-time";
@@ -60,9 +60,14 @@ export async function OtherSheet({ id, variant }: { id: string; variant: SheetVa
   const player = await requirePlayer();
   // la propria scheda (es. dagli online): si mostra qui, senza redirect, che dentro
   // la finestra caricata a pezzi (Suspense) manderebbe in errore il server
-  if (id === player.character?.id) return <OwnSheet variant={variant} />;
+  if (id === player.character?.id || id === player.userId) return <OwnSheet variant={variant} />;
   const character = await getCharacter(id);
-  if (!character) notFound();
+  if (!character) {
+    // l'id di un account senza personaggio (online, anagrafe): scheda vuota con il nome
+    const name = await getAccountName(id);
+    if (!name) notFound();
+    return <NoCharacterSheet name={name} variant={variant} />;
+  }
   const isAdmin = player.level.is_admin;
   // Caratteristiche, abilità, tratti, storia ed equipaggiamento: solo proprietario e staff
   const canSeePrivate = can(player, "personaggi.vedere_tutti");
