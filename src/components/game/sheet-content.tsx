@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { CreationWizard } from "@/components/creation/creation-wizard";
 import { CharacterSheetWindow, NewCharacterSheet, type SheetVariant } from "@/components/game/character-sheet-window";
 import { can, requirePlayer } from "@/lib/auth";
@@ -49,6 +49,7 @@ export async function OwnSheet({ variant }: { variant: SheetVariant }) {
       affiliations={affiliations}
       canSeePrivate
       canReview={can(player, "personaggi.approvare")}
+      canManageHealth={can(player, "combattimento.gestire")}
       isAdmin={player.level.is_admin}
     />
   );
@@ -57,7 +58,9 @@ export async function OwnSheet({ variant }: { variant: SheetVariant }) {
 /** La scheda di un altro personaggio (chi può, la approva o la rifiuta) */
 export async function OtherSheet({ id, variant }: { id: string; variant: SheetVariant }) {
   const player = await requirePlayer();
-  if (id === player.character?.id) redirect("/scheda");
+  // la propria scheda (es. dagli online): si mostra qui, senza redirect, che dentro
+  // la finestra caricata a pezzi (Suspense) manderebbe in errore il server
+  if (id === player.character?.id) return <OwnSheet variant={variant} />;
   const character = await getCharacter(id);
   if (!character) notFound();
   const isAdmin = player.level.is_admin;
@@ -85,6 +88,7 @@ export async function OtherSheet({ id, variant }: { id: string; variant: SheetVa
       affiliations={affiliations}
       canSeePrivate={canSeePrivate}
       canReview={can(player, "personaggi.approvare")}
+      canManageHealth={can(player, "combattimento.gestire")}
       isAdmin={isAdmin}
     />
   );

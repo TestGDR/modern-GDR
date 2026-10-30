@@ -51,6 +51,7 @@ async function Room({ params }: { params: PageProps<"/chat/[id]">["params"] }) {
       canModerate={can(player, "chat.moderare")}
       canInvisible={can(player, "staff.invisibile")}
       canDice={can(player, "dadi.tirare")}
+      canCombat={can(player, "combattimento.gestire")}
       isOwner={!!character && data.room.owner_character_id === character.id}
       ownerName={ownerName}
       attributes={rules.attributes.map((a) => ({ id: a.id, code: a.code, name: a.name }))}

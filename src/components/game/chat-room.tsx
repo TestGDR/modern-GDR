@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowLeft, Crown, Dices, Eye, EyeOff, SendHorizontal, Users } from "lucide-react";
+import { ArrowDown, ArrowLeft, Crown, Dices, Eye, EyeOff, SendHorizontal, Swords, Users } from "lucide-react";
 import {
   BlurredRows,
   DicePanel,
@@ -15,6 +15,7 @@ import {
   type DiceAttribute,
   type DiceSkill,
 } from "@/components/game/chat-parts";
+import { CombatPanel } from "@/components/game/combat-panel";
 import { NeedsCharacter } from "@/components/game/needs-character";
 import { Button } from "@/components/ui/button";
 import { deleteMessage, editMessage, joinChat, leaveChat, setInvisible } from "@/lib/actions/chat";
@@ -35,6 +36,8 @@ type Props = {
   canModerate: boolean;
   canInvisible: boolean;
   canDice: boolean;
+  /** Staff del combattimento: numeri dei tiri, difese al posto dei giocatori, chiusura */
+  canCombat: boolean;
   /** È il proprietario della chat su invito */
   isOwner: boolean;
   ownerName: string | null;
@@ -52,7 +55,7 @@ const byTime = (a: Message, b: Message) => a.created_at.localeCompare(b.created_
 // Uscita dalla giocata in attesa: annullata se si rientra subito nella stessa chat
 let pendingLeave: { roomId: string; timer: ReturnType<typeof setTimeout> } | null = null;
 
-export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canDice, isOwner, ownerName, attributes, skills }: Props) {
+export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canDice, canCombat, isOwner, ownerName, attributes, skills }: Props) {
   const { room, settings } = data;
   const roomId = room.id;
   const supabase = useMemo(() => createClient(), []);
@@ -62,6 +65,8 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
   const [present, setPresent] = useState<ChatPresent[]>(data.present);
   const [hidden, setHidden] = useState(data.hiddenCount);
   const [messages, setMessages] = useState<Message[]>(data.messages);
+  // cresce a ogni messaggio di combattimento: il pannello dello scontro si ricarica
+  const [combatTick, setCombatTick] = useState(0);
   // ritratti dei personaggi che scrivono (per le azioni) e look aperto
   const [avatars, setAvatars] = useState<Record<string, string | null>>({});
   const [look, setLook] = useState<{ name: string; avatar: string | null; appearance: string | null } | null>(null);
@@ -146,6 +151,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
         // il messaggio di un altro suona col suono scelto per la chat (preferenze)
         if (!own && msg.kind !== "sistema") playEvent("chat");
         addMessage(msg, own);
+        if (msg.kind === "combattimento") setCombatTick((n) => n + 1);
         if (msg.kind === "sistema") {
           // la modalità master cambia i limiti: arrivano dal server
           if (/modalità master/i.test(msg.content)) router.refresh();
@@ -196,7 +202,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [panel, setPanel] = useState<"dadi" | "master" | null>(null);
+  const [panel, setPanel] = useState<"dadi" | "master" | "scontro" | null>(null);
   const [editing, setEditing] = useState<Message | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -428,6 +434,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
                   onDelete={remove}
                   avatar={avatars[m.character_id] ?? null}
                   onLook={openLook}
+                  canSeeRolls={canNarrate || canCombat}
                 />
               ),
             )
@@ -456,6 +463,16 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
           }}
           className="flex shrink-0 flex-col gap-2 border-t border-border p-3 sm:p-4"
         >
+          <CombatPanel
+            roomId={roomId}
+            me={me}
+            present={present}
+            isMaster={canNarrate || canCombat}
+            tick={combatTick}
+            starting={panel === "scontro"}
+            onCloseStart={() => setPanel(null)}
+            onError={setError}
+          />
           {panel === "dadi" && <DicePanel roomId={roomId} characterId={me.id} attributes={attributes} skills={skills} onClose={() => setPanel(null)} onError={setError} />}
           {panel === "master" && <MasterPanel roomId={roomId} characterId={me.id} active={master} onClose={() => setPanel(null)} onError={setError} />}
           {error && <p className="text-sm text-destructive">{error}</p>}
@@ -486,6 +503,9 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
               ))}
             </datalist>
             <span className="ml-auto flex gap-1">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setPanel(panel === "scontro" ? null : "scontro")} className="rounded-full" aria-pressed={panel === "scontro"}>
+                <Swords /> Combattimento
+              </Button>
               {canDice && (
                 <Button type="button" variant="ghost" size="sm" onClick={() => setPanel(panel === "dadi" ? null : "dadi")} className="rounded-full" aria-pressed={panel === "dadi"}>
                   <Dices /> Dadi

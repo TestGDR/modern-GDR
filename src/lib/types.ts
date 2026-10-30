@@ -146,7 +146,55 @@ export type Room = {
   sort_order: number;
 };
 
-export type MessageKind = "azione" | "fuori_gioco" | "master" | "dado" | "sistema" | "sussurro";
+export type MessageKind = "azione" | "fuori_gioco" | "master" | "dado" | "sistema" | "sussurro" | "combattimento";
+
+/* ---------- Combattimento (tutto scritto dalle funzioni combat_*) ---------- */
+export type CombatZone = "testa" | "tronco" | "braccio" | "gamba";
+export type CombatActionKind = "normale" | "veloce" | "forte" | "mirato" | "spingere" | "afferrare";
+export type CombatDefense = "schivare" | "parare" | "incassare";
+export type WoundSeverity = "lieve" | "moderata" | "grave" | "molto_grave";
+export type HealthStatus = "ok" | "fuori_combattimento" | "emergenza_medica";
+
+export type Combat = {
+  id: string;
+  room_id: string;
+  status: "in_corso" | "chiuso";
+  round: number;
+  turn_order: string[];
+  turn_index: number;
+  created_by: string | null;
+  created_at: string;
+  closed_at: string | null;
+};
+export type CombatParticipant = {
+  combat_id: string;
+  character_id: string;
+  name: string;
+  initiative: number;
+  rif: number;
+  out: boolean;
+  condition: "a_terra" | "trattenuto" | null;
+  condition_by: string | null;
+  joined_at: string;
+};
+export type CombatAction = {
+  id: number;
+  combat_id: string;
+  round: number;
+  attacker_id: string;
+  target_id: string;
+  action: CombatActionKind;
+  zone_aimed: CombatZone | null;
+  status: "attesa_difesa" | "risolta" | "annullata";
+  defense: CombatDefense | null;
+  outcome: string;
+  created_at: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+};
+export type Wound = { id: string; zone: CombatZone; severity: WoundSeverity; penalty: number; created_at: string; heals_at: string | null };
+/** Salute del personaggio (character_health_get) */
+export type CharacterHealth = { hp: number; max: number; rec: number; status: HealthStatus; wounds: Wound[] };
 
 /** Dettagli di un tiro Interlock */
 export type RollData = {

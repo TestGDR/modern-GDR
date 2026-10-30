@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Dices, Lock, Pencil, Shirt, Trash2, UserPlus, X } from "lucide-react";
+import { Check, Dices, Lock, Pencil, Shirt, Swords, Trash2, UserPlus, X } from "lucide-react";
+import { CombatDetail } from "@/components/game/combat-panel";
 import { FloatingWindow } from "@/components/floating-window";
 import { Button } from "@/components/ui/button";
 import { expelFromRoom, inviteToRoom, rollDice, setMasterMode } from "@/lib/actions/chat";
@@ -70,9 +71,11 @@ type RowProps = {
   avatar?: string | null;
   /** Apre il "look" del personaggio (sezione Aspetto della scheda) */
   onLook?: (m: Message) => void;
+  /** Staff e Master: vedono i numeri dei messaggi di combattimento */
+  canSeeRolls?: boolean;
 };
 
-export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit, onDelete, avatar, onLook }: RowProps) {
+export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit, onDelete, avatar, onLook, canSeeRolls = false }: RowProps) {
   const time = formatTime(m.created_at);
   const names = mine ? [] : myNames;
   const editable =
@@ -104,6 +107,8 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
       </p>
     );
   }
+
+  if (m.kind === "combattimento") return <CombatRow message={m} time={time} canSeeRolls={canSeeRolls} tools={tools} />;
 
   if (m.kind === "dado") {
     return (
@@ -206,6 +211,29 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
         </p>
       </div>
     </article>
+  );
+}
+
+/** Esito di un combattimento: lo vedono tutti; i numeri solo lo staff */
+function CombatRow({ message: m, time, canSeeRolls, tools }: { message: Message; time: string; canSeeRolls: boolean; tools: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="group flex items-start gap-2 rounded-xl border border-flamingo/30 bg-flamingo/10 px-3 py-2 text-sm">
+      <Swords className="mt-0.5 size-4 shrink-0 text-flamingo" />
+      <div className="min-w-0 flex-1">
+        <p>
+          <span className="mr-2 text-xs text-muted-foreground">{time}</span>
+          <span className={cn(/fuori combattimento/.test(m.content) && "font-semibold text-destructive")}>{m.content}</span>
+          {canSeeRolls && (
+            <button type="button" onClick={() => setOpen(!open)} className="ml-2 text-xs text-lavender underline hover:text-white" aria-expanded={open}>
+              {open ? "Nascondi" : "Dettaglio"}
+            </button>
+          )}
+        </p>
+        {open && <CombatDetail messageId={m.id} />}
+      </div>
+      {tools}
+    </div>
   );
 }
 

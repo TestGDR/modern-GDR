@@ -36,4 +36,5 @@ export const KIND_LABEL: Record<MessageKind, string> = {
   dado: "Dado",
   sistema: "Avviso",
   sussurro: "Sussurro",
+  combattimento: "Combattimento",
 };

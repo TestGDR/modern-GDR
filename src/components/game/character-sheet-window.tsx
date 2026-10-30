@@ -12,6 +12,7 @@ import {
   GraduationCap,
   BriefcaseBusiness,
   Heart,
+  HeartPulse,
   IdCard,
   KeyRound,
   Pencil,
@@ -29,6 +30,7 @@ import {
 import { FormMessage } from "@/components/auth/auth-forms";
 import { AffectionsSection } from "@/components/game/affections";
 import { ErrorBoundary } from "@/components/game/error-boundary";
+import { HealthSection } from "@/components/game/health-section";
 import { AdminSheetPanel } from "@/components/game/admin-sheet";
 import { useCloseModal } from "@/components/game/page-modal";
 import { PrefsPanel } from "@/components/game/prefs-panel";
@@ -68,6 +70,7 @@ const SECTIONS: Section[] = [
   { key: "affetti", label: "Affetti", icon: Heart },
   { key: "caratteristiche", label: "Caratteristiche", icon: Gauge },
   { key: "abilita", label: "Abilità", icon: Zap },
+  { key: "salute", label: "Salute", icon: HeartPulse },
   { key: "tratti", label: "Tratti", icon: Fingerprint, field: "traits", hint: "Carattere: personalità, abitudini, pregi e difetti." },
   { key: "aspetto", label: "Aspetto", icon: ScanFace, field: "appearance", hint: "Com'è fisicamente, come si veste, segni particolari." },
   { key: "storia", label: "Storia", icon: BookOpen, field: "bio", hint: "Da dove viene e cosa l'ha portato a Miami." },
@@ -100,6 +103,8 @@ type CharacterSheetWindowProps = {
   affiliations?: CharacterAffiliations;
   /** Caratteristiche, abilità, tratti, storia, equipaggiamento: proprietario e staff */
   canSeePrivate?: boolean;
+  /** Staff del combattimento: PF, stato e ferite a mano */
+  canManageHealth?: boolean;
 };
 
 /** Scheda del personaggio a sezioni, nello stile "finestra" del gioco */
@@ -114,11 +119,12 @@ export function CharacterSheetWindow({
   isAdmin = false,
   affiliations = { jobs: [], groups: [], wealth: null, joinedAt: null, lastLoginAt: null },
   canSeePrivate = false,
+  canManageHealth = false,
 }: CharacterSheetWindowProps) {
   const [view, setView] = useState<View>({ section: "principale", mode: "view" });
   const section = SECTIONS.find((s) => s.key === view.section) ?? SECTIONS[0];
   // gli affetti si modificano direttamente nella sezione (aggiungi, sposta, dedica)
-  const canEdit = isOwner && section.key !== "caratteristiche" && section.key !== "abilita" && section.key !== "affetti";
+  const canEdit = isOwner && !["caratteristiche", "abilita", "affetti", "salute"].includes(section.key);
   // l'Amministratore cambia caratteristiche e abilità dall'Amministrazione della scheda
   const staffEdit = isAdmin && (section.key === "caratteristiche" || section.key === "abilita");
 
@@ -177,6 +183,8 @@ export function CharacterSheetWindow({
                         ? "Modifica caratteristiche e abilità (Amministrazione della scheda)"
                         : section.key === "affetti"
                           ? "Gli affetti si modificano direttamente nella sezione"
+                          : section.key === "salute"
+                            ? "I PF cambiano in combattimento; a mano li modifica lo staff"
                           : "Dopo l'approvazione caratteristiche e abilità le modifica lo staff"
                   }
                   active={view.mode === "edit" || (staffEdit && view.mode === "admin")}
@@ -250,6 +258,11 @@ export function CharacterSheetWindow({
           ) : section.key === "affetti" ? (
             <SectionFrame title="Affetti">
               <AffectionsSection characterId={character.id} canEdit={isOwner || isAdmin} legacyText={character.relationships} />
+            </SectionFrame>
+          ) : section.key === "salute" ? (
+            <SectionFrame title="Salute">
+              {/* proprietario e staff: lo controlla il database (can_see_health) */}
+              <HealthSection characterId={character.id} canManage={canManageHealth} />
             </SectionFrame>
           ) : PRIVATE_SECTIONS.includes(section.key) && !canSeePrivate ? (
             <SectionFrame title={section.label}>
