@@ -22,19 +22,19 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Meteo reale di Miami da Open-Meteo (gratuito, senza chiavi), letto dal browser,
+// Meteo reale di San Diego da Open-Meteo (gratuito, senza chiavi), letto dal browser,
 // ALLINEATO ALL'ORA ITALIANA: si gioca con l'orologio italiano, quindi alle 21 in
-// Italia si mostra il meteo che Miami ha (o avrà) alle sue 21. Si usano le
-// previsioni orarie di Miami. Si tiene in memoria per 30 minuti.
+// Italia si mostra il meteo che San Diego ha (o avrà) alle sue 21. Si usano le
+// previsioni orarie di San Diego. Si tiene in memoria per 30 minuti.
 
 const FORECAST =
-  "https://api.open-meteo.com/v1/forecast?latitude=25.7743&longitude=-80.1937" +
+  "https://api.open-meteo.com/v1/forecast?latitude=32.7157&longitude=-117.1611" +
   "&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,precipitation_probability,is_day,wind_speed_10m,wind_direction_10m" +
   "&daily=sunrise,sunset,uv_index_max,temperature_2m_max,temperature_2m_min" +
-  "&timezone=America%2FNew_York&forecast_days=3";
-const MARINE = "https://marine-api.open-meteo.com/v1/marine?latitude=25.78&longitude=-80.12&hourly=wave_height,sea_surface_temperature&timezone=America%2FNew_York&forecast_days=3";
+  "&timezone=America%2FLos_Angeles&forecast_days=3";
+const MARINE = "https://marine-api.open-meteo.com/v1/marine?latitude=32.75&longitude=-117.27&hourly=wave_height,sea_surface_temperature&timezone=America%2FLos_Angeles&forecast_days=3";
 const TTL = 30 * 60 * 1000;
-const STORE = "gdr_meteo_miami_ora_italiana";
+const STORE = "gdr_meteo_sandiego_ora_italiana";
 
 export type Weather = {
   at: number;
@@ -75,7 +75,7 @@ type Marine = { hourly?: { time: string[]; wave_height: (number | null)[]; sea_s
 
 let pending: Promise<Weather | null> | null = null;
 
-/** Ora italiana adesso, come "2026-10-29T21" (si cerca la stessa ora nelle previsioni di Miami) */
+/** Ora italiana adesso, come "2026-10-29T21" (si cerca la stessa ora nelle previsioni di San Diego) */
 function italianHour() {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" })
@@ -107,7 +107,7 @@ async function fetchWeather(): Promise<Weather | null> {
     if (!f) return null;
     const h = f.hourly;
     const target = italianHour();
-    // l'ora di Miami con lo stesso orologio dell'Italia (di solito 5-6 ore più avanti)
+    // l'ora di San Diego con lo stesso orologio dell'Italia (di solito 9 ore più avanti)
     let i = h.time.findIndex((t) => t.startsWith(target));
     if (i < 0) i = Math.max(0, h.time.findIndex((t) => t >= target));
     const day = target.slice(0, 10);
@@ -149,8 +149,8 @@ async function fetchWeather(): Promise<Weather | null> {
   }
 }
 
-/** Meteo di Miami (null finché non arriva o se il servizio non risponde) */
-export function useMiamiWeather() {
+/** Meteo di San Diego (null finché non arriva o se il servizio non risponde) */
+export function useGameWeather() {
   const [weather, setWeather] = useState<Weather | null>(null);
   useEffect(() => {
     let alive = true;
@@ -190,7 +190,7 @@ function describe(code: number, isDay: boolean): { label: string; icon: LucideIc
 
 const DIRS = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"];
 const windDir = (deg: number) => DIRS[Math.round(deg / 45) % 8];
-/** "2026-10-29T18:52" → "18:52" (già nell'ora di Miami) */
+/** "2026-10-29T18:52" → "18:52" (già nell'ora di San Diego) */
 const hhmm = (iso: string) => iso.slice(11, 16);
 
 /** Icona e temperatura, per il pulsante della barra laterale */
@@ -198,16 +198,16 @@ export function WeatherBadge({ weather, className }: { weather: Weather | null; 
   if (!weather) return null;
   const d = describe(weather.code, weather.isDay);
   return (
-    <span className={cn("flex items-center gap-1", className)} title={`Miami: ${d.label}, ${Math.round(weather.temp)}°C`}>
+    <span className={cn("flex items-center gap-1", className)} title={`San Diego: ${d.label}, ${Math.round(weather.temp)}°C`}>
       <d.icon className="size-4" />
       <span className="text-xs font-semibold tabular-nums">{Math.round(weather.temp)}°</span>
     </span>
   );
 }
 
-/** Dettaglio del meteo di Miami */
+/** Dettaglio del meteo di San Diego */
 export function WeatherDetails({ weather }: { weather: Weather | null }) {
-  if (!weather) return <p className="text-sm text-muted-foreground">Il meteo di Miami sta arrivando…</p>;
+  if (!weather) return <p className="text-sm text-muted-foreground">Il meteo di San Diego sta arrivando…</p>;
   const d = describe(weather.code, weather.isDay);
   const rows: { icon: LucideIcon; label: string; value: string }[] = [
     { icon: Thermometer, label: "Percepita", value: `${Math.round(weather.feels)}°C` },
@@ -257,7 +257,7 @@ export function WeatherDetails({ weather }: { weather: Weather | null }) {
           </ul>
         </div>
       )}
-      <p className="text-[0.7rem] text-muted-foreground">Meteo reale di Miami (Florida) da Open-Meteo, allineato all&apos;ora italiana: si mostra il tempo che fa a Miami alla stessa ora che segna l&apos;orologio in Italia. Si aggiorna ogni 30 minuti.</p>
+      <p className="text-[0.7rem] text-muted-foreground">Meteo reale di San Diego (California) da Open-Meteo, allineato all&apos;ora italiana: si mostra il tempo che fa a San Diego alla stessa ora che segna l&apos;orologio in Italia. Si aggiorna ogni 30 minuti.</p>
     </div>
   );
 }
