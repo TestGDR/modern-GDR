@@ -354,7 +354,8 @@ type ArchiveRow = { id: string; kind: "voce" | "non_visto"; body: string; zone: 
 /** Pettegolezzi: tab "Pettegolezzo" (dado e archivio) e, per lo staff, "Da approvare" */
 function GossipPanel({ canManage, characterId, onChanged }: { canManage: boolean; characterId: string | null; onChanged: () => void }) {
   const supabase = useMemo(() => createClient(), []);
-  const [tab, setTab] = useState<"pettegolezzo" | "approvare">("pettegolezzo");
+  // si apre sull'archivio
+  const [tab, setTab] = useState<"archivio" | "pettegolezzo" | "approvare">("archivio");
   const [archive, setArchive] = useState<ArchiveRow[] | null>(null);
   const [waiting, setWaiting] = useState<Report[]>([]);
   const [pendingRoll, setPendingRoll] = useState<string | null>(null);
@@ -396,7 +397,10 @@ function GossipPanel({ canManage, characterId, onChanged }: { canManage: boolean
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-1.5">
+      <div className="flex flex-wrap gap-1.5">
+        <button type="button" onClick={() => setTab("archivio")} className={tabBtn(tab === "archivio")}>
+          Archivio pettegolezzi
+        </button>
         <button type="button" onClick={() => setTab("pettegolezzo")} className={tabBtn(tab === "pettegolezzo")}>
           Pettegolezzo
         </button>
@@ -410,8 +414,9 @@ function GossipPanel({ canManage, characterId, onChanged }: { canManage: boolean
 
       {tab === "approvare" && canManage ? (
         <GossipStaff reports={waiting} onChanged={() => (load(), onChanged())} />
-      ) : (
+      ) : tab === "pettegolezzo" ? (
         <>
+          {!characterId && <p className="text-sm text-muted-foreground">Per tirare il dado serve un personaggio approvato.</p>}
           {characterId && (
             <section className="flex flex-col gap-2 rounded-2xl bg-white/5 p-3">
               <p className="text-sm font-medium">Fine giocata</p>
@@ -434,9 +439,10 @@ function GossipPanel({ canManage, characterId, onChanged }: { canManage: boolean
               {error && <p className="text-xs text-destructive">{error}</p>}
             </section>
           )}
-
+        </>
+      ) : (
+        <>
           <section className="flex flex-col gap-2">
-            <h3 className="font-heading text-xl tracking-wide text-peach">Archivio</h3>
             {archive === null && <p className="text-sm text-muted-foreground">Caricamento…</p>}
             {archive !== null && archive.length === 0 && <p className="text-sm text-muted-foreground">Ancora nessun pettegolezzo.</p>}
             <ul className="flex flex-col gap-2">
@@ -580,7 +586,9 @@ function GossipForm({ rollId, characterId, onDone }: { rollId: string; character
 
 function GossipStaff({ reports, onChanged }: { reports: Report[]; onChanged: () => void }) {
   const supabase = useMemo(() => createClient(), []);
-  const [settings, setSettings] = useState<{ die_sides: number; seen_from: number } | null>(null);
+  // probabilità di essere scoperti, in percentuale (dado da 100: scoperti da 101 - % in su)
+  const [percent, setPercent] = useState<number | null>(null);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -588,43 +596,73 @@ function GossipStaff({ reports, onChanged }: { reports: Report[]; onChanged: () 
       .from("gossip_settings")
       .select("die_sides, seen_from")
       .maybeSingle<{ die_sides: number; seen_from: number }>()
-      .then(({ data }) => setSettings(data));
+      .then(({ data }) => {
+        if (data) setPercent(Math.max(1, Math.min(100, Math.round(((data.die_sides - data.seen_from + 1) / data.die_sides) * 100))));
+      });
   }, [supabase]);
 
   async function saveSettings() {
-    if (!settings) return;
+    if (percent === null) return;
+    const p = Math.round(percent);
+    if (!(p >= 1 && p <= 100)) return setError("La percentuale va da 1 a 100.");
     setError(null);
-    const { error: err } = await supabase.from("gossip_settings").update(settings).eq("id", true);
-    if (err) setError("Valori non validi (dado da 2 a 100, soglia da 1 a 100).");
+    setSaved(false);
+    const { error: err } = await supabase.from("gossip_settings").update({ die_sides: 100, seen_from: 101 - p }).eq("id", true);
+    if (err) return setError("Valore non salvato.");
+    setSaved(true);
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-2xl border border-peach/30 p-3">
-      <h3 className="font-heading text-xl tracking-wide text-peach">Da approvare ({reports.length})</h3>
-      {reports.length === 0 && <p className="text-sm text-muted-foreground">Nessun pettegolezzo in attesa.</p>}
-      {reports.map((r) => (
-        <ReviewItem key={r.id} report={r} onChanged={onChanged} />
-      ))}
-      {settings && (
-        <div className="flex flex-wrap items-end gap-2 border-t border-border pt-3 text-xs">
-          <label className="flex flex-col gap-1">
-            Dado (facce)
-            <input type="number" min={2} max={100} value={settings.die_sides} onChange={(e) => setSettings({ ...settings, die_sides: Number(e.target.value) })} className={cn(field, "w-20")} />
-          </label>
-          <label className="flex flex-col gap-1">
-            Notati da
-            <input type="number" min={1} max={100} value={settings.seen_from} onChange={(e) => setSettings({ ...settings, seen_from: Number(e.target.value) })} className={cn(field, "w-20")} />
-          </label>
-          <Button type="button" size="sm" variant="outline" onClick={saveSettings} className="rounded-full">
-            Salva
-          </Button>
-          <span className="text-muted-foreground">
-            Notati {Math.max(0, Math.round(((settings.die_sides - settings.seen_from + 1) / settings.die_sides) * 100))}% delle volte
-          </span>
-        </div>
+    <div className="flex flex-col gap-4">
+      <section className="flex flex-col gap-3 rounded-2xl border border-peach/30 p-3">
+        <h3 className="font-heading text-xl tracking-wide text-peach">Da approvare ({reports.length})</h3>
+        {reports.length === 0 && <p className="text-sm text-muted-foreground">Nessun pettegolezzo in attesa.</p>}
+        {reports.map((r) => (
+          <ReviewItem key={r.id} report={r} onChanged={onChanged} />
+        ))}
+      </section>
+      {percent !== null && (
+        <section className="flex flex-col gap-2 rounded-2xl bg-white/5 p-3 text-sm">
+          <h3 className="font-heading text-lg tracking-wide text-lavender">Visto e non visto</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2">
+              Scoperti
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={percent}
+                onChange={(e) => {
+                  setPercent(Number(e.target.value));
+                  setSaved(false);
+                }}
+                className={cn(field, "w-20")}
+                aria-label="Percentuale di scoperti"
+              />
+              %
+            </label>
+            <span className="text-muted-foreground">· Visto e non visto {Math.max(0, 100 - Math.round(percent || 0))}%</span>
+            <Button type="button" size="sm" variant="outline" onClick={saveSettings} className="ml-auto rounded-full">
+              Salva
+            </Button>
+          </div>
+          <input
+            type="range"
+            min={1}
+            max={100}
+            value={percent}
+            onChange={(e) => {
+              setPercent(Number(e.target.value));
+              setSaved(false);
+            }}
+            className="w-full accent-[var(--flamingo)]"
+            aria-label="Percentuale di scoperti"
+          />
+          {saved && <p className="text-xs text-mint">Salvato: d&apos;ora in poi i tiri usano questa percentuale.</p>}
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </section>
       )}
-      {error && <p className="text-xs text-destructive">{error}</p>}
-    </section>
+    </div>
   );
 }
 
