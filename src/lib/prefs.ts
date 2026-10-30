@@ -4,8 +4,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { setSoundPrefs, soundOr } from "@/lib/notify-sound";
 
 // Preferenze dell'account (dal Westeros: prefs.ts): suoni, volume, grandezza
-// del testo, colori del parlato e delle azioni in chat. Salvate nel database
-// (user_prefs) e copiate nel browser per applicarle subito al caricamento.
+// del testo, colori del parlato e delle azioni in chat. Solo nel database
+// (user_prefs): sono dell'account, uguali su ogni PC e browser.
 
 export type Prefs = {
   sounds_on: boolean;
@@ -39,7 +39,8 @@ export const TEXT_SCALES = [
   { value: 140, label: "Molto grande" },
 ];
 
-const KEY = "moderngdr-preferenze";
+// le ultime lette o salvate nel database (per tornarci uscendo dall'anteprima)
+let saved: Prefs | null = null;
 const COLUMNS = "sounds_on, volume, sound_on, sound_off, sound_chat, chat_sound_on, text_scale, speech_color, action_color";
 
 /** Applica le preferenze alla pagina: variabili CSS e suoni */
@@ -57,38 +58,30 @@ export function applyPrefs(p: Prefs) {
     soundChat: p.sound_chat,
     chatOn: p.chat_sound_on,
   });
-  try {
-    localStorage.setItem(KEY, JSON.stringify(p));
-  } catch {
-    // senza localStorage si riapplicano al prossimo caricamento dal database
-  }
 }
 
-/** Subito, dal browser (prima che risponda il database) */
-export function cachedPrefs(): Prefs | null {
-  try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? { ...DEFAULT_PREFS, ...(JSON.parse(raw) as Partial<Prefs>) } : null;
-  } catch {
-    return null;
-  }
+/** Le preferenze salvate dell'account (null finché non arrivano dal database) */
+export function savedPrefs(): Prefs | null {
+  return saved;
 }
 
 /** Le proprie preferenze (la RLS restituisce solo la propria riga) */
 export async function loadPrefs(supabase: SupabaseClient): Promise<Prefs> {
   const { data } = await supabase.from("user_prefs").select(COLUMNS).maybeSingle();
   const p = { ...DEFAULT_PREFS, ...((data as Partial<Prefs> | null) ?? {}) };
-  return {
+  saved = {
     ...p,
     sound_on: soundOr(p.sound_on, "on"),
     sound_off: soundOr(p.sound_off, "off"),
     sound_chat: soundOr(p.sound_chat, "chat"),
   };
+  return saved;
 }
 
 export async function savePrefs(supabase: SupabaseClient, p: Prefs) {
   const { data } = await supabase.auth.getUser();
   if (!data.user) return false;
   const { error } = await supabase.from("user_prefs").upsert({ user_id: data.user.id, ...p, updated_at: new Date().toISOString() });
+  if (!error) saved = p;
   return !error;
 }

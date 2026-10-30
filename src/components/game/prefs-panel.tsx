@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Play, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { playSound, soundsOf, type SoundGroup } from "@/lib/notify-sound";
-import { DEFAULT_PREFS, TEXT_SCALES, applyPrefs, cachedPrefs, loadPrefs, savePrefs, type Prefs } from "@/lib/prefs";
+import { DEFAULT_PREFS, TEXT_SCALES, applyPrefs, loadPrefs, savePrefs, savedPrefs, type Prefs } from "@/lib/prefs";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +36,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 /** Preferenze dell'account (dal Westeros: Opzioni della scheda) */
 export function PrefsPanel() {
   const supabase = useMemo(() => createClient(), []);
-  const [prefs, setPrefs] = useState<Prefs>(() => (typeof window === "undefined" ? DEFAULT_PREFS : (cachedPrefs() ?? DEFAULT_PREFS)));
+  const [prefs, setPrefs] = useState<Prefs>(() => savedPrefs() ?? DEFAULT_PREFS);
   const [saved, setSaved] = useState<Prefs | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "done" | "error">("idle");
 
@@ -53,7 +53,7 @@ export function PrefsPanel() {
   }, [prefs]);
   useEffect(() => {
     return () => {
-      const p = cachedPrefs();
+      const p = savedPrefs();
       if (p) applyPrefs(p);
     };
   }, []);

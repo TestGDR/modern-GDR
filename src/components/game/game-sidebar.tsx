@@ -31,9 +31,9 @@ import { useGameWeather, WeatherBadge, WeatherDetails } from "@/components/game/
 import { sidebarIconClass } from "@/components/game/sidebar-styles";
 import { FloatingWindow } from "@/components/floating-window";
 import { signOut } from "@/lib/actions/auth";
-import { AVAILABILITY, readAvailability, readPresenceNote, writeAvailability, writePresenceNote, type Availability } from "@/lib/availability";
+import { AVAILABILITY, loadPresenceState, savePresenceState, type Availability } from "@/lib/availability";
 import { initials } from "@/lib/format";
-import { applyPrefs, cachedPrefs, loadPrefs } from "@/lib/prefs";
+import { applyPrefs, loadPrefs } from "@/lib/prefs";
 import { createClient } from "@/lib/supabase/client";
 import { setInvisible } from "@/lib/actions/chat";
 import { cn } from "@/lib/utils";
@@ -237,11 +237,25 @@ function FeatureIcons() {
 
 /** Presenti: a sinistra solo chi è nel mio stesso posto (la mia chat o la mappa); cliccando si apre l'elenco esteso */
 function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
-  const [availability, setAvailability] = useState<Availability>(readAvailability);
+  const [availability, setAvailability] = useState<Availability>("disponibile");
   // messaggio OFF personale, mostrato sotto il nome nei presenti estesi
-  const [note, setNote] = useState<string>(readPresenceNote);
-  const [noteDraft, setNoteDraft] = useState(note);
+  const [note, setNote] = useState("");
+  const [noteDraft, setNoteDraft] = useState("");
   const { players, me, refresh } = usePresence({ availability, place, placeKey, note });
+  // disponibilità e messaggio OFF sono dell'account: si leggono dal database
+  useEffect(() => {
+    if (!me) return;
+    let alive = true;
+    loadPresenceState(createClient()).then((s) => {
+      if (!alive) return;
+      setAvailability(s.availability);
+      setNote(s.note);
+      setNoteDraft(s.note);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [me]);
   // tutti i nomi aprono la scheda; senza personaggio si apre quella dell'account
   const sheetHref = (c: { characterId: string | null; userId: string }) => `/scheda/${c.characterId ?? c.userId}`;
   const [open, setOpen] = useState(false);
@@ -277,7 +291,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
   }
 
   function choose(a: Availability) {
-    writeAvailability(a);
+    if (me) savePresenceState(createClient(), me, { availability: a });
     setAvailability(a);
   }
 
@@ -285,7 +299,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
     const clean = noteDraft.trim().slice(0, 80);
     setNoteDraft(clean);
     if (clean === note) return;
-    writePresenceNote(clean);
+    if (me) savePresenceState(createClient(), me, { note: clean });
     setNote(clean);
   }
 
@@ -499,11 +513,9 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
   );
 }
 
-/** Applica le preferenze: subito quelle salvate nel browser, poi quelle del database */
+/** Applica le preferenze dell'account, lette dal database */
 function PrefsLoader() {
   useEffect(() => {
-    const cached = cachedPrefs();
-    if (cached) applyPrefs(cached);
     loadPrefs(createClient()).then(applyPrefs);
   }, []);
   return null;
