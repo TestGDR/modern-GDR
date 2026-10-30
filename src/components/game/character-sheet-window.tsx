@@ -70,7 +70,6 @@ const SECTIONS: Section[] = [
   { key: "affetti", label: "Affetti", icon: Heart },
   { key: "caratteristiche", label: "Caratteristiche", icon: Gauge },
   { key: "abilita", label: "Abilità", icon: Zap },
-  { key: "salute", label: "Salute", icon: HeartPulse },
   { key: "tratti", label: "Tratti", icon: Fingerprint, field: "traits", hint: "Carattere: personalità, abitudini, pregi e difetti." },
   { key: "aspetto", label: "Aspetto", icon: ScanFace, field: "appearance", hint: "Com'è fisicamente, come si veste, segni particolari." },
   { key: "storia", label: "Storia", icon: BookOpen, field: "bio", hint: "Da dove viene e cosa l'ha portato a Miami." },
@@ -124,7 +123,7 @@ export function CharacterSheetWindow({
   const [view, setView] = useState<View>({ section: "principale", mode: "view" });
   const section = SECTIONS.find((s) => s.key === view.section) ?? SECTIONS[0];
   // gli affetti si modificano direttamente nella sezione (aggiungi, sposta, dedica)
-  const canEdit = isOwner && !["caratteristiche", "abilita", "affetti", "salute"].includes(section.key);
+  const canEdit = isOwner && !["caratteristiche", "abilita", "affetti"].includes(section.key);
   // l'Amministratore cambia caratteristiche e abilità dall'Amministrazione della scheda
   const staffEdit = isAdmin && (section.key === "caratteristiche" || section.key === "abilita");
 
@@ -183,8 +182,6 @@ export function CharacterSheetWindow({
                         ? "Modifica caratteristiche e abilità (Amministrazione della scheda)"
                         : section.key === "affetti"
                           ? "Gli affetti si modificano direttamente nella sezione"
-                          : section.key === "salute"
-                            ? "I PF cambiano in combattimento; a mano li modifica lo staff"
                           : "Dopo l'approvazione caratteristiche e abilità le modifica lo staff"
                   }
                   active={view.mode === "edit" || (staffEdit && view.mode === "admin")}
@@ -259,11 +256,6 @@ export function CharacterSheetWindow({
             <SectionFrame title="Affetti">
               <AffectionsSection characterId={character.id} canEdit={isOwner || isAdmin} legacyText={character.relationships} />
             </SectionFrame>
-          ) : section.key === "salute" ? (
-            <SectionFrame title="Salute">
-              {/* proprietario e staff: lo controlla il database (can_see_health) */}
-              <HealthSection characterId={character.id} canManage={canManageHealth} />
-            </SectionFrame>
           ) : PRIVATE_SECTIONS.includes(section.key) && !canSeePrivate ? (
             <SectionFrame title={section.label}>
               <p className="text-sm text-muted-foreground">Non hai i permessi necessari.</p>
@@ -272,6 +264,11 @@ export function CharacterSheetWindow({
             <SectionFrame title="Caratteristiche">
               <StatBars build={build} rules={rules} />
               <p className="mt-6 text-xs text-muted-foreground">Le caratteristiche non cambiano dopo l&apos;approvazione.</p>
+              {/* PF e ferite: proprietario e staff (lo controlla anche il database, can_see_health) */}
+              <h3 className="mt-8 mb-3 flex items-center gap-2 font-heading text-xl tracking-wide text-peach">
+                <HeartPulse className="size-5" /> Salute
+              </h3>
+              <HealthSection characterId={character.id} canManage={canManageHealth} />
             </SectionFrame>
           ) : section.key === "abilita" ? (
             <SectionFrame title="Abilità">

@@ -132,8 +132,9 @@ function useCurrentRoom() {
 
 /** Immagine della chat in cui si è, con info del luogo e meteo */
 function PlaceCard({ info }: { info: RoomInfo | null }) {
-  const title = info?.name ?? "Miami";
-  const subtitle = info ? (info.district?.name ?? "") : "Florida";
+  // fuori dalle chat (sulla mappa) niente scritte: solo il banner
+  const title = info?.name ?? "";
+  const subtitle = info?.district?.name ?? "";
   const gradient = info?.district?.gradient ?? "from-violet via-flamingo to-peach";
   const iconBtn = "grid size-8 place-items-center rounded-full bg-night/60 text-white backdrop-blur hover:bg-night/80";
   const weather = useMiamiWeather();
@@ -147,7 +148,7 @@ function PlaceCard({ info }: { info: RoomInfo | null }) {
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-night/85 via-night/10 to-transparent" />
       <div className="absolute top-2 right-2 flex gap-1.5">
-        <WindowButton label="Info luogo" title={title} icon={<Info className="size-4" />} showLabel={false} className={iconBtn}>
+        <WindowButton label="Info luogo" title={title || "Info luogo"} icon={<Info className="size-4" />} showLabel={false} className={iconBtn}>
           {info ? (
             <div className="flex flex-col gap-3 text-sm leading-relaxed">
               {info.district && <p className="text-xs tracking-widest text-muted-foreground uppercase">{info.district.name}</p>}
@@ -174,7 +175,7 @@ function PlaceCard({ info }: { info: RoomInfo | null }) {
       </div>
       <div className="absolute inset-x-3 bottom-2.5">
         {subtitle && <p className="text-[0.7rem] tracking-widest text-white/80 uppercase">{subtitle}</p>}
-        <p className="truncate font-heading text-2xl leading-none tracking-wide text-white">{title}</p>
+        {title && <p className="truncate font-heading text-2xl leading-none tracking-wide text-white">{title}</p>}
       </div>
     </div>
   );
