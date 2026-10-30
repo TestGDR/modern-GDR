@@ -1,19 +1,13 @@
 "use client";
 
-import { FloatingWindow } from "@/components/floating-window";
-import { useCloseModal } from "@/components/game/page-modal";
+import { SheetWindow } from "@/components/game/page-modal";
 
 /**
  * Finestra 900x620 per la scheda del personaggio, aperta sopra la pagina in cui si è.
  * Chiudendola si torna alla pagina che c'era sotto.
  */
 export function SheetModal({ children }: { children: React.ReactNode }) {
-  const close = useCloseModal();
-  return (
-    <FloatingWindow label="Scheda personaggio" onClose={close} initialWidth={900} initialHeight={620} chromeless>
-      {children}
-    </FloatingWindow>
-  );
+  return <SheetWindow>{children}</SheetWindow>;
 }
 
 /** Segnaposto mentre la scheda arriva dal database */

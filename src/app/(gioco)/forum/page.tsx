@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Lock, Pin, Star } from "lucide-react";
 import { ForumReadSignal } from "@/components/game/forum-client";
+import { ForumShell } from "@/components/game/forum-shell";
 import { LoadingBlocks } from "@/components/game/loading";
 import { requirePlayer } from "@/lib/auth";
 import { getForumUnread, getLatestThreads } from "@/lib/data";
@@ -13,8 +14,13 @@ export const metadata: Metadata = { title: "Forum" };
 
 export default function ForumPage() {
   return (
+    // colonna di sinistra del forum + contenuto (che si carica per conto suo)
     <Suspense fallback={<LoadingBlocks />}>
-      <Latest />
+      <ForumShell>
+        <Suspense fallback={<LoadingBlocks />}>
+          <Latest />
+        </Suspense>
+      </ForumShell>
     </Suspense>
   );
 }

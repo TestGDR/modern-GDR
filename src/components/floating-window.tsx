@@ -35,12 +35,16 @@ type FloatingWindowProps = {
    */
   chromeless?: boolean;
   className?: string;
+  /** Quando cambia, la finestra torna davanti alle altre (es. riaperta da un link) */
+  raiseKey?: number;
+  /** Spostamento in pixel dell'apertura, per non coprire del tutto le finestre già aperte */
+  offset?: number;
 };
 
 /**
  * Finestra modale che si sposta trascinandola dalla parte alta
  * e si ridimensiona dall'angolo in basso a destra (mouse e touch).
- * Si chiude con la X o con Esc (Esc chiude quella davanti). Più finestre
+ * Si chiude solo con la X. Più finestre
  * possono stare aperte insieme: quella cliccata viene davanti.
  * All'apertura è centrata con il CSS (funziona anche se arriva dal server);
  * la posizione in pixel si calcola al primo spostamento.
@@ -54,6 +58,8 @@ export function FloatingWindow({
   initialHeight,
   chromeless = false,
   className,
+  raiseKey,
+  offset = 0,
 }: FloatingWindowProps) {
   const [rect, setRect] = useState<Rect | null>(null);
   const mounted = useSyncExternalStore(noSubscribe, () => true, () => false);
@@ -67,31 +73,25 @@ export function FloatingWindow({
     closeRef.current = onClose;
   }, [onClose]);
 
-  // Si apre davanti a tutte; cliccandola torna davanti
+  // Si apre davanti a tutte; cliccandola torna davanti (solo se non lo è già:
+  // cambiare il livello mentre si apre una tendina la farebbe richiudere)
   const bringToFront = () => {
-    if (layerRef.current) layerRef.current.style.zIndex = String(++topLayer);
+    const el = layerRef.current;
+    if (!el) return;
+    const layers = [...document.querySelectorAll<HTMLElement>("[data-window-layer]")].map((l) => Number(l.style.zIndex || 0));
+    if (Number(el.style.zIndex || 0) >= Math.max(0, ...layers)) return;
+    el.style.zIndex = String(++topLayer);
   };
   useEffect(() => {
     if (layerRef.current) layerRef.current.style.zIndex = String(++topLayer);
-  }, [mounted]);
+  }, [mounted, raiseKey]);
 
-  // Esc chiude solo la finestra davanti; il focus entra nella finestra all'apertura
+  // Il focus entra nella finestra all'apertura
   useEffect(() => {
     windowRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      // la finestra davanti è quella con il livello più alto tra quelle aperte
-      const layers = [...document.querySelectorAll<HTMLElement>("[data-window-layer]")].map((el) => Number(el.style.zIndex || 0));
-      if (Number(layerRef.current?.style.zIndex || 0) < Math.max(0, ...layers)) return;
-      // un Esc chiude una sola finestra: le altre non lo ricevono
-      e.stopImmediatePropagation();
-      closeRef.current();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // Più finestre restano aperte insieme: si chiudono solo con la X o con Esc
+  // Più finestre restano aperte insieme: si chiudono solo con la X
 
   /** Posizione attuale: quella salvata o, la prima volta, quella misurata sullo schermo */
   function currentRect(): Rect {
@@ -158,15 +158,15 @@ export function FloatingWindow({
       }
     : initialHeight
       ? {
-          left: "50%",
-          top: "50%",
+          left: `calc(50% + ${offset}px)`,
+          top: `calc(50% + ${offset}px)`,
           translate: "-50% -50%",
           width: `min(${initialWidth}px, calc(100vw - ${MARGIN * 3}px))`,
           height: `min(${initialHeight}px, calc(100dvh - ${MARGIN * 2}px))`,
         }
       : {
-          left: "50%",
-          top: "max(16px, 10vh)",
+          left: `calc(50% + ${offset}px)`,
+          top: `calc(max(16px, 10vh) + ${offset}px)`,
           translate: "-50% 0",
           width: `min(${initialWidth}px, calc(100vw - ${MARGIN * 3}px))`,
           maxHeight: `calc(90dvh - ${MARGIN}px)`,

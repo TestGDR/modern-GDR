@@ -13,6 +13,9 @@ type NavSection = {
   boards: { id: string; slug: string; name: string; locked: boolean }[];
 };
 
+// Categorie chiuse, ricordate finché la pagina resta aperta
+let closedMemory = new Set<string>();
+
 /** Colonna di sinistra del forum: ultime discussioni, leggi tutto, categorie richiudibili */
 export function ForumSidebar({
   sections,
@@ -28,7 +31,8 @@ export function ForumSidebar({
   const pathname = usePathname();
   // su schermi stretti la colonna è chiusa finché non si apre
   const [open, setOpen] = useState(false);
-  const [closed, setClosed] = useState<Set<string>>(new Set());
+  // le categorie chiuse restano chiuse anche cambiando sezione
+  const [closed, setClosed] = useState<Set<string>>(() => new Set(closedMemory));
   const activeSlug = pathname.split("/")[2] ?? null;
 
   function toggle(id: string) {
@@ -36,6 +40,7 @@ export function ForumSidebar({
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      closedMemory = next;
       return next;
     });
   }

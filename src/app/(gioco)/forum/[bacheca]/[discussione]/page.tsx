@@ -7,6 +7,7 @@ import { CharacterAvatar } from "@/components/game/character-avatar";
 import { MarkThreadRead } from "@/components/game/forum-client";
 import { ReplyForm } from "@/components/game/forum-forms";
 import { PostBody, ThreadModeration } from "@/components/game/forum-thread";
+import { ForumShell } from "@/components/game/forum-shell";
 import { LoadingBlocks } from "@/components/game/loading";
 import { activeCharacter, can, requirePlayer } from "@/lib/auth";
 import { getBoard, getForumNav, getPosts, getThread } from "@/lib/data";
@@ -17,8 +18,13 @@ export const metadata: Metadata = { title: "Forum" };
 
 export default function ThreadPage({ params }: PageProps<"/forum/[bacheca]/[discussione]">) {
   return (
+    // colonna di sinistra del forum + contenuto (che si carica per conto suo)
     <Suspense fallback={<LoadingBlocks />}>
-      <Content params={params} />
+      <ForumShell>
+        <Suspense fallback={<LoadingBlocks />}>
+          <Content params={params} />
+        </Suspense>
+      </ForumShell>
     </Suspense>
   );
 }
