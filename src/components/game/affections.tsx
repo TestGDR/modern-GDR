@@ -78,7 +78,7 @@ export function AffectionsSection({ characterId, canEdit, legacyText }: { charac
 
   return (
     <div className="flex flex-col gap-4">
-      {canEdit && <AddPerson onAdd={add} disabled={busy} existing={(items ?? []).map((a) => a.target?.id ?? "")} />}
+      {canEdit && <AddPerson characterId={characterId} onAdd={add} disabled={busy} existing={(items ?? []).map((a) => a.target?.id ?? "")} />}
       {error && <p className="rounded-lg bg-destructive/15 px-3 py-2 text-sm text-destructive">{error}</p>}
       {items === null ? (
         <p className="text-sm text-muted-foreground">Caricamento…</p>
@@ -112,83 +112,83 @@ export function AffectionsSection({ characterId, canEdit, legacyText }: { charac
   );
 }
 
-/** Campo "Aggiungi un PG": cerca tra gli utenti registrati per nome o cognome */
-function AddPerson({ onAdd, disabled, existing }: { onAdd: (p: { id: string; username: string }) => void; disabled: boolean; existing: string[] }) {
+/** Tendina "Aggiungi un PG": tutti i personaggi iscritti, in ordine alfabetico */
+function AddPerson({
+  characterId,
+  onAdd,
+  disabled,
+  existing,
+}: {
+  characterId: string;
+  onAdd: (p: { id: string; username: string }) => void;
+  disabled: boolean;
+  existing: string[];
+}) {
   const supabase = useMemo(() => createClient(), []);
-  const [q, setQ] = useState("");
-  const [results, setResults] = useState<{ id: string; username: string }[]>([]);
-  const [open, setOpen] = useState(false);
+  const [people, setPeople] = useState<{ id: string; username: string; mine: boolean }[] | null>(null);
+  const [picked, setPicked] = useState("");
 
   useEffect(() => {
-    const term = q.trim().replace(/[%_,()]/g, "");
-    if (term.length < 2) return;
     let alive = true;
-    const t = setTimeout(async () => {
-      const { data } = await supabase.from("profiles").select("id, username").ilike("username", `%${term}%`).order("username").limit(8);
-      if (alive) setResults((data ?? []) as { id: string; username: string }[]);
-    }, 250);
+    supabase
+      .from("profiles")
+      .select("id, username, characters(id)")
+      .order("username")
+      .limit(2000)
+      .then(({ data }) => {
+        if (!alive) return;
+        const rows = (data ?? []) as { id: string; username: string; characters: { id: string }[] | null }[];
+        // il proprietario della scheda non si aggiunge ai propri affetti
+        setPeople(rows.map((r) => ({ id: r.id, username: r.username, mine: (r.characters ?? []).some((c) => c.id === characterId) })));
+      });
     return () => {
       alive = false;
-      clearTimeout(t);
     };
-  }, [q, supabase]);
+  }, [supabase, characterId]);
 
-  const shown = q.trim().length >= 2 ? results.filter((r) => !existing.includes(r.id)) : [];
-  const exact = shown.find((r) => r.username.toLowerCase() === q.trim().toLowerCase()) ?? (shown.length === 1 ? shown[0] : null);
-
-  function choose(p: { id: string; username: string }) {
-    onAdd(p);
-    setQ("");
-    setResults([]);
-    setOpen(false);
-  }
+  const options = (people ?? []).filter((p) => !p.mine && !existing.includes(p.id));
+  const chosen = options.find((p) => p.id === picked) ?? null;
 
   return (
     <form
-      className="relative flex gap-2"
+      className="flex gap-2"
       onSubmit={(e) => {
         e.preventDefault();
-        if (exact) choose(exact);
-        else setOpen(true);
+        if (!chosen) return;
+        onAdd(chosen);
+        setPicked("");
       }}
     >
-      <input
-        value={q}
-        onChange={(e) => {
-          setQ(e.target.value);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        placeholder="Aggiungi un PG: scrivi nome o cognome…"
+      <select
+        value={picked}
+        onChange={(e) => setPicked(e.target.value)}
+        disabled={people === null}
         aria-label="Aggiungi un PG agli affetti"
-        className="h-11 min-w-0 flex-1 rounded-xl border border-peach/30 bg-night/50 px-4 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-peach/70"
-      />
+        className="h-11 min-w-0 flex-1 rounded-xl border border-peach/30 bg-night/50 px-3 text-sm outline-none focus-visible:border-peach/70"
+      >
+        <option value="" className="bg-night">
+          {people === null ? "Caricamento dei personaggi…" : options.length === 0 ? "Nessun altro personaggio da aggiungere" : "Aggiungi un PG: scegli dall'elenco…"}
+        </option>
+        {options.map((p) => (
+          <option key={p.id} value={p.id} className="bg-night">
+            {p.username}
+          </option>
+        ))}
+      </select>
       <button
         type="submit"
-        disabled={disabled || !exact}
-        title={exact ? `Aggiungi ${exact.username}` : "Scegli un giocatore dall'elenco"}
+        disabled={disabled || !chosen}
+        title={chosen ? `Aggiungi ${chosen.username}` : "Scegli un personaggio dall'elenco"}
         aria-label="Aggiungi"
         className="grid size-11 shrink-0 place-items-center rounded-xl border border-peach/30 bg-night/50 text-peach transition-colors hover:border-peach hover:bg-peach/10 disabled:opacity-40"
       >
         <Plus className="size-5" />
       </button>
-      {open && shown.length > 0 && (
-        <ul className="absolute top-12 right-14 left-0 z-20 overflow-hidden rounded-xl border border-white/15 bg-night/95 shadow-xl backdrop-blur">
-          {shown.map((r) => (
-            <li key={r.id}>
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => choose(r)} className="w-full px-4 py-2 text-left text-sm hover:bg-white/10">
-                {r.username}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
     </form>
   );
 }
 
-export /** HTML della dedica, ripulito con DOMPurify (solo nel browser) */
+/** HTML della dedica, ripulito con DOMPurify (solo nel browser) */
 function SafeHtml({ html, className }: { html: string; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
