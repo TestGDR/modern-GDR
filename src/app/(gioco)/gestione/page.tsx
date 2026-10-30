@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ChevronRight } from "lucide-react";
 import { LoadingBlocks } from "@/components/game/loading";
 import { PageHeader } from "@/components/game/page-header";
+import { ADMIN_CATEGORIES } from "@/config/admin";
 import { requirePermission, visibleSections } from "@/lib/admin";
 
 export const metadata: Metadata = { title: "Gestione" };
@@ -30,22 +31,37 @@ async function Content() {
       {sections.length === 0 && (
         <p className="glass rounded-2xl p-6 text-sm text-muted-foreground">Il tuo livello non ha ancora sezioni del pannello.</p>
       )}
-      <ul className="grid gap-3 sm:grid-cols-2">
-        {sections.map(({ href, title, description, icon: Icon }) => (
-          <li key={href}>
-            <Link href={href} className="glass flex items-center gap-4 rounded-2xl p-4 transition-colors hover:bg-white/10">
-              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-violet to-flamingo">
-                <Icon className="size-5 text-white" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-heading text-xl tracking-wide">{title}</span>
-                <span className="block text-sm text-muted-foreground">{description}</span>
-              </span>
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {/* Sezioni divise per categoria, a elenco, ognuna con la sua descrizione */}
+      <div className="flex flex-col gap-6">
+        {ADMIN_CATEGORIES.map((cat) => {
+          const items = sections.filter((x) => x.category === cat.key);
+          if (items.length === 0) return null;
+          return (
+            <section key={cat.key} aria-labelledby={`cat-${cat.key}`}>
+              <h2 id={`cat-${cat.key}`} className="font-heading text-2xl tracking-wide text-peach">
+                {cat.title}
+              </h2>
+              <p className="mb-2 text-xs text-muted-foreground">{cat.description}</p>
+              <ul className="glass divide-y divide-white/10 overflow-hidden rounded-2xl">
+                {items.map(({ href, title, description, icon: Icon }) => (
+                  <li key={href}>
+                    <Link href={href} className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-white/10">
+                      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-violet to-flamingo">
+                        <Icon className="size-5 text-white" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-heading text-xl leading-tight tracking-wide">{title}</span>
+                        <span className="block text-sm text-muted-foreground">{description}</span>
+                      </span>
+                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
+      </div>
     </>
   );
 }

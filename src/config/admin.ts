@@ -26,36 +26,52 @@ import {
 // Sezioni del pannello di gestione e permesso necessario per ognuna.
 // Chi non ha il permesso non vede la sezione e la pagina risponde "non trovata".
 
+/** Categorie della pagina Gestione, in quest'ordine */
+export const ADMIN_CATEGORIES = [
+  { key: "regole", title: "Regole del gioco", description: "Il sistema Interlock: come si crea e come cresce un personaggio." },
+  { key: "mondo", title: "Mondo e comunicazione", description: "Dove si gioca e dove si parla: mappe, chat, forum, ticket." },
+  { key: "economia", title: "Lavori, gruppi ed economia", description: "Organizzazioni della land e soldi dei personaggi." },
+  { key: "utenti", title: "Utenti e permessi", description: "Chi entra nel sito e cosa può fare." },
+  { key: "controllo", title: "Controllo e manutenzione", description: "Rileggere quello che è successo e tenere pulito il sito." },
+] as const;
+export type AdminCategory = (typeof ADMIN_CATEGORIES)[number]["key"];
+
 export type AdminSection = {
   href: string;
   title: string;
   description: string;
+  category: AdminCategory;
   icon: LucideIcon;
   /** Basta uno di questi permessi */
   permissions: string[];
 };
 
 export const ADMIN_SECTIONS: AdminSection[] = [
-  { href: "/gestione/caratteristiche", title: "Caratteristiche", description: "Sigle, nomi, ordine e caratteristiche attive", icon: Gauge, permissions: ["regole.gestire"] },
-  { href: "/gestione/abilita", title: "Abilità", description: "Elenco delle abilità e caratteristica collegata", icon: Sparkles, permissions: ["regole.gestire"] },
-  { href: "/gestione/scelte", title: "Vantaggi, svantaggi e tratti", description: "Costi in PX ed effetti sui tiri", icon: ListChecks, permissions: ["regole.gestire"] },
-  { href: "/gestione/patrimonio", title: "Patrimonio", description: "Costo in PX, entrata e mantenimento mensili, quota iniziale", icon: Gem, permissions: ["regole.gestire"] },
-  { href: "/gestione/elenchi", title: "Elenchi della scheda", description: "Indirizzi di studio, anni di corso, squadre e club", icon: BookOpenCheck, permissions: ["elenchi.gestire"] },
-  { href: "/gestione/mondo", title: "Mondo", description: "Mappe, quartieri e chat: immagini, punti e gruppi", icon: MapIcon, permissions: ["mondo.gestire"] },
-  { href: "/gestione/chat", title: "Chat", description: "Lunghezza dei messaggi, durata e uscita automatica", icon: MessagesSquare, permissions: ["mondo.gestire"] },
-  { href: "/gestione/forum", title: "Forum", description: "Sezioni e bacheche del forum", icon: MessageSquareText, permissions: ["forum.sezioni"] },
-  { href: "/gestione/ticket", title: "Sezioni dei ticket", description: "Categorie dei ticket e istruzioni per chi scrive", icon: LifeBuoy, permissions: ["ticket.categorie"] },
-  { href: "/gestione/lavori", title: "Lavori", description: "Full time e part time: ruoli, stipendi e assegnazioni", icon: BriefcaseBusiness, permissions: ["lavori.gestire"] },
-  { href: "/gestione/gruppi", title: "Gruppi", description: "Gruppi della land: ruoli, stipendi e membri", icon: Shield, permissions: ["gruppi.gestire"] },
-  { href: "/gestione/banca", title: "Banca", description: "Conti dei personaggi: dare e togliere soldi, movimenti", icon: Landmark, permissions: ["banca.gestire"] },
-  { href: "/gestione/impostazioni", title: "Impostazioni del sistema", description: "Punti, età, PX, massimali e anno di gioco", icon: Settings2, permissions: ["impostazioni.gestire"] },
-  { href: "/gestione/livelli", title: "Livelli e permessi", description: "Livelli utente, rango e azioni consentite", icon: ShieldCheck, permissions: ["livelli.gestire"] },
-  { href: "/gestione/utenti", title: "Utenti", description: "Livelli, ultimo accesso e gioco, inattivi, sospensioni", icon: Users, permissions: ["livelli.assegnare", "utenti.vedere_modificare", "utenti.bandire"] },
-  { href: "/gestione/log", title: "Log", description: "Rileggi chat, telefono e messaggi OFF", icon: FileSearch, permissions: ["chat.log", "messaggi.log"] },
-  { href: "/gestione/accessi", title: "Accessi", description: "IP, paese e controllo VPN di ogni accesso", icon: Fingerprint, permissions: ["gestione.accessi"] },
-  { href: "/gestione/iscrizioni", title: "Iscrizioni", description: "Apri o chiudi le nuove registrazioni", icon: UserPlus, permissions: ["iscrizioni.gestire"] },
-  { href: "/gestione/manutenzione", title: "Manutenzione", description: "Pulizia di messaggi vecchi e account inattivi", icon: Wrench, permissions: ["manutenzione.sito"] },
-  { href: "/gestione/registro", title: "Registro delle azioni", description: "Chi ha modificato cosa, e quando", icon: ScrollText, permissions: ["log.vedere"] },
+  // Regole del gioco
+  { href: "/gestione/impostazioni", category: "regole", title: "Impostazioni del sistema", description: "I numeri delle regole: punti alla creazione, età, PX, massimali, soglie di riuscita e anno di gioco.", icon: Settings2, permissions: ["impostazioni.gestire"] },
+  { href: "/gestione/caratteristiche", category: "regole", title: "Caratteristiche", description: "Le caratteristiche dei personaggi (INT, RIF, VIG…): sigla, nome, ordine e quali sono attive.", icon: Gauge, permissions: ["regole.gestire"] },
+  { href: "/gestione/abilita", category: "regole", title: "Abilità", description: "Le abilità che si comprano in scheda e la caratteristica a cui è legata ciascuna.", icon: Sparkles, permissions: ["regole.gestire"] },
+  { href: "/gestione/scelte", category: "regole", title: "Vantaggi, svantaggi e tratti", description: "Le voci scelte in creazione: costo in PX ed eventuale bonus o malus sui tiri.", icon: ListChecks, permissions: ["regole.gestire"] },
+  { href: "/gestione/patrimonio", category: "regole", title: "Patrimonio", description: "Il tenore di vita: costo in PX, entrata e mantenimento mensili, quota iniziale in banca.", icon: Gem, permissions: ["regole.gestire"] },
+  { href: "/gestione/elenchi", category: "regole", title: "Elenchi della scheda", description: "Le voci a tendina della scheda: indirizzi di studio, anni di corso, squadre e club.", icon: BookOpenCheck, permissions: ["elenchi.gestire"] },
+  // Mondo e comunicazione
+  { href: "/gestione/mondo", category: "mondo", title: "Mondo", description: "Mappe, quartieri e chat: immagini, posizione dei punti sulla mappa, accesso e gruppi di chat.", icon: MapIcon, permissions: ["mondo.gestire"] },
+  { href: "/gestione/chat", category: "mondo", title: "Chat", description: "Regole delle chat di gioco: lunghezza massima dei messaggi, quanto restano visibili, uscita per inattività.", icon: MessagesSquare, permissions: ["mondo.gestire"] },
+  { href: "/gestione/forum", category: "mondo", title: "Forum", description: "Categorie e sezioni del forum, con chi può leggerle (tutti, livelli o gruppi).", icon: MessageSquareText, permissions: ["forum.sezioni"] },
+  { href: "/gestione/ticket", category: "mondo", title: "Sezioni dei ticket", description: "Le categorie dei ticket di assistenza e le istruzioni mostrate a chi ne apre uno.", icon: LifeBuoy, permissions: ["ticket.categorie"] },
+  // Lavori, gruppi ed economia
+  { href: "/gestione/lavori", category: "economia", title: "Lavori", description: "Lavori full time e part time: ruoli, stipendi e personaggi assegnati.", icon: BriefcaseBusiness, permissions: ["lavori.gestire"] },
+  { href: "/gestione/gruppi", category: "economia", title: "Gruppi", description: "I gruppi della land: ruoli, stipendi e membri (li assegna solo lo staff).", icon: Shield, permissions: ["gruppi.gestire"] },
+  { href: "/gestione/banca", category: "economia", title: "Banca", description: "I conti dei personaggi: dare o togliere soldi e vedere tutti i movimenti.", icon: Landmark, permissions: ["banca.gestire"] },
+  // Utenti e permessi
+  { href: "/gestione/utenti", category: "utenti", title: "Utenti", description: "Tutti gli iscritti: livello, ultimo accesso e ultima giocata, inattivi, sospensioni.", icon: Users, permissions: ["livelli.assegnare", "utenti.vedere_modificare", "utenti.bandire"] },
+  { href: "/gestione/livelli", category: "utenti", title: "Livelli e permessi", description: "I livelli dello staff e dei giocatori (Amministratore, Master, Moderatore…) e cosa può fare ciascuno.", icon: ShieldCheck, permissions: ["livelli.gestire"] },
+  { href: "/gestione/iscrizioni", category: "utenti", title: "Iscrizioni", description: "Aprire o chiudere le registrazioni di nuovi account.", icon: UserPlus, permissions: ["iscrizioni.gestire"] },
+  { href: "/gestione/accessi", category: "utenti", title: "Accessi", description: "Ogni accesso al sito: indirizzo IP, paese e controllo delle VPN.", icon: Fingerprint, permissions: ["gestione.accessi"] },
+  // Controllo e manutenzione
+  { href: "/gestione/log", category: "controllo", title: "Log", description: "Rileggere le chat di gioco, il telefono e i messaggi OFF, anche quelli cancellati.", icon: FileSearch, permissions: ["chat.log", "messaggi.log"] },
+  { href: "/gestione/registro", category: "controllo", title: "Registro delle azioni", description: "Chi dello staff ha modificato cosa nel pannello, e quando.", icon: ScrollText, permissions: ["log.vedere"] },
+  { href: "/gestione/manutenzione", category: "controllo", title: "Manutenzione", description: "Pulizia del sito: messaggi vecchi e account inattivi, con anteprima prima di cancellare.", icon: Wrench, permissions: ["manutenzione.sito"] },
 ];
 
 export const ADMIN_HOME = { href: "/gestione", title: "Gestione", icon: Layers, permission: "admin.accedere" };
