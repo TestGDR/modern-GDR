@@ -205,7 +205,7 @@ export async function getDistricts() {
   return data ?? [];
 }
 
-/* ------------------------------ Notizie ------------------------------ */
+/* ------------------------------ Annunci staff ------------------------------ */
 
 export async function getNews(limit = 5) {
   const supabase = await createClient();

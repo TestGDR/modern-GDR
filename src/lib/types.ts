@@ -367,7 +367,7 @@ export type SocialComment = {
   created_at: string;
 };
 
-/** Notizia dello staff (solo OFF) */
+/** Annuncio dello staff (solo OFF, tabella news) */
 export type News = {
   id: string;
   title: string;

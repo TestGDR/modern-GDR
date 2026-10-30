@@ -73,7 +73,7 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     id: "messaggi",
     title: "Messaggi e ticket",
     items: [
-      { key: "messaggi.tutti", label: "Scrivere a tutti", description: "Messaggi a tutti nei canali ON e OFF (anche senza pubblicare notizie)" },
+      { key: "messaggi.tutti", label: "Scrivere a tutti", description: "Messaggi a tutti nei canali ON e OFF (anche senza pubblicare annunci)" },
       { key: "messaggi.log", label: "Leggere i messaggi OFF e del telefono", description: "Gestione → Log: messaggi privati, gruppi e telefono (i giocatori ne sono avvisati)" },
       { key: "ticket.gestire", label: "Gestire i ticket", description: "Vedere tutti i ticket, rispondere come staff, cambiare stato ed eliminare quelli in archivio" },
       { key: "ticket.categorie", label: "Gestire le sezioni dei ticket", description: "Nomi, istruzioni e ordine delle sezioni" },
@@ -126,7 +126,7 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     items: [
       { key: "elenchi.gestire", label: "Gestire gli elenchi della scheda", description: "Indirizzi di studio, anni di corso, squadre e club" },
       { key: "guida.scrivere", label: "Scrivere la guida", description: "Macrosezioni, sottosezioni e discussioni della Guida (barra laterale)" },
-      { key: "annunci.globali", label: "Pubblicare notizie e scrivere a tutti", description: "Notizie dello staff, messaggi a tutti (ON e OFF) e bacheche riservate del forum" },
+      { key: "annunci.globali", label: "Pubblicare annunci e scrivere a tutti", description: "Annunci dello staff, messaggi a tutti (ON e OFF) e bacheche riservate del forum" },
       { key: "contenuti.moderare", label: "Moderare il social", description: "Eliminare post e commenti altrui sul social" },
     ],
   },

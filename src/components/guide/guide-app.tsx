@@ -22,7 +22,7 @@ const inputCls =
   "h-9 w-full rounded-lg border border-input bg-night/40 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 const byOrder = <T extends { sort_order: number; name: string }>(a: T, b: T) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "it");
 
-/** Pulsante lungo nella barra laterale, sotto le Notizie */
+/** Pulsante lungo nella barra laterale, sotto gli Annunci staff */
 export function GuideButton({ canEdit, className, children }: { canEdit: boolean; className?: string; children?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (

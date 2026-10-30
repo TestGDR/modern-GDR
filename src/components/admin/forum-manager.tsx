@@ -25,7 +25,7 @@ export function ForumManager({ sections, levels, groups }: { sections: ForumSect
       <p className="text-sm text-muted-foreground">
         Le categorie raggruppano le sezioni. Ogni sezione può essere pubblica o riservata a dei livelli o a dei gruppi: chi non ne fa parte non la vede proprio
         (l’Amministratore e chi ha il permesso «Leggere le sezioni riservate» le vedono tutte). Nelle sezioni «solo staff» aprono discussioni solo i membri dello staff
-        con il permesso «Pubblicare notizie e scrivere a tutti». Eliminando una categoria o una sezione si eliminano anche le sue discussioni.
+        con il permesso «Pubblicare annunci e scrivere a tutti». Eliminando una categoria o una sezione si eliminano anche le sue discussioni.
       </p>
       {adding ? (
         <SectionForm onDone={() => setAdding(false)} />

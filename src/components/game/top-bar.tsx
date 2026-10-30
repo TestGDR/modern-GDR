@@ -72,14 +72,14 @@ export function TopBar({ admin, messages }: { admin: React.ReactNode; messages: 
   );
 }
 
-/** Guida al gioco: pulsante lungo nella barra laterale, sotto le Notizie */
+/** Guida al gioco: pulsante lungo nella barra laterale, sotto gli Annunci staff */
 export async function PlayerGuide() {
   const player = await getPlayer();
   if (!player) return null;
   return <GuideButton canEdit={can(player, "guida.scrivere")} />;
 }
 
-/** Notizie dello staff: chi ha il permesso le scrive dalla stessa finestra */
+/** Annunci dello staff: chi ha il permesso li scrive dalla stessa finestra */
 export async function PlayerNews() {
   const player = await getPlayer();
   if (!player) return null;

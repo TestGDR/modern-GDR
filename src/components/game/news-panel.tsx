@@ -11,17 +11,17 @@ import { useResync } from "@/lib/use-resync";
 import type { News } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-// Notizie dello staff, solo OFF (dal Westeros: NewsPanel + useNewsUnseen).
-// Una notizia è "nuova" se pubblicata dopo l'ultima apertura (news_seen).
-// Finestra: a sinistra l'archivio (scorre), al centro la notizia scelta (all'inizio l'ultima).
+// Annunci dello staff, solo OFF (tabella news; dal Westeros: NewsPanel + useNewsUnseen).
+// Un annuncio è "nuovo" se pubblicato dopo l'ultima apertura (news_seen).
+// Finestra: a sinistra l'archivio (scorre), al centro l'annuncio scelto (all'inizio l'ultimo).
 
 const field = "w-full rounded-lg border border-input bg-night/40 px-3 py-2 text-sm outline-none focus-visible:border-ring";
 
-/** Quante notizie nuove ci sono, in tempo reale */
+/** Quanti annunci nuovi ci sono, in tempo reale */
 function useNewsUnseen() {
   const supabase = useMemo(() => createClient(), []);
   const [unseen, setUnseen] = useState(0);
-  // ultima apertura delle notizie (null: mai aperte)
+  // ultima apertura degli annunci (null: mai aperti)
   const [seenAt, setSeenAt] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -61,10 +61,10 @@ function useNewsUnseen() {
   return { unseen, seenAt, markSeen };
 }
 
-/** Pulsante "Notizie" della barra laterale */
+/** Pulsante "Annunci staff" della barra laterale */
 export function NewsButton({ canPublish }: { canPublish: boolean }) {
   const { unseen, seenAt, markSeen } = useNewsUnseen();
-  // le notizie dopo questa data, all'apertura, sono segnate come nuove
+  // gli annunci dopo questa data, all'apertura, sono segnati come nuovi
   const [openSince, setOpenSince] = useState<string | null | undefined>(undefined);
   return (
     <>
@@ -80,16 +80,16 @@ export function NewsButton({ canPublish }: { canPublish: boolean }) {
         )}
       >
         <Newspaper className="size-4" />
-        Notizie
-        {unseen > 0 && <span className="rounded-full bg-peach px-1.5 text-[0.65rem] font-bold text-night">{unseen} nuove</span>}
+        Annunci staff
+        {unseen > 0 && <span className="rounded-full bg-peach px-1.5 text-[0.65rem] font-bold text-night">{unseen} {unseen === 1 ? "nuovo" : "nuovi"}</span>}
       </button>
       {openSince !== undefined && (
         <FloatingWindow
-          label="Notizie"
+          label="Annunci staff"
           onClose={() => setOpenSince(undefined)}
           initialWidth={980}
           initialHeight={640}
-          header={<h2 className="pb-3 font-heading text-3xl tracking-wide text-sunset">Notizie OFF</h2>}
+          header={<h2 className="pb-3 font-heading text-3xl tracking-wide text-sunset">Annunci staff</h2>}
         >
           <NewsBoard canPublish={canPublish} since={openSince} />
         </FloatingWindow>
@@ -114,7 +114,7 @@ function NewsBoard({ canPublish, since }: { canPublish: boolean; since: string |
     return () => clearTimeout(t);
   }, [load]);
 
-  // la notizia al centro: quella scelta nell'archivio, altrimenti l'ultima
+  // l'annuncio al centro: quello scelto nell'archivio, altrimenti l'ultimo
   const shown = news?.find((n) => n.id === selectedId) ?? news?.[0] ?? null;
   const isNew = (n: News) => since === null || n.created_at > since;
 
@@ -123,14 +123,14 @@ function NewsBoard({ canPublish, since }: { canPublish: boolean; since: string |
     const res = id
       ? await supabase.from("news").update({ title, body }).eq("id", id).select("id").single<{ id: string }>()
       : await supabase.from("news").insert({ title, body }).select("id").single<{ id: string }>();
-    if (res.error) return setError(res.error.code === "42501" ? "Non hai il permesso di pubblicare notizie." : "Salvataggio non riuscito.");
+    if (res.error) return setError(res.error.code === "42501" ? "Non hai il permesso di pubblicare annunci." : "Salvataggio non riuscito.");
     setEditing(null);
     setSelectedId(res.data.id);
     load();
   }
 
   async function remove(n: News) {
-    if (!window.confirm(`Eliminare la notizia «${n.title}»?`)) return;
+    if (!window.confirm(`Eliminare l'annuncio «${n.title}»?`)) return;
     const { error: e } = await supabase.from("news").delete().eq("id", n.id);
     if (e) return setError("Eliminazione non riuscita.");
     setSelectedId(null);
@@ -139,14 +139,14 @@ function NewsBoard({ canPublish, since }: { canPublish: boolean; since: string |
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 md:flex-row">
-      {/* Archivio: tutte le notizie, dalla più recente */}
+      {/* Archivio: tutti gli annunci, dal più recente */}
       <aside className="glass flex max-h-56 shrink-0 flex-col overflow-hidden rounded-2xl md:max-h-none md:w-72">
         <h3 className="border-b border-white/10 px-4 py-3 text-center font-heading text-xl tracking-[0.15em] text-peach">Archivio</h3>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {news === null ? (
             <p className="px-2 py-1 text-sm text-muted-foreground">Caricamento…</p>
           ) : news.length === 0 ? (
-            <p className="px-2 py-1 text-sm text-muted-foreground">Nessuna notizia.</p>
+            <p className="px-2 py-1 text-sm text-muted-foreground">Nessun annuncio.</p>
           ) : (
             <ul className="flex flex-col gap-1">
               {news.map((n) => {
@@ -179,24 +179,24 @@ function NewsBoard({ canPublish, since }: { canPublish: boolean; since: string |
         </div>
       </aside>
 
-      {/* Pagina centrale: la notizia */}
+      {/* Pagina centrale: l'annuncio */}
       <article className="relative flex min-h-[18rem] min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-violet/40 via-dusk/50 to-flamingo/15">
         <div className="flex shrink-0 items-center gap-2 border-b border-white/10 px-5 py-3 sm:px-8">
-          <span className="hidden text-xs tracking-[0.25em] text-lavender uppercase sm:inline">Notizie OFF</span>
+          <span className="hidden text-xs tracking-[0.25em] text-lavender uppercase sm:inline">Annunci staff</span>
           {canPublish && editing === null && (
             <span className="ml-auto flex gap-1">
               {shown && (
                 <>
-                  <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(shown)} className="rounded-full" aria-label="Modifica questa notizia">
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(shown)} className="rounded-full" aria-label="Modifica questo annuncio">
                     <Pencil />
                   </Button>
-                  <Button type="button" size="sm" variant="ghost" onClick={() => remove(shown)} className="rounded-full hover:text-destructive" aria-label="Elimina questa notizia">
+                  <Button type="button" size="sm" variant="ghost" onClick={() => remove(shown)} className="rounded-full hover:text-destructive" aria-label="Elimina questo annuncio">
                     <Trash2 />
                   </Button>
                 </>
               )}
               <Button type="button" size="sm" onClick={() => setEditing("new")} className="rounded-full">
-                <Plus /> Nuova notizia
+                <Plus /> Nuovo annuncio
               </Button>
             </span>
           )}
@@ -208,7 +208,7 @@ function NewsBoard({ canPublish, since }: { canPublish: boolean; since: string |
           ) : news === null ? (
             <p className="text-center text-sm text-muted-foreground">Caricamento…</p>
           ) : !shown ? (
-            <p className="py-10 text-center text-muted-foreground italic">Nessuna notizia dallo staff, per ora.</p>
+            <p className="py-10 text-center text-muted-foreground italic">Nessun annuncio dallo staff, per ora.</p>
           ) : (
             <div className="mx-auto flex max-w-2xl flex-col gap-4">
               <header className="flex flex-col items-center gap-1 text-center">
@@ -239,9 +239,9 @@ function NewsForm({ news, onSave, onCancel }: { news?: News; onSave: (title: str
       }}
       className="mx-auto flex max-w-2xl flex-col gap-2"
     >
-      <p className="font-heading text-xl tracking-wide text-peach">{news ? "Modifica la notizia" : "Nuova notizia"}</p>
+      <p className="font-heading text-xl tracking-wide text-peach">{news ? "Modifica l'annuncio" : "Nuovo annuncio"}</p>
       <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={150} required placeholder="Titolo" className={cn(field, "h-10")} />
-      <textarea value={body} onChange={(e) => setBody(e.target.value)} maxLength={20000} rows={12} placeholder="Testo della notizia" className={field} />
+      <textarea value={body} onChange={(e) => setBody(e.target.value)} maxLength={20000} rows={12} placeholder="Testo dell'annuncio" className={field} />
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onCancel} className="rounded-full">
           <X /> Annulla
