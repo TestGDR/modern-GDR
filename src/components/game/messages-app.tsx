@@ -59,6 +59,11 @@ export function MessagesApp({
   const supabase = useMemo(() => createClient(), []);
   const [dms, setDms] = useState<PrivateMessage[] | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
+  // i miei gruppi, per scartare in tempo reale i messaggi degli altri gruppi
+  const groupIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    groupIdsRef.current = new Set(groups.map((g) => g.id));
+  }, [groups]);
   const [members, setMembers] = useState<Member[]>([]);
   const [groupMsgs, setGroupMsgs] = useState<GroupMsg[]>([]);
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
@@ -92,15 +97,22 @@ export function MessagesApp({
       .from("private_messages")
       .select("*")
       .eq("kind", channel)
+      // solo le mie conversazioni (lo staff con messaggi.log le legge tutte, ma qui no)
+      .or(`sender_id.eq.${me.id},recipient_id.eq.${me.id}`)
       .order("created_at", { ascending: false })
       .limit(1000);
     const rows = ((data ?? []) as PrivateMessage[]).reverse();
     setDms(rows);
     learn(rows.flatMap((m) => [m.sender_id, m.recipient_id]));
-  }, [supabase, channel, learn]);
+  }, [supabase, channel, learn, me.id]);
 
   const loadGroups = useCallback(async () => {
-    const { data: g } = await supabase.from("off_groups").select("id, name, created_by").eq("channel", channel);
+    // solo i gruppi di cui faccio parte
+    const { data: mine } = await supabase.from("off_group_members").select("group_id").eq("user_id", me.id);
+    const myIds = ((mine ?? []) as { group_id: string }[]).map((x) => x.group_id);
+    const { data: g } = myIds.length
+      ? await supabase.from("off_groups").select("id, name, created_by").eq("channel", channel).in("id", myIds)
+      : { data: [] };
     const list = (g ?? []) as Group[];
     const ids = list.map((x) => x.id);
     setGroups(list);
@@ -118,7 +130,7 @@ export function MessagesApp({
     setMembers(mem);
     setGroupMsgs(gm);
     learn([...mem.map((x) => x.user_id), ...gm.map((x) => x.sender_id)]);
-  }, [supabase, channel, learn]);
+  }, [supabase, channel, learn, me.id]);
 
   const loadBroadcasts = useCallback(async () => {
     const [{ data: b }, { data: r }] = await Promise.all([
@@ -172,6 +184,8 @@ export function MessagesApp({
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "off_group_messages" }, (p) => {
         const row = p.new as GroupMsg;
+        // lo staff riceve anche i messaggi dei gruppi altrui: qui solo i miei
+        if (!groupIdsRef.current.has(row.group_id)) return;
         learn([row.sender_id]);
         setGroupMsgs((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]));
       })
