@@ -31,6 +31,7 @@ import { FormMessage } from "@/components/auth/auth-forms";
 import { AffectionsSection } from "@/components/game/affections";
 import { ErrorBoundary } from "@/components/game/error-boundary";
 import { HealthSection } from "@/components/game/health-section";
+import { StudentPanel } from "@/components/university/student-panel";
 import { AdminSheetPanel } from "@/components/game/admin-sheet";
 import { useCloseModal } from "@/components/game/page-modal";
 import { PrefsPanel } from "@/components/game/prefs-panel";
@@ -68,6 +69,7 @@ const SECTIONS: Section[] = [
   { key: "dati", label: "Dati", icon: IdCard },
   { key: "si-sa-che", label: "Si sa che", icon: Eye, field: "known_facts", hint: "Voci, fatti noti, reputazione: ciò che a Miami si dice di lui o di lei." },
   { key: "affetti", label: "Affetti", icon: Heart },
+  { key: "universita", label: "Università", icon: GraduationCap },
   { key: "caratteristiche", label: "Caratteristiche", icon: Gauge },
   { key: "abilita", label: "Abilità", icon: Zap },
   { key: "tratti", label: "Tratti", icon: Fingerprint, field: "traits", hint: "Carattere: personalità, abitudini, pregi e difetti." },
@@ -123,7 +125,7 @@ export function CharacterSheetWindow({
   const [view, setView] = useState<View>({ section: "principale", mode: "view" });
   const section = SECTIONS.find((s) => s.key === view.section) ?? SECTIONS[0];
   // gli affetti si modificano direttamente nella sezione (aggiungi, sposta, dedica)
-  const canEdit = isOwner && !["caratteristiche", "abilita", "affetti"].includes(section.key);
+  const canEdit = isOwner && !["caratteristiche", "abilita", "affetti", "universita"].includes(section.key);
   // l'Amministratore cambia caratteristiche e abilità dall'Amministrazione della scheda
   const staffEdit = isAdmin && (section.key === "caratteristiche" || section.key === "abilita");
 
@@ -182,6 +184,8 @@ export function CharacterSheetWindow({
                         ? "Modifica caratteristiche e abilità (Amministrazione della scheda)"
                         : section.key === "affetti"
                           ? "Gli affetti si modificano direttamente nella sezione"
+                          : section.key === "universita"
+                            ? "Corsi e iscrizioni si gestiscono direttamente nella sezione"
                           : "Dopo l'approvazione caratteristiche e abilità le modifica lo staff"
                   }
                   active={view.mode === "edit" || (staffEdit && view.mode === "admin")}
@@ -255,6 +259,11 @@ export function CharacterSheetWindow({
           ) : section.key === "affetti" ? (
             <SectionFrame title="Affetti">
               <AffectionsSection characterId={character.id} canEdit={isOwner || isAdmin} legacyText={character.relationships} />
+            </SectionFrame>
+          ) : section.key === "universita" ? (
+            <SectionFrame title="Università">
+              {/* proprietario e staff: lo controlla il database (academic_overview) */}
+              <StudentPanel characterId={character.id} isOwner={isOwner} />
             </SectionFrame>
           ) : PRIVATE_SECTIONS.includes(section.key) && !canSeePrivate ? (
             <SectionFrame title={section.label}>

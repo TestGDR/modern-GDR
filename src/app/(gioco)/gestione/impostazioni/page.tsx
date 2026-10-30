@@ -24,5 +24,6 @@ export default function Page() {
 async function Content() {
   await requirePermission("impostazioni.gestire");
   const [settings, levels] = await Promise.all([getSettings(), getLevels()]);
-  return <SettingsManager settings={settings} levels={levels} />;
+  // quelle dell'università stanno in Gestione → Università
+  return <SettingsManager settings={settings.filter((s) => !s.key.startsWith("uni_"))} levels={levels} />;
 }

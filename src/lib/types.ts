@@ -85,7 +85,7 @@ export type CreationOption = {
 export type GameSetting = {
   key: string;
   value: number | number[] | string;
-  kind: "number" | "numbers" | "level";
+  kind: "number" | "numbers" | "level" | "decimal";
   label: string;
   description: string;
   sort_order: number;
@@ -445,4 +445,111 @@ export type FormState = {
   success?: string;
   /** Valori da rimettere nel modulo dopo un errore */
   values?: Record<string, string>;
+};
+
+/* ---------- Università (sistema accademico) ---------- */
+export type ClassStanding = "freshman" | "sophomore" | "junior" | "senior";
+export type AcademicStatus = "good_standing" | "probation" | "suspended" | "dismissed" | "graduated";
+export type TermStatus = "registration_open" | "in_progress" | "simulated" | "published";
+export type Effort = "minimal" | "normal" | "intense";
+
+export type Course = {
+  id: string;
+  code: string;
+  name: string;
+  department: string;
+  credits: number;
+  level: 100 | 200 | 300 | 400;
+  attribute_id: string;
+  skill_id: string | null;
+  cd_modifier: number;
+  description: string;
+  active: boolean;
+};
+export type CoursePrerequisite = { course_id: string; prerequisite_id: string; min_grade: string };
+export type AcademicTerm = {
+  id: string;
+  academic_year: string;
+  semester: "fall" | "spring";
+  status: TermStatus;
+  withdraw_open: boolean;
+  created_at: string;
+  simulated_at: string | null;
+  published_at: string | null;
+};
+export type ExamRoll = {
+  type: "coursework" | "midterm" | "final";
+  attr: number;
+  skill: number;
+  d10: number;
+  crit: "none" | "success" | "failure";
+  extra: number | null;
+  mods: { tratti: number; impegno: number; carico: number; ripetizione: number; master: number; nota_master: string | null; totale: number };
+  total: number;
+  cd: number;
+  margin: number;
+  score: number;
+};
+export type EnrollmentView = {
+  id: number;
+  course_id: string;
+  code: string;
+  name: string;
+  credits: number;
+  level: number;
+  status: "enrolled" | "withdrawn" | "completed";
+  effort: Effort;
+  letter_grade: string | null;
+  grade_points?: number | null;
+  final_score: number | null;
+  is_retake: boolean;
+  counts_in_gpa?: boolean;
+  master_modifier: number | null;
+  master_note: string | null;
+  rolls: ExamRoll[];
+};
+export type StudentRecord = {
+  credits_earned: number;
+  cumulative_gpa: number | null;
+  class_standing: ClassStanding;
+  academic_status: AcademicStatus;
+  probation_count?: number;
+  honors?: string | null;
+  start_credits?: number;
+  new?: boolean;
+};
+export type TermReport = {
+  credits_attempted: number;
+  credits_earned: number;
+  term_gpa: number | null;
+  cumulative_gpa_after: number | null;
+  credits_total_after: number;
+  standing_before: AcademicStatus;
+  standing_after: AcademicStatus;
+  class_standing_after: ClassStanding;
+  deans_list: boolean;
+  graduated: boolean;
+  honors: string | null;
+  report_text: string;
+};
+/** academic_overview: la carriera di un personaggio */
+export type AcademicOverview = {
+  character: { id: string; name: string; status: string; major_id: string | null; major: string | null; year: string | null; graduate: boolean };
+  staff: boolean;
+  record: StudentRecord;
+  term: { id: string; label: string; status: TermStatus; withdraw_open: boolean } | null;
+  current: EnrollmentView[];
+  history: { term_id: string; label: string; status: TermStatus; report: TermReport | null; courses: EnrollmentView[] }[];
+  /** ultimo voto pubblicato di ogni corso (grade points) */
+  passed: Record<string, number>;
+  /** corsi obbligatori del Major */
+  required: string[];
+};
+/** academic_term_view: gli studenti di un semestre (staff) */
+export type TermStudent = {
+  character_id: string;
+  name: string;
+  record: (StudentRecord & { character_id: string }) | null;
+  report: TermReport | null;
+  courses: EnrollmentView[] | null;
 };

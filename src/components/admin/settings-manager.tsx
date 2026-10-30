@@ -33,6 +33,9 @@ export function SettingRow({ setting, levels }: { setting: GameSetting; levels: 
     if (setting.kind === "number") {
       value = Number(text);
       if (!Number.isInteger(value) || value < 0) return setError("Inserisci un numero intero, zero o positivo.");
+    } else if (setting.kind === "decimal") {
+      value = Number(text.replace(",", "."));
+      if (!Number.isFinite(value) || value < 0) return setError("Inserisci un numero, anche con la virgola (es. 2,0).");
     } else if (setting.kind === "numbers") {
       value = text.split(/[,\s]+/).filter(Boolean).map(Number);
       if (value.length === 0 || value.some((n) => !Number.isInteger(n))) return setError("Inserisci dei numeri separati da virgola, es. 10, 9, 8, 8, 7.");
@@ -65,7 +68,7 @@ export function SettingRow({ setting, levels }: { setting: GameSetting; levels: 
             <input
               className={inputClass}
               value={text}
-              inputMode={setting.kind === "number" ? "numeric" : "text"}
+              inputMode={setting.kind === "number" ? "numeric" : setting.kind === "decimal" ? "decimal" : "text"}
               onChange={(e) => {
                 setText(e.target.value);
                 setSaved(false);
