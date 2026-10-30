@@ -165,6 +165,9 @@ function useRegisterWindow(entry: Omit<WindowEntry, "key" | "raise">) {
   const pathname = usePathname();
   const { kind, label, width, height, children } = entry;
   useEffect(() => {
+    // Tornando alla mappa o alla chat Next.js può lasciare montata la pagina della
+    // finestra (slot @modal non più attuale): non deve riaprirsi da sola
+    if (!isModalPath(pathname)) return;
     host?.register({ key: windowKey(pathname), kind, label, width, height, children });
   }, [host, pathname, kind, label, width, height, children]);
   return host !== null;
