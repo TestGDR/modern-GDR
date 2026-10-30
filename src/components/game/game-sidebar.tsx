@@ -22,7 +22,7 @@ import {
 import { Logo } from "@/components/brand/logo";
 import { CharacterAvatar } from "@/components/game/character-avatar";
 import { ComingSoon, WindowButton } from "@/components/game/info-window";
-import { isModalPath } from "@/components/game/page-modal";
+import { closeAllWindows, isModalPath } from "@/components/game/page-modal";
 import { TicketIcon } from "@/components/game/ticket-icon";
 import { ForumIcon } from "@/components/game/forum-icon";
 import { SocialIcon } from "@/components/social/social-icon";
@@ -186,6 +186,8 @@ function MainButtons() {
   const inChat = CHAT_PATH.test(useBackgroundPath());
   // In chat "Aggiorna" ricarica la chat; altrove riporta alla mappa
   function update() {
+    // "Aggiorna" chiude anche tutte le finestre aperte
+    closeAllWindows();
     if (inChat) return router.refresh();
     router.push("/mappa");
     router.refresh();

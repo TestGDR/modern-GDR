@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { FormMessage } from "@/components/auth/auth-forms";
 import { AffectionsSection } from "@/components/game/affections";
+import { ErrorBoundary } from "@/components/game/error-boundary";
 import { AdminSheetPanel } from "@/components/game/admin-sheet";
 import { useCloseModal } from "@/components/game/page-modal";
 import { PrefsPanel } from "@/components/game/prefs-panel";
@@ -227,6 +228,8 @@ export function CharacterSheetWindow({
             )}
           </div>
 
+          {/* se una sezione si rompe, il messaggio resta qui e il resto della scheda funziona */}
+          <ErrorBoundary key={`${section.key}-${view.mode}`} what="questa sezione della scheda">
           {view.mode === "admin" && isAdmin ? (
             <AdminSheetPanel character={character} build={build} rules={rules} districts={districts} onClose={() => setView((v) => ({ ...v, mode: "view" }))} />
           ) : view.mode === "settings" ? (
@@ -272,6 +275,7 @@ export function CharacterSheetWindow({
               <FreeText text={section.field ? character[section.field] : null} isOwner={isOwner} />
             </SectionFrame>
           )}
+          </ErrorBoundary>
         </section>
       </div>
     </SheetFrame>

@@ -3,11 +3,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { FloatingWindow } from "@/components/floating-window";
+import { ErrorBoundary } from "@/components/game/error-boundary";
 
 // Pagine che, cliccate dentro il gioco, si aprono in una finestra sopra la
 // pagina in cui si è (rotte intercettate in src/app/(gioco)/@modal).
-// Aprendo o ricaricando l'indirizzo di una finestra, si torna alla pagina che
-// c'era sotto (o alla mappa) e la finestra si riapre sopra (ModalReopen).
+// Ricaricando (F5) l'indirizzo di una finestra si torna alla pagina che c'era
+// sotto (o alla mappa), senza riaprire la finestra (ModalReopen).
 export const MODAL_PREFIXES = ["/scheda", "/social", "/forum", "/messaggi", "/ticket", "/gestione", "/utility", "/telefono"];
 
 export function isModalPath(pathname: string) {
@@ -36,6 +37,12 @@ function windowKey(pathname: string) {
   const prefix = MODAL_PREFIXES.find((p) => pathname === p || pathname.startsWith(`${p}/`));
   if (!prefix) return pathname;
   return prefix === "/scheda" ? pathname : prefix;
+}
+
+// "Aggiorna": chiude tutte le finestre aperte
+const CLOSE_ALL_EVENT = "gdr:chiudi-tutte-le-finestre";
+export function closeAllWindows() {
+  window.dispatchEvent(new Event(CLOSE_ALL_EVENT));
 }
 
 /* ------------------------------ Gestore delle finestre ------------------------------ */
@@ -79,6 +86,19 @@ export function ModalGate({ children }: { children: React.ReactNode }) {
       // archivio del browser non disponibile: si torna alla mappa
     }
   }, [pathname]);
+
+  // "Aggiorna": via tutte le finestre; se l'indirizzo è di una finestra si torna alla pagina di sotto
+  useEffect(() => {
+    const onCloseAll = () => {
+      setEntries([]);
+      if (isModalPath(window.location.pathname)) {
+        closedAt.current = window.location.pathname;
+        router.push(origin, { scroll: false });
+      }
+    };
+    window.addEventListener(CLOSE_ALL_EVENT, onCloseAll);
+    return () => window.removeEventListener(CLOSE_ALL_EVENT, onCloseAll);
+  }, [router]);
 
   const host = useMemo<Host>(
     () => ({
@@ -126,11 +146,11 @@ export function ModalGate({ children }: { children: React.ReactNode }) {
         <ModalStackContext.Provider key={e.key} value={{ id: e.key, close }}>
           {e.kind === "sheet" ? (
             <FloatingWindow label="Scheda personaggio" onClose={() => close(e.key)} initialWidth={900} initialHeight={620} chromeless raiseKey={e.raise} offset={(i % 6) * 28}>
-              {e.children}
+              <ErrorBoundary what="questa finestra">{e.children}</ErrorBoundary>
             </FloatingWindow>
           ) : (
             <FloatingWindow label={e.label} onClose={() => close(e.key)} initialWidth={e.width} initialHeight={e.height} raiseKey={e.raise} offset={(i % 6) * 28}>
-              {e.children}
+              <ErrorBoundary what="questa finestra">{e.children}</ErrorBoundary>
             </FloatingWindow>
           )}
         </ModalStackContext.Provider>
@@ -150,14 +170,12 @@ function useRegisterWindow(entry: Omit<WindowEntry, "key" | "raise">) {
   return host !== null;
 }
 
-// Finestra da riaprire dopo essere tornati alla pagina di sotto
-let reopen: string | null = null;
-let reopenFinished = false;
+let reopenDone = false;
 
 /**
- * Pagina caricata direttamente su una finestra (link, F5, ricaricamento):
- * torna alla pagina di sotto e riapre la finestra sopra, invece di mostrarla
- * a pagina intera. Nel frattempo copre l'area centrale.
+ * Pagina caricata direttamente sull'indirizzo di una finestra (F5, link):
+ * si torna alla pagina di sotto (o alla mappa) senza riaprire la finestra.
+ * Nel frattempo copre l'area centrale.
  */
 export function ModalReopen() {
   const pathname = usePathname();
@@ -166,19 +184,14 @@ export function ModalReopen() {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    if (!startedOnModal || done || reopenFinished) return;
+    if (!startedOnModal || done) return;
     if (isModalPath(pathname)) {
-      if (reopen) return; // già in corso
-      reopen = pathname + window.location.search;
+      if (reopenDone) return; // già in corso
+      reopenDone = true;
       origin = savedOrigin();
       router.replace(origin, { scroll: false });
       return;
     }
-    // arrivati alla pagina di sotto: si riapre la finestra (una volta sola)
-    const target = reopen;
-    reopen = null;
-    reopenFinished = true;
-    if (target) router.push(target, { scroll: false });
     setTimeout(() => setDone(true), 0);
   }, [pathname, router, startedOnModal, done]);
 

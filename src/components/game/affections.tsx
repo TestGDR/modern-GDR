@@ -16,13 +16,16 @@ const RichEditor = dynamic(() => import("@/components/guide/rich-editor").then((
   loading: () => <p className="text-xs text-muted-foreground">Caricamento dell&apos;editor…</p>,
 });
 
-type Person = { id: string; username: string; characters: { id: string; avatar_url: string | null; status: string }[] };
+type PersonCharacter = { id: string; avatar_url: string | null; status: string };
+// Un giocatore ha un solo personaggio: il database lo manda come oggetto (non come elenco)
+type Person = { id: string; username: string; characters: PersonCharacter | PersonCharacter[] | null };
 type Affection = { id: string; body: string; sort_order: number; target: Person | null };
 
-/** Il personaggio da mostrare per un utente: prima quello approvato */
-function pickCharacter(p: Person | null) {
-  if (!p) return null;
-  return p.characters.find((c) => c.status === "approvata") ?? p.characters[0] ?? null;
+/** Il personaggio da mostrare per un utente (oggetto o elenco: si accettano entrambi) */
+function pickCharacter(p: Person | null): PersonCharacter | null {
+  if (!p?.characters) return null;
+  const list = Array.isArray(p.characters) ? p.characters : [p.characters];
+  return list.find((c) => c.status === "approvata") ?? list[0] ?? null;
 }
 
 const SELECT = "id, body, sort_order, target:profiles(id, username, characters(id, avatar_url, status))";
@@ -184,7 +187,7 @@ function AddPerson({
   }, [open]);
 
   const term = q.trim().toLowerCase();
-  const options = (people ?? []).filter((p) => !existing.includes(p.userId) && (!term || p.name.toLowerCase().includes(term)));
+  const options = (people ?? []).filter((p) => !existing.includes(p.userId) && (!term || (p.name ?? "").toLowerCase().includes(term)));
   const STATUS: Record<string, string> = { bozza: "in creazione", in_attesa: "in attesa", rifiutata: "rifiutata" };
 
   return (
