@@ -10,6 +10,7 @@ import {
   CloudSun,
   Eye,
   EyeOff,
+  GraduationCap,
   Info,
   LogOut,
   Map as MapIcon,
@@ -213,7 +214,7 @@ function MainButtons() {
 
 const iconCls = sidebarIconClass;
 
-/** Calendario, Social, Forum, Scheda, Ticket, Gestione */
+/** Calendario, Social, Forum, Scheda, Ticket, Utility, Università */
 function FeatureIcons() {
   return (
     <div className="grid grid-cols-3 gap-1">
@@ -230,6 +231,9 @@ function FeatureIcons() {
       <TicketIcon />
       <Link href="/utility" className={iconCls}>
         <BriefcaseBusiness /> Utility
+      </Link>
+      <Link href="/universita" className={iconCls}>
+        <GraduationCap /> Università
       </Link>
     </div>
   );

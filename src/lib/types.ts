@@ -545,6 +545,22 @@ export type AcademicOverview = {
   /** corsi obbligatori del Major */
   required: string[];
 };
+/** Un compito fatto durante il semestre (academic_homework_list) */
+export type Homework = {
+  id: number;
+  enrollment_id: number;
+  attr: number;
+  skill: number;
+  d10: number;
+  crit: "none" | "success" | "failure";
+  extra: number | null;
+  mods: number;
+  total: number;
+  cd: number;
+  margin: number;
+  points: number;
+  created_at: string;
+};
 /** academic_term_view: gli studenti di un semestre (staff) */
 export type TermStudent = {
   character_id: string;

@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Award, BookOpen, Check, ChevronDown, ClipboardCopy, GraduationCap, Plus, Search, Undo2, X } from "lucide-react";
+import { Award, BookOpen, Check, ChevronDown, ClipboardCopy, GraduationCap, NotebookPen, Plus, Search, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
-import type { AcademicOverview, Course, CoursePrerequisite, Effort, EnrollmentView } from "@/lib/types";
+import type { AcademicOverview, Course, CoursePrerequisite, Effort, EnrollmentView, Homework } from "@/lib/types";
 import {
   CLASS_LABEL,
   EFFORT_LABEL,
@@ -35,12 +35,40 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [homework, setHomework] = useState<Homework[]>([]);
+  const [lastHomework, setLastHomework] = useState<string | null>(null);
+  // ora dell'ultimo caricamento, per sapere se il prossimo compito si può già fare
+  const [now, setNow] = useState(0);
 
   const load = useCallback(async () => {
-    const { data: o, error: e } = await supabase.rpc("academic_overview", { p_character: characterId });
+    const [{ data: o, error: e }, { data: h }] = await Promise.all([
+      supabase.rpc("academic_overview", { p_character: characterId }),
+      supabase.rpc("academic_homework_list", { p_character: characterId }),
+    ]);
     if (e) return setData("vietato");
     setData(o as AcademicOverview);
+    setHomework((h ?? []) as Homework[]);
+    setNow(Date.now());
   }, [supabase, characterId]);
+
+  // fa un compito e mostra subito com'è andato
+  async function doHomework(enrollment: EnrollmentView) {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    setLastHomework(null);
+    const { data: r, error: e } = await supabase.rpc("academic_homework", { p_enrollment: enrollment.id });
+    setBusy(false);
+    if (e) setError(e.message);
+    else {
+      const h = r as { total: number; cd: number; points: number; crit: string };
+      const result =
+        h.points > 0 ? `riuscito, +${h.points} punt${h.points === 1 ? "o" : "i"} sul voto` : h.total >= h.cd ? "riuscito, ma hai già il massimo dei punti" : "non riuscito";
+      const crit = h.crit === "success" ? " (successo critico!)" : h.crit === "failure" ? " (fallimento critico)" : "";
+      setLastHomework(`Compito di ${enrollment.code}: ${h.total} contro CD ${h.cd} → ${result}${crit}.`);
+    }
+    await load();
+  }
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- lettura all'apertura della sezione
@@ -98,14 +126,26 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
           {term.status === "registration_open" && canAct && catalog ? (
             <Registration data={data} catalog={catalog} busy={busy} run={run} />
           ) : (
-            <CurrentCourses data={data} canWithdraw={isOwner && term.status === "in_progress" && term.withdraw_open} busy={busy} run={run} />
+            <>
+              {lastHomework && <p className="rounded-xl bg-mint/15 px-3 py-2 text-sm text-mint">{lastHomework}</p>}
+              <CurrentCourses
+                data={data}
+                canWithdraw={isOwner && term.status === "in_progress" && term.withdraw_open}
+                homework={term.status === "in_progress" ? homework : []}
+                homeworkRules={catalog?.settings}
+                now={now}
+                onHomework={isOwner && term.status === "in_progress" ? doHomework : null}
+                busy={busy}
+                run={run}
+              />
+            </>
           )}
         </section>
       ) : (
         <p className="text-sm text-muted-foreground">Nessun semestre aperto: le iscrizioni le apre lo staff.</p>
       )}
 
-      <Transcript data={data} byId={byId} catalog={catalog} />
+      <Transcript data={data} byId={byId} catalog={catalog} homework={homework} />
     </div>
   );
 }
@@ -306,19 +346,41 @@ function Registration({
 function CurrentCourses({
   data,
   canWithdraw,
+  homework,
+  homeworkRules,
+  now,
+  onHomework,
   busy,
   run,
 }: {
   data: AcademicOverview;
   canWithdraw: boolean;
+  homework: Homework[];
+  homeworkRules: Catalog["settings"] | undefined;
+  now: number;
+  onHomework: ((e: EnrollmentView) => void) | null;
   busy: boolean;
   run: (fn: string, args: Record<string, unknown>) => Promise<void>;
 }) {
   if (data.current.length === 0) return <p className="text-sm text-muted-foreground">Non sei iscritto a nessun corso in questo semestre.</p>;
+  const maxHw = num(homeworkRules?.uni_compiti_max, 3);
+  const maxPts = num(homeworkRules?.uni_compiti_punti_max, 3);
+  const days = num(homeworkRules?.uni_compiti_giorni, 7);
   return (
-    <ul className="flex flex-col gap-1">
-      {data.current.map((e) => (
-        <li key={e.id} className="flex items-center gap-2 rounded-lg bg-white/5 px-2 py-1.5 text-sm">
+    <div className="flex flex-col gap-2">
+      {onHomework && (
+        <p className="text-xs text-muted-foreground">
+          Compiti: fino a {maxHw} per corso, uno ogni {days} giorni. Un compito riuscito vale +1 punto sul voto del corso (+{num(homeworkRules?.uni_compiti_punti_critico, 2)} con un 10 naturale), al massimo +{maxPts}.
+        </p>
+      )}
+      <ul className="flex flex-col gap-1">
+        {data.current.map((e) => {
+          const mine = homework.filter((h) => h.enrollment_id === e.id);
+          const pts = Math.min(maxPts, mine.reduce((t, h) => t + h.points, 0));
+          const last = mine.at(-1);
+          const nextAt = last ? new Date(Date.parse(last.created_at) + days * 86_400_000) : null;
+          return (
+        <li key={e.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-white/5 px-2 py-1.5 text-sm">
           <span className="w-20 shrink-0 font-mono text-xs text-lavender">{e.code}</span>
           <span className={cn("min-w-0 flex-1 truncate", e.status === "withdrawn" && "text-muted-foreground line-through")}>{e.name}</span>
           <span className="text-xs text-muted-foreground">{e.credits} cr</span>
@@ -339,15 +401,34 @@ function CurrentCourses({
               </Button>
             )
           )}
+          {onHomework && e.status === "enrolled" && (
+            <span className="flex w-full items-center gap-2 text-xs text-muted-foreground sm:pl-[5.5rem]">
+              <NotebookPen className="size-3.5 text-peach" />
+              Compiti {mine.length}/{maxHw}
+              {pts > 0 && <strong className="text-mint">+{pts}</strong>}
+              {mine.length > 0 && <span className="truncate">· {mine.map((h) => (h.points > 0 ? `✓${h.points > 1 ? h.points : ""}` : "✗")).join(" ")}</span>}
+              {mine.length >= maxHw ? (
+                <span className="ml-auto">fatti tutti</span>
+              ) : nextAt && nextAt.getTime() > now ? (
+                <span className="ml-auto">prossimo dal {nextAt.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}</span>
+              ) : (
+                <Button type="button" size="xs" disabled={busy} onClick={() => onHomework(e)} className="ml-auto rounded-full">
+                  <NotebookPen /> Fai un compito
+                </Button>
+              )}
+            </span>
+          )}
         </li>
-      ))}
-    </ul>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
 /* ------------------------------ Transcript e pagelle ------------------------------ */
 
-function Transcript({ data, byId, catalog }: { data: AcademicOverview; byId: Map<string, Course>; catalog: Catalog | null }) {
+function Transcript({ data, byId, catalog, homework }: { data: AcademicOverview; byId: Map<string, Course>; catalog: Catalog | null; homework: Homework[] }) {
   if (data.history.length === 0) return null;
   return (
     <section className="flex flex-col gap-3">
@@ -355,7 +436,7 @@ function Transcript({ data, byId, catalog }: { data: AcademicOverview; byId: Map
         <BookOpen className="size-5" /> Transcript
       </h3>
       {[...data.history].reverse().map((h) => (
-        <TermCard key={h.term_id} data={data} term={h} byId={byId} catalog={catalog} />
+        <TermCard key={h.term_id} data={data} term={h} byId={byId} catalog={catalog} homework={homework} />
       ))}
     </section>
   );
@@ -366,11 +447,13 @@ function TermCard({
   term,
   byId,
   catalog,
+  homework,
 }: {
   data: AcademicOverview;
   term: AcademicOverview["history"][number];
   byId: Map<string, Course>;
   catalog: Catalog | null;
+  homework: Homework[];
 }) {
   const [copied, setCopied] = useState(false);
   const r = term.report;
@@ -417,19 +500,20 @@ function TermCard({
       )}
       <ul className="flex flex-col p-2">
         {term.courses.map((c) => (
-          <CourseRow key={c.id} c={c} course={byId.get(c.course_id)} catalog={catalog} />
+          <CourseRow key={c.id} c={c} course={byId.get(c.course_id)} catalog={catalog} homework={homework.filter((h) => h.enrollment_id === c.id)} />
         ))}
       </ul>
     </article>
   );
 }
 
-function CourseRow({ c, course, catalog }: { c: EnrollmentView; course: Course | undefined; catalog: Catalog | null }) {
+function CourseRow({ c, course, catalog, homework }: { c: EnrollmentView; course: Course | undefined; catalog: Catalog | null; homework: Homework[] }) {
   const [open, setOpen] = useState(false);
   const attr = course && catalog ? catalog.attrs[course.attribute_id] : "Car.";
   const skill = course?.skill_id && catalog ? catalog.skills[course.skill_id] : null;
   const failed = c.letter_grade === "F";
   const weights = list(catalog?.settings.uni_pesi_prove);
+  const hwPoints = Math.min(num(catalog?.settings.uni_compiti_punti_max, 3), homework.reduce((t, h) => t + h.points, 0));
   return (
     <li className="rounded-lg">
       <button
@@ -452,6 +536,14 @@ function CourseRow({ c, course, catalog }: { c: EnrollmentView; course: Course |
       </button>
       {open && (
         <div className="mx-2 mb-2 flex flex-col gap-1 rounded-lg bg-night/40 p-2.5 text-xs">
+          {homework.map((h, i) => (
+            <p key={h.id} className={cn(h.crit === "success" && "text-mint", h.crit === "failure" && "text-destructive")}>
+              <strong className="text-foreground">Compito {i + 1}:</strong> {attr} {h.attr} + {skill ?? "abilità"} {h.skill} + d10{" "}
+              {h.crit === "success" ? `[10 → +${h.extra}]` : h.crit === "failure" ? `[1 → −${h.extra}]` : h.d10}
+              {h.mods ? ` ${h.mods > 0 ? "+" : "−"} ${Math.abs(h.mods)}` : ""} = {h.total} vs CD {h.cd} →{" "}
+              {h.points > 0 ? `+${h.points}` : h.total >= h.cd ? "riuscito (tetto raggiunto)" : "non riuscito"}
+            </p>
+          ))}
           {c.rolls.map((r) => (
             <p key={r.type} className={cn(r.crit === "success" && "text-mint", r.crit === "failure" && "text-destructive")}>
               <strong className="text-foreground">{EXAM_LABEL[r.type]}:</strong> {rollText(r, attr, skill)}
@@ -460,7 +552,8 @@ function CourseRow({ c, course, catalog }: { c: EnrollmentView; course: Course |
             </p>
           ))}
           <p className="text-muted-foreground">
-            Punteggio del corso: <strong className="text-foreground">{c.final_score}</strong> (coursework {weights[0] ?? 20}%, midterm {weights[1] ?? 30}%, final {weights[2] ?? 50}%)
+            Punteggio del corso: <strong className="text-foreground">{c.final_score}</strong>
+            {hwPoints > 0 && ` (di cui +${hwPoints} dai compiti)`} (coursework {weights[0] ?? 20}%, midterm {weights[1] ?? 30}%, final {weights[2] ?? 50}%)
             {c.rolls[0] && (
               <>
                 {" "}· Modificatori: impegno {c.rolls[0].mods.impegno}, carico {c.rolls[0].mods.carico}, tratti {c.rolls[0].mods.tratti}, ripetizione {c.rolls[0].mods.ripetizione}, Master {c.rolls[0].mods.master}
