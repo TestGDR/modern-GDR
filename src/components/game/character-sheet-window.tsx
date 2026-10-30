@@ -396,8 +396,8 @@ function DataList({ character, rules, affiliations }: { character: SheetCharacte
   // sotto il nome: età, quartiere di residenza, patrimonio
   const subtitle = [character.age ? `${character.age} anni` : null, character.district?.name ?? null, wealth].filter(Boolean);
   const born = character.birth_date ? `${formatBirthDate(character.birth_date)}${character.age ? ` (${character.age} anni)` : ""}` : "—";
-  const jobs = affiliations.jobs.map((j) => `${j.role ? `${j.role} · ` : ""}${j.name} (${j.kind === "full_time" ? "FT" : "PT"})`);
-  const groups = affiliations.groups.map((g) => (g.role ? `${g.name} · ${g.role}` : g.name));
+  const jobs = affiliations.jobs.map((j) => ({ icon: j.icon, text: `${j.role ? `${j.role} · ` : ""}${j.name} (${j.kind === "full_time" ? "FT" : "PT"})` }));
+  const groups = affiliations.groups.map((g) => ({ icon: g.icon, text: g.role ? `${g.name} · ${g.role}` : g.name }));
   return (
     <div className="flex flex-col">
       <DataBanner name={character.name} subtitle={subtitle as string[]} />
@@ -418,8 +418,8 @@ function DataList({ character, rules, affiliations }: { character: SheetCharacte
           <DataCard label="Anno di corso" value={option(character.year_id)} />
         </DataBlock>
         <DataBlock icon={<BriefcaseBusiness />} title="Gruppi e lavoro" cols={3}>
-          <DataCard label={jobs.length > 1 ? "Lavori" : "Lavoro"} value={jobs.length ? jobs.join("\n") : "—"} />
-          <DataCard label="Gruppi di gioco" value={groups.length ? groups.join("\n") : "—"} />
+          <DataCard label={jobs.length > 1 ? "Lavori" : "Lavoro"} value="—" lines={jobs} />
+          <DataCard label="Gruppi di gioco" value="—" lines={groups} />
           <DataCard label="Squadra o club" value={option(character.club_id)} />
         </DataBlock>
         {/* in piccolo, fuori dalle categorie */}
@@ -476,11 +476,26 @@ function DataBlock({ icon, title, cols, children }: { icon: React.ReactNode; tit
   );
 }
 
-function DataCard({ label, value }: { label: string; value: string }) {
+/** Riquadro dei Dati; con `lines` mostra più righe, ognuna con la sua icona (lavori, gruppi) */
+function DataCard({ label, value, lines }: { label: string; value: string; lines?: { icon: string | null; text: string }[] }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-1.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.04)]">
       <dt className="text-[0.6rem] font-medium tracking-wider text-lavender uppercase">{label}</dt>
-      <dd className="text-[0.8rem] font-medium break-words whitespace-pre-line text-white">{value}</dd>
+      {lines && lines.length > 0 ? (
+        <dd className="flex flex-col gap-0.5 text-[0.8rem] font-medium text-white">
+          {lines.map((l, i) => (
+            <span key={i} className="flex items-center gap-1.5 break-words">
+              {l.icon && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={l.icon} alt="" className="size-5 shrink-0 rounded object-contain" />
+              )}
+              {l.text}
+            </span>
+          ))}
+        </dd>
+      ) : (
+        <dd className="text-[0.8rem] font-medium break-words whitespace-pre-line text-white">{value}</dd>
+      )}
     </div>
   );
 }

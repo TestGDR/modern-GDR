@@ -57,6 +57,7 @@ export function OrgsView({ kind, orgs, characterId, periodDays, maxGroups }: Pro
               const role = o.roles.find((r) => r.id === o.members.find((m) => m.character_id === characterId)?.role_id);
               return (
                 <li key={o.id} className="flex flex-wrap items-center gap-2">
+                  <OrgIcon url={o.icon_url} />
                   <span className="font-medium">{o.name}</span>
                   {o.kind && <KindBadge kind={o.kind} />}
                   {role && <span className="text-muted-foreground">· {role.name}</span>}
@@ -119,6 +120,13 @@ function KindBadge({ kind }: { kind: NonNullable<Org["kind"]> }) {
   );
 }
 
+/** Icona del lavoro o del gruppo (20x20) */
+export function OrgIcon({ url }: { url: string | null | undefined }) {
+  if (!url) return null;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={url} alt="" className="size-5 shrink-0 rounded object-contain" />;
+}
+
 function OrgCard({
   org,
   kind,
@@ -141,6 +149,7 @@ function OrgCard({
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-3 p-4 text-left">
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
+            <OrgIcon url={org.icon_url} />
             <span className="font-heading text-2xl tracking-wide">{org.name}</span>
             {org.kind && <KindBadge kind={org.kind} />}
           </span>

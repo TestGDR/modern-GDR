@@ -27,6 +27,8 @@ export type Org = {
   description: string;
   /** Solo i lavori */
   kind: JobKind | null;
+  /** Icona (link https, circa 20x20) */
+  icon_url: string | null;
   sort_order: number;
   active: boolean;
   roles: OrgRole[];

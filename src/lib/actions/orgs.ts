@@ -38,7 +38,7 @@ async function checked(query: PromiseLike<{ data: unknown[] | null; error: DbErr
 
 /* ------------------------------ Lavori e gruppi ------------------------------ */
 
-export type OrgInput = { id?: string; name: string; description: string; jobKind?: JobKind; active: boolean };
+export type OrgInput = { id?: string; name: string; description: string; jobKind?: JobKind; iconUrl?: string; active: boolean };
 
 export async function saveOrg(kind: OrgKind, input: OrgInput): Promise<ActionResult> {
   if (!validKind(kind)) return { ok: false, error: "Tipo non valido." };
@@ -46,7 +46,9 @@ export async function saveOrg(kind: OrgKind, input: OrgInput): Promise<ActionRes
   if (name.length < 2) return { ok: false, error: "Scrivi il nome." };
   if (kind === "job" && input.jobKind !== "full_time" && input.jobKind !== "part_time") return { ok: false, error: "Scegli full time o part time." };
   const t = ORG_TABLES[kind];
-  const row: Record<string, unknown> = { name, description: clean(input.description, 4000), active: input.active };
+  const icon = (input.iconUrl ?? "").trim();
+  if (icon && (!/^https:\/\/\S+$/.test(icon) || icon.length > 500)) return { ok: false, error: "L'icona va indicata con un link che inizia con https://" };
+  const row: Record<string, unknown> = { name, description: clean(input.description, 4000), active: input.active, icon_url: icon || null };
   if (kind === "job") row.kind = input.jobKind;
   await requirePlayer();
   const supabase = await createClient();

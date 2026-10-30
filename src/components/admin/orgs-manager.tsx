@@ -79,6 +79,7 @@ function OrgForm({ kind, org, onDone }: { kind: OrgKind; org?: Org; onDone: () =
     name: org?.name ?? "",
     description: org?.description ?? "",
     jobKind: org?.kind ?? "part_time",
+    iconUrl: org?.icon_url ?? "",
     active: org?.active ?? true,
   });
   const { pending, error, execute } = useAdminAction();
@@ -106,6 +107,15 @@ function OrgForm({ kind, org, onDone }: { kind: OrgKind; org?: Org; onDone: () =
           </FieldLabel>
         )}
       </div>
+      <FieldLabel label="Icona" hint="Link a un'immagine (https://…), circa 20x20: compare accanto al nome in Utility e nelle schede">
+        <span className="flex items-center gap-2">
+          {form.iconUrl?.startsWith("https://") && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={form.iconUrl} alt="" className="size-5 shrink-0 rounded object-contain" />
+          )}
+          <input className={inputClass} value={form.iconUrl ?? ""} maxLength={500} placeholder="https://…" onChange={(e) => setForm({ ...form, iconUrl: e.target.value })} />
+        </span>
+      </FieldLabel>
       <FieldLabel label="Descrizione" hint="La vedono i giocatori in Utility">
         <textarea className={cn(textareaClass, "min-h-28")} value={form.description} maxLength={4000} onChange={(e) => setForm({ ...form, description: e.target.value })} />
       </FieldLabel>
