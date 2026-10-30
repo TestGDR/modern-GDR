@@ -37,4 +37,5 @@ export const KIND_LABEL: Record<MessageKind, string> = {
   sistema: "Avviso",
   sussurro: "Sussurro",
   combattimento: "Combattimento",
+  png: "Parla come PNG",
 };

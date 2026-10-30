@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { BackToPanel } from "@/components/admin/admin-ui";
+import { SkillCategories } from "@/components/admin/skill-categories";
 import { SkillsManager } from "@/components/admin/skills-manager";
 import { LoadingBlocks } from "@/components/game/loading";
 import { PageHeader } from "@/components/game/page-header";
@@ -29,5 +30,10 @@ async function Content() {
   const sorted = [...skills].sort(
     (a, b) => (order.get(a.attribute_id) ?? 0) - (order.get(b.attribute_id) ?? 0) || a.sort_order - b.sort_order,
   );
-  return <SkillsManager skills={sorted} attributes={attributes} usage={usage} />;
+  return (
+    <div className="flex flex-col gap-8">
+      <SkillsManager skills={sorted} attributes={attributes} usage={usage} />
+      <SkillCategories skills={sorted.filter((s) => s.active).map((s) => ({ id: s.id, name: s.name }))} />
+    </div>
+  );
 }

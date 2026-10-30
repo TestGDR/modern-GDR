@@ -61,6 +61,7 @@ export const PERMISSION_AREAS: PermissionArea[] = [
       { key: "dadi.tirare", label: "Tirare i dadi" },
       { key: "dadi.nascosti", label: "Fare tiri nascosti da Master" },
       { key: "chat.narrazione", label: "Narrare come Master", description: "Messaggi «Narrazione master» e modalità master (limiti di caratteri)" },
+      { key: "png.gestire", label: "Gestire i PNG", description: "Creare i PNG della città, approvare quelli proposti dai giocatori, modificarli e disattivarli" },
       { key: "universita.gestire", label: "Gestire l'università", description: "Corsi, corsi obbligatori, semestri, bonus/malus, simulazione degli esami e pubblicazione dei voti" },
       { key: "combattimento.gestire", label: "Gestire il combattimento", description: "Vedere dadi e PF degli scontri, decidere le difese, chiudere gli scontri, modificare PF e ferite" },
       { key: "chat.moderare", label: "Moderare le chat", description: "Entrare in tutte le chat, anche chiuse o su invito, eliminare messaggi, invitare e allontanare" },

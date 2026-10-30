@@ -16,6 +16,7 @@ import {
   pxSummary,
   respectsMaxes,
   skillCost,
+  traitCounts,
   type Build,
   type InterlockSettings,
 } from "@/lib/interlock";
@@ -25,12 +26,17 @@ import { cn } from "@/lib/utils";
 
 const STEPS = ["Anagrafica", "Caratteristiche", "Scelte", "Abilità", "Background", "Riepilogo"];
 const SEX_LABELS = { M: "Maschile", F: "Femminile", X: "Non binario" } as const;
-const OPTION_GROUPS: { kind: CreationOption["kind"]; title: string; single: boolean }[] = [
-  { kind: "tenore", title: "Patrimonio", single: true },
-  { kind: "vantaggio", title: "Vantaggi", single: false },
-  { kind: "svantaggio", title: "Svantaggi", single: false },
-  { kind: "tratto", title: "Tratti", single: false },
+// Schede del passaggio Scelte: le voci divise per livello (generali, ambientazione, provenienza)
+type OptionTab = "tenore" | "vantaggi" | "svantaggi" | "tratti" | "ambientazione" | "provenienza";
+const OPTION_TABS: { key: OptionTab; title: string; hint: string; filter: (o: CreationOption) => boolean }[] = [
+  { key: "tenore", title: "Patrimonio", hint: "Una sola scelta.", filter: (o) => o.kind === "tenore" },
+  { key: "vantaggi", title: "Vantaggi", hint: "Capacità o circostanze favorevoli: costano PX.", filter: (o) => o.kind === "vantaggio" && o.scope !== "ambientazione" },
+  { key: "svantaggi", title: "Svantaggi", hint: "Debolezze o complicazioni: danno PX.", filter: (o) => o.kind === "svantaggio" && o.scope !== "ambientazione" },
+  { key: "tratti", title: "Tratti", hint: "Carattere: un pro e un contro.", filter: (o) => o.kind === "tratto" && !o.is_origin && o.scope !== "ambientazione" },
+  { key: "ambientazione", title: "Ambientazione", hint: "Legami, risorse, ruoli e privilegi narrativi: non cambiano i tiri.", filter: (o) => o.scope === "ambientazione" && !o.is_origin },
+  { key: "provenienza", title: "Provenienza", hint: "Da dove vieni: un punto di partenza per il Master (una sola).", filter: (o) => o.is_origin },
 ];
+const SUBGROUP_LABEL: Record<string, string> = { legami: "Legami", risorse: "Risorse e luoghi", ruoli: "Ruoli e reputazione", interpretativo: "Interpretativi" };
 
 type State = Build & {
   clubId: string | null;
@@ -123,12 +129,21 @@ export function CreationWizard({ character, build, rules, settings, variant }: C
   function toggleOption(option: CreationOption, single: boolean) {
     let ids = state.optionIds;
     if (single) {
-      ids = [...ids.filter((id) => rules.options.find((o) => o.id === id)?.kind !== option.kind), option.id];
+      // una sola nel gruppo: patrimonio, oppure provenienza
+      const sameGroup = (o: CreationOption | undefined) => !!o && (option.is_origin ? o.is_origin : o.kind === option.kind);
+      ids = [...ids.filter((id) => !sameGroup(rules.options.find((o) => o.id === id))), option.id];
     } else {
       ids = ids.includes(option.id) ? ids.filter((id) => id !== option.id) : [...ids, option.id];
     }
     setState((s) => ({ ...s, optionIds: ids }));
-    queue({ optionIds: ids });
+    queue({ optionIds: ids, optionDetails: state.optionDetails });
+  }
+
+  // livello (Contatti 1–3, Fobia lieve/grave…) e scelta (l'oggetto della fobia, il dipartimento…)
+  function setOptionDetail(id: string, change: Partial<{ level: number; choice: string }>) {
+    const details = { ...state.optionDetails, [id]: { ...(state.optionDetails[id] ?? { level: 1, choice: "" }), ...change } };
+    setState((s) => ({ ...s, optionDetails: details }));
+    queue({ optionIds: state.optionIds, optionDetails: details });
   }
 
   function setSkill(id: string, level: number) {
@@ -154,7 +169,7 @@ export function CreationWizard({ character, build, rules, settings, variant }: C
   /* ------------------------------ Calcoli ------------------------------ */
 
   const chosen = rules.options.filter((o) => state.optionIds.includes(o.id));
-  const px = pxSummary(chosen, state.skills, settings);
+  const px = pxSummary(chosen, state.skills, settings, state.optionDetails);
   const anomalies = findAnomalies(state, rules, settings);
   const attrValues = rules.attributes.map((a) => state.attributes[a.id] ?? settings.attrMinCreation);
   const pointsUsed = attributePointsUsed(attrValues);
@@ -229,7 +244,7 @@ export function CreationWizard({ character, build, rules, settings, variant }: C
         {step === 2 && (
           <StepAttributes state={state} rules={rules} settings={settings} pointsUsed={pointsUsed} onChange={setAttribute} />
         )}
-        {step === 3 && <StepOptions state={state} rules={rules} remaining={px.remaining} onToggle={toggleOption} />}
+        {step === 3 && <StepOptions state={state} rules={rules} settings={settings} remaining={px.remaining} onToggle={toggleOption} onDetail={setOptionDetail} />}
         {step === 4 && <StepSkills state={state} rules={rules} settings={settings} remaining={px.remaining} onChange={setSkill} />}
         {step === 5 && <StepBackground state={state} rules={rules} onChange={updateBackground} />}
         {step === 6 && (
@@ -286,6 +301,7 @@ function initialState(character: Character, build: CharacterBuild, rules: RulesD
     nationality: character.nationality ?? "",
     attributes,
     optionIds: build.optionIds,
+    optionDetails: build.optionDetails ?? {},
     skills: build.skills,
     studyTrackId: character.study_track_id,
     yearId: character.year_id,
@@ -515,52 +531,91 @@ function StepAttributes({
 function StepOptions({
   state,
   rules,
+  settings,
   remaining,
   onToggle,
+  onDetail,
 }: {
   state: State;
   rules: RulesData;
+  settings: InterlockSettings;
   remaining: number;
   onToggle: (o: CreationOption, single: boolean) => void;
+  onDetail: (id: string, change: Partial<{ level: number; choice: string }>) => void;
 }) {
+  const [tab, setTab] = useState<OptionTab>("tenore");
   const nameOf = (id: string) => rules.options.find((o) => o.id === id)?.name;
+  const chosen = rules.options.filter((o) => state.optionIds.includes(o.id));
+  const counts = traitCounts(chosen, settings);
+  const current = OPTION_TABS.find((t) => t.key === tab) ?? OPTION_TABS[0];
+  const single = tab === "tenore" || tab === "provenienza";
+  // le voci non ancora disponibili si vedono solo se già scelte (per poterle togliere)
+  const items = rules.options.filter((o) => current.filter(o) && (o.available || state.optionIds.includes(o.id)));
+  const groups = tab === "ambientazione"
+    ? [
+        ...["legami", "risorse", "ruoli", "interpretativo"].map((g) => ({ title: `Vantaggi · ${SUBGROUP_LABEL[g]}`, items: items.filter((o) => o.kind === "vantaggio" && o.subgroup === g) })),
+        { title: "Svantaggi", items: items.filter((o) => o.kind === "svantaggio" && o.subgroup !== "interpretativo") },
+        { title: "Svantaggi · Interpretativi", items: items.filter((o) => o.kind === "svantaggio" && o.subgroup === "interpretativo") },
+      ]
+    : [{ title: "", items }];
+
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
         Un vantaggio, un tratto o un patrimonio costa PX; uno svantaggio ne dà. Ti restano{" "}
         <strong className={remaining < 0 ? "text-destructive" : "text-mint"}>{remaining} PX</strong> per le abilità.
       </p>
-      {OPTION_GROUPS.map((group) => {
-        const items = rules.options.filter((o) => o.kind === group.kind);
-        if (items.length === 0) return null;
-        return (
-          <section key={group.kind}>
-            <h3 className="mb-2 font-heading text-xl tracking-wide text-peach">
-              {group.title}
-              {group.single && <span className="ml-2 font-sans text-xs tracking-normal text-muted-foreground normal-case">una sola scelta</span>}
-            </h3>
+      {/* contatori dei massimi */}
+      <p className="flex flex-wrap gap-1.5 text-[0.7rem]">
+        {counts.filter(([, n]) => n > 0).map(([label, n, max]) => (
+          <span key={label} className={cn("rounded-full px-2 py-0.5", n > max ? "bg-destructive/20 text-destructive" : "bg-white/10")}>
+            {label} {n}/{max}
+          </span>
+        ))}
+      </p>
+      <nav className="flex flex-wrap gap-1 rounded-2xl bg-white/5 p-1" aria-label="Gruppi di voci">
+        {OPTION_TABS.map((t) => {
+          const n = rules.options.filter((o) => t.filter(o) && state.optionIds.includes(o.id)).length;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              aria-current={tab === t.key ? "page" : undefined}
+              className={cn("rounded-full px-3 py-1.5 text-xs", tab === t.key ? "bg-flamingo/30 text-white" : "text-muted-foreground hover:bg-white/5")}
+            >
+              {t.title}
+              {n > 0 && <span className="ml-1 text-peach">{n}</span>}
+            </button>
+          );
+        })}
+      </nav>
+      <p className="text-xs text-muted-foreground">{current.hint}</p>
+      {groups.map((group) =>
+        group.items.length === 0 ? null : (
+          <section key={group.title || "voci"}>
+            {group.title && <h3 className="mb-2 font-heading text-lg tracking-wide text-peach">{group.title}</h3>}
             <ul className="grid gap-2 @lg:grid-cols-2">
-              {items.map((o) => {
+              {group.items.map((o) => {
                 const selected = state.optionIds.includes(o.id);
                 const blockedBy = o.incompatible_ids.find((id) => state.optionIds.includes(id)) ??
                   rules.options.find((x) => state.optionIds.includes(x.id) && x.incompatible_ids.includes(o.id))?.id;
                 const disabled = !selected && !!blockedBy;
+                const detail = state.optionDetails[o.id] ?? { level: 1, choice: "" };
+                const cost = o.cost_px * (selected ? detail.level : 1);
                 return (
-                  <li key={o.id}>
+                  <li key={o.id} className={cn("rounded-xl border transition-colors", selected ? "border-flamingo bg-flamingo/15" : "border-white/10 bg-night/30")}>
                     <button
                       type="button"
-                      onClick={() => onToggle(o, group.single)}
+                      onClick={() => onToggle(o, single)}
                       disabled={disabled}
                       aria-pressed={selected}
-                      className={cn(
-                        "flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors disabled:opacity-40",
-                        selected ? "border-flamingo bg-flamingo/15" : "border-white/10 bg-night/30 hover:border-white/25",
-                      )}
+                      className="flex w-full items-start gap-3 p-3 text-left disabled:opacity-40"
                     >
                       <span
                         className={cn(
                           "mt-0.5 grid size-5 shrink-0 place-items-center border",
-                          group.single ? "rounded-full" : "rounded-md",
+                          single ? "rounded-full" : "rounded-md",
                           selected ? "border-flamingo bg-flamingo text-primary-foreground" : "border-white/30",
                         )}
                       >
@@ -568,9 +623,12 @@ function StepOptions({
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="flex items-baseline justify-between gap-2">
-                          <span className="font-medium">{o.name}</span>
-                          <span className={cn("shrink-0 text-xs font-semibold", o.cost_px > 0 ? "text-peach" : o.cost_px < 0 ? "text-mint" : "text-muted-foreground")}>
-                            {o.cost_px > 0 ? `−${o.cost_px}` : o.cost_px < 0 ? `+${-o.cost_px}` : "0"} PX
+                          <span className="font-medium">
+                            {o.name}
+                            {o.secret_default && <span className="ml-1.5 text-[0.65rem] text-orchid">segreto</span>}
+                          </span>
+                          <span className={cn("shrink-0 text-xs font-semibold", cost > 0 ? "text-peach" : cost < 0 ? "text-mint" : "text-muted-foreground")}>
+                            {cost > 0 ? `−${cost}` : cost < 0 ? `+${-cost}` : "0"} PX{o.max_level > 1 && !selected ? " a livello" : ""}
                           </span>
                         </span>
                         {o.description && <span className="block text-xs text-muted-foreground">{o.description}</span>}
@@ -579,16 +637,49 @@ function StepOptions({
                             Entrata {formatDollars(o.salary)} al mese · mantenimento {formatDollars(o.upkeep)} al mese · quota iniziale {formatDollars(o.initial_amount)}
                           </span>
                         )}
+                        {!o.available && <span className="block text-xs text-destructive">Non ancora disponibile: toglila.</span>}
                         {disabled && blockedBy && <span className="block text-xs text-destructive">Incompatibile con {nameOf(blockedBy)}</span>}
                       </span>
                     </button>
+                    {/* livello e scelta richiesta */}
+                    {selected && (o.max_level > 1 || (o.requires_choice && o.requires_choice !== "master")) && (
+                      <div className="flex flex-wrap items-center gap-2 border-t border-white/10 px-3 py-2 text-xs">
+                        {o.max_level > 1 && (
+                          <span className="flex items-center gap-1">
+                            Livello
+                            {Array.from({ length: o.max_level }, (_, i) => i + 1).map((l) => (
+                              <button
+                                key={l}
+                                type="button"
+                                onClick={() => onDetail(o.id, { level: l })}
+                                aria-pressed={detail.level === l}
+                                className={cn("size-7 rounded-full border", detail.level === l ? "border-flamingo bg-flamingo text-white" : "border-white/20 hover:bg-white/10")}
+                              >
+                                {l}
+                              </button>
+                            ))}
+                          </span>
+                        )}
+                        {o.requires_choice && o.requires_choice !== "master" && (
+                          <input
+                            value={detail.choice}
+                            maxLength={80}
+                            onChange={(e) => onDetail(o.id, { choice: e.target.value })}
+                            placeholder={o.choice_hint ? `Indica ${o.choice_hint}` : "La tua scelta"}
+                            aria-label={`Scelta per ${o.name}`}
+                            className={cn("h-8 min-w-0 flex-1 rounded-lg border bg-night/40 px-2 outline-none", detail.choice.trim() ? "border-input" : "border-peach/60")}
+                          />
+                        )}
+                      </div>
+                    )}
+                    {selected && o.requires_choice === "master" && <p className="border-t border-white/10 px-3 py-2 text-xs text-muted-foreground">I dettagli li decide il Master.</p>}
                   </li>
                 );
               })}
             </ul>
           </section>
-        );
-      })}
+        ),
+      )}
     </div>
   );
 }
@@ -805,11 +896,18 @@ function StepSummary({
           <p className="text-muted-foreground">Nessuna scelta.</p>
         ) : (
           <ul className="flex flex-wrap gap-2">
-            {chosen.map((o) => (
-              <li key={o.id} className="rounded-lg bg-white/5 px-2.5 py-1">
-                {o.name} <span className="text-xs text-muted-foreground">({o.cost_px > 0 ? `−${o.cost_px}` : `+${-o.cost_px}`} PX)</span>
-              </li>
-            ))}
+            {chosen.map((o) => {
+              const d = state.optionDetails[o.id];
+              const cost = o.cost_px * (d?.level ?? 1);
+              return (
+                <li key={o.id} className="rounded-lg bg-white/5 px-2.5 py-1">
+                  {o.name}
+                  {o.max_level > 1 && ` ${d?.level ?? 1}`}
+                  {d?.choice && <span className="text-lavender"> · {d.choice}</span>}{" "}
+                  <span className="text-xs text-muted-foreground">({cost > 0 ? `−${cost}` : `+${-cost}`} PX)</span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </SummaryBlock>

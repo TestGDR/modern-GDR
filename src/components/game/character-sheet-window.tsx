@@ -44,7 +44,8 @@ import { reviewCharacter, startCharacter } from "@/lib/actions/creation";
 import type { CharacterAffiliations, CharacterBuild, RulesData } from "@/lib/data";
 import { formatBirthDate, parseSettings, skillCost } from "@/lib/interlock";
 import { formatDate, formatDateTime, initials } from "@/lib/format";
-import type { Character, District, FormState } from "@/lib/types";
+import type { Character, CreationOption, District, FormState } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 export type SheetCharacter = Character & {
@@ -276,7 +277,7 @@ export function CharacterSheetWindow({
             </SectionFrame>
           ) : section.key === "tratti" ? (
             <SectionFrame title="Tratti">
-              <ChosenOptions build={build} rules={rules} />
+              <ChosenOptions build={build} rules={rules} characterId={character.id} />
               <h3 className="mt-6 mb-2 font-heading text-xl tracking-wide text-peach">Carattere</h3>
               <FreeText text={character.traits} isOwner={isOwner} />
             </SectionFrame>
@@ -570,7 +571,7 @@ function SkillList({ character, build, rules }: { character: SheetCharacter; bui
   // (gli svantaggi hanno costo negativo: i PX che danno contano tra gli accumulati)
   const settings = parseSettings(rules.settings);
   const spentSkills = Object.values(build.skills).reduce((sum, level) => sum + skillCost(level, settings), 0);
-  const spentOptions = rules.options.filter((o) => build.optionIds.includes(o.id)).reduce((sum, o) => sum + o.cost_px, 0);
+  const spentOptions = rules.options.filter((o) => build.optionIds.includes(o.id)).reduce((sum, o) => sum + o.cost_px * (build.optionDetails[o.id]?.level ?? 1), 0);
   const total = character.px + spentSkills + spentOptions;
   const thresholds = rankThresholds(rules);
   return (
@@ -643,30 +644,62 @@ function SkillList({ character, build, rules }: { character: SheetCharacter; bui
   );
 }
 
-const OPTION_TITLES = { tenore: "Patrimonio", vantaggio: "Vantaggi", svantaggio: "Svantaggi", tratto: "Tratti" } as const;
 
-function ChosenOptions({ build, rules }: { build: CharacterBuild; rules: RulesData }) {
-  const chosen = rules.options.filter((o) => build.optionIds.includes(o.id));
+/** Voci del personaggio divise per livello, con livello, scelta e usi rimasti */
+function ChosenOptions({ build, rules, characterId }: { build: CharacterBuild; rules: RulesData; characterId: string }) {
+  const chosen = rules.options.filter((o) => build.optionIds.includes(o.id) && o.kind !== "tenore");
+  const [uses, setUses] = useState<Record<string, number>>({});
+  useEffect(() => {
+    let alive = true;
+    createClient()
+      .rpc("my_trait_uses", { p_character: characterId })
+      .then(({ data }) => {
+        if (alive) setUses(Object.fromEntries(((data ?? []) as { id: string; left: number }[]).map((u) => [u.id, u.left])));
+      });
+    return () => {
+      alive = false;
+    };
+  }, [characterId]);
   if (chosen.length === 0) return <p className="text-sm text-muted-foreground">Nessun vantaggio, svantaggio o tratto.</p>;
+  const groups: { title: string; items: CreationOption[] }[] = [
+    { title: "Vantaggi", items: chosen.filter((o) => o.kind === "vantaggio" && o.scope === "generale") },
+    { title: "Svantaggi", items: chosen.filter((o) => o.kind === "svantaggio" && o.scope === "generale") },
+    { title: "Tratti", items: chosen.filter((o) => o.kind === "tratto" && o.scope === "generale") },
+    { title: "Ambientazione", items: chosen.filter((o) => o.scope === "ambientazione" && !o.is_origin) },
+    { title: "Provenienza", items: chosen.filter((o) => o.is_origin) },
+    { title: "Accademiche", items: chosen.filter((o) => o.scope === "accademica") },
+    { title: "Sportive", items: chosen.filter((o) => o.scope === "sportiva") },
+  ];
   return (
-    <div className="grid max-w-2xl gap-4 @lg:grid-cols-2">
-      {(Object.keys(OPTION_TITLES) as (keyof typeof OPTION_TITLES)[]).map((kind) => {
-        const items = chosen.filter((o) => o.kind === kind);
-        if (items.length === 0) return null;
-        return (
-          <section key={kind}>
-            <h3 className="mb-2 font-heading text-lg tracking-wide text-peach">{OPTION_TITLES[kind]}</h3>
+    <div className="grid max-w-3xl gap-4 @lg:grid-cols-2">
+      {groups.map((g) =>
+        g.items.length === 0 ? null : (
+          <section key={g.title}>
+            <h3 className="mb-2 font-heading text-lg tracking-wide text-peach">{g.title}</h3>
             <ul className="flex flex-col gap-1.5">
-              {items.map((o) => (
-                <li key={o.id} className="rounded-lg bg-white/5 px-3 py-2 text-sm">
-                  <p className="font-medium">{o.name}</p>
-                  {o.description && <p className="text-xs text-muted-foreground">{o.description}</p>}
-                </li>
-              ))}
+              {g.items.map((o) => {
+                const d = build.optionDetails[o.id];
+                return (
+                  <li key={o.id} className="rounded-lg bg-white/5 px-3 py-2 text-sm">
+                    <p className="flex flex-wrap items-baseline gap-x-1.5 font-medium">
+                      {o.name}
+                      {o.max_level > 1 && <span className="text-xs text-peach">livello {d?.level ?? 1}</span>}
+                      {d?.choice && <span className="text-xs text-lavender">· {d.choice}</span>}
+                      {o.secret_default && <span className="text-[0.65rem] text-orchid">segreto</span>}
+                      {o.id in uses && (
+                        <span className={cn("ml-auto text-[0.65rem]", uses[o.id] > 0 ? "text-mint" : "text-muted-foreground")}>
+                          {uses[o.id] > 0 ? "disponibile" : "già usato in questo periodo"}
+                        </span>
+                      )}
+                    </p>
+                    {o.description && <p className="text-xs text-muted-foreground">{o.description}</p>}
+                  </li>
+                );
+              })}
             </ul>
           </section>
-        );
-      })}
+        ),
+      )}
     </div>
   );
 }

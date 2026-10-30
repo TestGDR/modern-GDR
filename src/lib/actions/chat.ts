@@ -64,9 +64,11 @@ export async function setInvisible(on: boolean) {
 }
 
 /** Tiro Interlock: lo calcola il database */
-export async function rollDice(roomId: string, characterId: string, attributeId: string, skillId: string | null) {
+export async function rollDice(roomId: string, characterId: string, attributeId: string, skillId: string | null, situational: string[] = []) {
   if (!isUuid(roomId) || !isUuid(characterId) || !isUuid(attributeId) || (skillId !== null && !isUuid(skillId))) return bad;
-  return rpc("roll_dice", { p_room: roomId, p_character: characterId, p_attribute: attributeId, p_skill: skillId });
+  // voci situazionali spuntate da chi tira (Fobia, Miope, Animale notturno…)
+  const sit = situational.filter(isUuid).slice(0, 20);
+  return rpc("roll_dice", { p_room: roomId, p_character: characterId, p_attribute: attributeId, p_skill: skillId, p_situational: sit });
 }
 
 /** Chat su invito: invita un personaggio per nome */

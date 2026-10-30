@@ -152,6 +152,15 @@ function OptionForm({
     upkeep: option?.upkeep ?? 0,
     initialAmount: option?.initial_amount ?? 0,
     active: option?.active ?? true,
+    scope: option?.scope ?? "generale",
+    subgroup: option?.subgroup ?? "",
+    maxLevel: option?.max_level ?? 1,
+    requiresChoice: option?.requires_choice ?? null,
+    choiceHint: option?.choice_hint ?? "",
+    effects: JSON.stringify(option?.effects ?? [], null, 1),
+    isOrigin: option?.is_origin ?? false,
+    secretDefault: option?.secret_default ?? false,
+    available: option?.available ?? true,
   });
   const { pending, error, execute } = useAdminAction();
   const others = options.filter((o) => o.id !== option?.id);
@@ -205,6 +214,58 @@ function OptionForm({
       <FieldLabel label="Descrizione">
         <textarea className={textareaClass} value={form.description} maxLength={500} onChange={(e) => setForm({ ...form, description: e.target.value })} />
       </FieldLabel>
+      {form.kind !== "tenore" && (
+        <>
+          <div className="grid gap-3 sm:grid-cols-4">
+            <FieldLabel label="Livello della voce">
+              <select className={inputClass} value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value as OptionInput["scope"] })}>
+                <option value="generale">Generale (tiri in chat)</option>
+                <option value="ambientazione">Ambientazione (narrativa)</option>
+                <option value="accademica">Accademica (esami)</option>
+                <option value="sportiva">Sportiva (gare)</option>
+              </select>
+            </FieldLabel>
+            <FieldLabel label="Sottogruppo" hint="legami, risorse, ruoli, interpretativo, provenienza">
+              <input className={inputClass} value={form.subgroup} maxLength={30} onChange={(e) => setForm({ ...form, subgroup: e.target.value })} />
+            </FieldLabel>
+            <FieldLabel label="Livelli" hint="Costo × livello (es. Contatti 1–3)">
+              <input className={inputClass} type="number" min={1} max={5} value={form.maxLevel} onChange={(e) => setForm({ ...form, maxLevel: Number(e.target.value) })} />
+            </FieldLabel>
+            <FieldLabel label="Scelta richiesta">
+              <select className={inputClass} value={form.requiresChoice ?? ""} onChange={(e) => setForm({ ...form, requiresChoice: (e.target.value || null) as OptionInput["requiresChoice"] })}>
+                <option value="">Nessuna</option>
+                <option value="testo">Testo libero</option>
+                <option value="dipartimento">Dipartimento</option>
+                <option value="master">La decide il Master</option>
+              </select>
+            </FieldLabel>
+          </div>
+          {form.requiresChoice && (
+            <FieldLabel label="Cosa indicare" hint="es. l'oggetto della fobia">
+              <input className={inputClass} value={form.choiceHint} maxLength={80} onChange={(e) => setForm({ ...form, choiceHint: e.target.value })} />
+            </FieldLabel>
+          )}
+          <div className="flex flex-wrap gap-4 text-sm">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={form.available} onChange={(e) => setForm({ ...form, available: e.target.checked })} /> Selezionabile alla creazione
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={form.secretDefault} onChange={(e) => setForm({ ...form, secretDefault: e.target.checked })} /> Segreta (solo giocatore e staff)
+            </label>
+            {form.kind === "tratto" && (
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={form.isOrigin} onChange={(e) => setForm({ ...form, isOrigin: e.target.checked })} /> Provenienza
+              </label>
+            )}
+          </div>
+          <FieldLabel
+            label="Effetti (JSON)"
+            hint='Es. [{"type":"roll_modifier","value":2,"when":{"category":["percezione"]}}] · situazionale: "situational":true,"label":"di notte" · tipi: roll_modifier, crit_range, reroll, forced_reroll, cd_modifier, credit_limit, narrative, narrative_privilege, access, linked_npc…'
+          >
+            <textarea className={cn(textareaClass, "font-mono text-xs")} rows={5} value={form.effects} onChange={(e) => setForm({ ...form, effects: e.target.value })} />
+          </FieldLabel>
+        </>
+      )}
       <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
         <FieldLabel label="Effetto sui tiri" hint="Da −3 a +3 (facoltativo)">
           <select

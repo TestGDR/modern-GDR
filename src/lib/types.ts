@@ -62,6 +62,9 @@ export type SheetOption = {
 };
 
 /** Vantaggio, svantaggio, tratto o tenore di vita */
+/** Effetto di una voce (dati, interpretati dal database) */
+export type TraitEffect = { type: string; value?: number | string; situational?: boolean; label?: string; [key: string]: unknown };
+
 export type CreationOption = {
   id: string;
   kind: "vantaggio" | "svantaggio" | "tratto" | "tenore";
@@ -79,6 +82,20 @@ export type CreationOption = {
   /** Patrimonio: soldi sul conto all'approvazione */
   initial_amount: number;
   sort_order: number;
+  /** Catalogo nuovo: livello della voce */
+  scope: "generale" | "ambientazione" | "accademica" | "sportiva";
+  /** legami, risorse, ruoli, interpretativo, provenienza */
+  subgroup: string;
+  /** Costo variabile: livelli da 1 a max_level (costo × livello) */
+  max_level: number;
+  requires_choice: "testo" | "dipartimento" | "area" | "gruppo" | "master" | null;
+  choice_hint: string;
+  effects: TraitEffect[];
+  is_origin: boolean;
+  secret_default: boolean;
+  /** false: nel catalogo ma non ancora selezionabile */
+  available: boolean;
+  same_choice_incompatible_ids: string[];
   active: boolean;
 };
 
@@ -146,7 +163,23 @@ export type Room = {
   sort_order: number;
 };
 
-export type MessageKind = "azione" | "fuori_gioco" | "master" | "dado" | "sistema" | "sussurro" | "combattimento";
+export type MessageKind = "azione" | "fuori_gioco" | "master" | "dado" | "sistema" | "sussurro" | "combattimento" | "png";
+
+/** Personaggio non giocante (tabella npcs) */
+export type Npc = {
+  id: string;
+  name: string;
+  role: string;
+  description: string;
+  avatar_url: string | null;
+  kind: "ambiente" | "giocatore";
+  owner_character_id: string | null;
+  secret: boolean;
+  status: "proposto" | "approvato" | "rifiutato";
+  review_note: string;
+  active: boolean;
+  created_at: string;
+};
 
 /* ---------- Combattimento (tutto scritto dalle funzioni combat_*) ---------- */
 export type CombatZone = "testa" | "tronco" | "braccio" | "gamba";
@@ -206,6 +239,8 @@ export type RollData = {
   skill_level: number | null;
   modifiers: number;
   total: number;
+  /** ritiro del d10 (Fortunato o Sfortunato) */
+  reroll?: { kind: "fortunato" | "sfortunato"; die: number; total: number; kept: number };
 };
 
 /** Messaggio della chat di gioco */
@@ -220,6 +255,8 @@ export type Message = {
   recipient: string | null;
   recipient_id: string | null;
   roll_data: RollData | null;
+  /** messaggio di un PNG (kind 'png') */
+  npc_id?: string | null;
   edited_at: string | null;
   created_at: string;
 };

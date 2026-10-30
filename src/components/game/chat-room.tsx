@@ -70,6 +70,8 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
   // ritratti dei personaggi che scrivono (per le azioni) e look aperto
   const [avatars, setAvatars] = useState<Record<string, string | null>>({});
   const [look, setLook] = useState<{ name: string; avatar: string | null; appearance: string | null } | null>(null);
+  // ritratti dei PNG che parlano in chat
+  const [npcAvatars, setNpcAvatars] = useState<Record<string, string | null>>({});
   // Dopo router.refresh() arrivano dal server i dati nuovi
   const [lastData, setLastData] = useState(data);
   if (data !== lastData) {
@@ -203,6 +205,33 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [panel, setPanel] = useState<"dadi" | "master" | "scontro" | null>(null);
+  // Fortunato del mio personaggio (ritiro del d10, una volta per periodo)
+  const [lucky, setLucky] = useState(false);
+  useEffect(() => {
+    if (!me) return;
+    supabase
+      .rpc("my_trait_uses", { p_character: me.id })
+      .then(({ data: u }) => setLucky(((u ?? []) as { type: string; left: number }[]).some((x) => x.type === "reroll" && x.left > 0)));
+  }, [supabase, me]);
+  async function reroll(m: Message, kind: "fortunato" | "sfortunato") {
+    setError(null);
+    const { error: e } = await supabase.rpc("roll_reroll", { p_message: m.id, p_kind: kind });
+    if (e) return setError(e.message);
+    if (kind === "fortunato") setLucky(false);
+  }
+  // chi narra può parlare come un PNG approvato
+  const [npcs, setNpcs] = useState<{ id: string; name: string; role: string }[]>([]);
+  const [npcId, setNpcId] = useState("");
+  useEffect(() => {
+    if (!canNarrate) return;
+    supabase
+      .from("npcs")
+      .select("id, name, role")
+      .eq("status", "approvato")
+      .eq("active", true)
+      .order("name")
+      .then(({ data: rows }) => setNpcs((rows ?? []) as { id: string; name: string; role: string }[]));
+  }, [supabase, canNarrate]);
   const [editing, setEditing] = useState<Message | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -269,6 +298,18 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
     if (kind === "sussurro" && !whisperTo) {
       return setError(others.length ? "Per sussurrare scegli nel destinatario uno dei presenti." : "Non c'è nessun altro in chat a cui sussurrare.");
     }
+    if (kind === "png") {
+      if (!npcId) return setError("Scegli il PNG che parla.");
+      setSending(true);
+      setError(null);
+      const { data: id, error: npcError } = await supabase.rpc("chat_npc_say", { p_room: roomId, p_character: me.id, p_npc: npcId, p_content: content });
+      setSending(false);
+      if (npcError) return setError(npcError.message);
+      const { data: npcRow } = await supabase.from("messages").select("*").eq("id", id as number).maybeSingle<Message>();
+      if (npcRow) addMessage(npcRow, true);
+      setText("");
+      return;
+    }
     setSending(true);
     setError(null);
     const { data: row, error: insertError } = await supabase
@@ -331,6 +372,24 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
       alive = false;
     };
   }, [supabase, missing]);
+
+  const missingNpc = useMemo(() => [...new Set(messages.filter((m) => m.kind === "png" && m.npc_id).map((m) => m.npc_id as string))].filter((id) => !(id in npcAvatars)), [messages, npcAvatars]);
+  useEffect(() => {
+    if (!missingNpc.length) return;
+    let alive = true;
+    supabase
+      .from("npcs")
+      .select("id, avatar_url")
+      .in("id", missingNpc)
+      .then(({ data: rows }) => {
+        if (!alive) return;
+        const found = Object.fromEntries(((rows ?? []) as { id: string; avatar_url: string | null }[]).map((r) => [r.id, r.avatar_url]));
+        setNpcAvatars((prev) => ({ ...prev, ...Object.fromEntries(missingNpc.map((id) => [id, found[id] ?? null])) }));
+      });
+    return () => {
+      alive = false;
+    };
+  }, [supabase, missingNpc]);
 
   async function openLook(m: Message) {
     const { data: c } = await supabase.from("characters").select("name, avatar_url, appearance").eq("id", m.character_id).maybeSingle<{ name: string; avatar_url: string | null; appearance: string | null }>();
@@ -432,9 +491,15 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
                   now={now}
                   onEdit={setEditing}
                   onDelete={remove}
-                  avatar={avatars[m.character_id] ?? null}
+                  avatar={m.kind === "png" ? (npcAvatars[m.npc_id ?? ""] ?? null) : (avatars[m.character_id] ?? null)}
                   onLook={openLook}
                   canSeeRolls={canNarrate || canCombat}
+                  rerolls={
+                    m.kind === "dado" && !m.roll_data?.reroll && now - Date.parse(m.created_at) < 15 * 60_000
+                      ? [...(m.character_id === me?.id && lucky ? (["fortunato"] as const) : []), ...(canNarrate && m.character_id !== me?.id ? (["sfortunato"] as const) : [])]
+                      : []
+                  }
+                  onReroll={reroll}
                 />
               ),
             )
@@ -487,7 +552,24 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
               <option value="fuori_gioco">{KIND_LABEL.fuori_gioco}</option>
               <option value="sussurro">{KIND_LABEL.sussurro}</option>
               {canNarrate && <option value="master">{KIND_LABEL.master}</option>}
+              {canNarrate && npcs.length > 0 && <option value="png">{KIND_LABEL.png}</option>}
             </select>
+            {kind === "png" ? (
+              <select
+                value={npcId}
+                onChange={(e) => setNpcId(e.target.value)}
+                aria-label="PNG che parla"
+                className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-night/40 px-2 outline-none focus-visible:border-ring sm:max-w-56"
+              >
+                <option value="">Quale PNG parla?</option>
+                {npcs.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.name}
+                    {n.role ? ` · ${n.role}` : ""}
+                  </option>
+                ))}
+              </select>
+            ) : (
             <input
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
@@ -497,6 +579,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
               aria-label="Destinatario"
               className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-night/40 px-2 outline-none focus-visible:border-ring sm:max-w-56"
             />
+            )}
             <datalist id={`dest-${roomId}`}>
               {others.map((o) => (
                 <option key={o.character_id} value={firstName(o.name)} />
@@ -531,7 +614,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
               maxLength={maxLen}
               rows={3}
               placeholder={
-                kind === "fuori_gioco" ? "Scrivi fuori dal gioco…" : kind === "master" ? "Narra la scena…" : "Cosa fa il tuo personaggio? Il parlato va tra < >, «» o \"\"…"
+                kind === "fuori_gioco" ? "Scrivi fuori dal gioco…" : kind === "master" ? "Narra la scena…" : kind === "png" ? "Cosa dice o fa il PNG?" : "Cosa fa il tuo personaggio? Il parlato va tra < >, «» o \"\"…"
               }
               className="min-h-0 flex-1 resize-none rounded-xl border border-input bg-night/40 px-3 py-2 text-sm outline-none focus-visible:border-ring"
             />

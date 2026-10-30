@@ -88,7 +88,7 @@ export async function OtherSheet({ id, variant }: { id: string; variant: SheetVa
       since={formatDateTime(character.created_at)}
       districts={districts}
       variant={variant}
-      build={canSeePrivate ? build : { attributes: {}, skills: {}, optionIds: [] }}
+      build={canSeePrivate ? build : { attributes: {}, skills: {}, optionIds: [], optionDetails: {} }}
       rules={rules}
       affiliations={affiliations}
       canSeePrivate={canSeePrivate}

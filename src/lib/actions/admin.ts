@@ -138,6 +138,17 @@ export type OptionInput = {
   upkeep: number;
   initialAmount: number;
   active: boolean;
+  /** Catalogo nuovo */
+  scope: "generale" | "ambientazione" | "accademica" | "sportiva";
+  subgroup: string;
+  maxLevel: number;
+  requiresChoice: "testo" | "dipartimento" | "area" | "gruppo" | "master" | null;
+  choiceHint: string;
+  /** effetti in JSON (li controlla anche il database) */
+  effects: string;
+  isOrigin: boolean;
+  secretDefault: boolean;
+  available: boolean;
 };
 
 export async function saveOption(input: OptionInput): Promise<ActionResult> {
@@ -148,9 +159,18 @@ export async function saveOption(input: OptionInput): Promise<ActionResult> {
   if (!Number.isInteger(input.salary) || input.salary < 0 || input.salary > 1000000) return { ok: false, error: "L'entrata va da 0 a 1.000.000." };
   if (!Number.isInteger(input.upkeep) || input.upkeep < 0 || input.upkeep > 1000000) return { ok: false, error: "Il mantenimento va da 0 a 1.000.000." };
   if (!Number.isInteger(input.initialAmount) || input.initialAmount < 0 || input.initialAmount > 100000000) return { ok: false, error: "La quota iniziale va da 0 a 100.000.000." };
-  if (input.rollModifier !== null && (!Number.isInteger(input.rollModifier) || Math.abs(input.rollModifier) > 3)) {
-    return { ok: false, error: "L'effetto sui tiri va da -3 a +3." };
+  if (input.rollModifier !== null && (!Number.isInteger(input.rollModifier) || Math.abs(input.rollModifier) > 4)) {
+    return { ok: false, error: "L'effetto sui tiri va da -4 a +4." };
   }
+  let effects: unknown;
+  try {
+    effects = JSON.parse(input.effects.trim() || "[]");
+  } catch {
+    return { ok: false, error: "Gli effetti non sono un JSON valido." };
+  }
+  if (!Array.isArray(effects)) return { ok: false, error: "Gli effetti devono essere un elenco tra [ ]." };
+  if (!["generale", "ambientazione", "accademica", "sportiva"].includes(input.scope)) return { ok: false, error: "Livello non valido." };
+  if (!Number.isInteger(input.maxLevel) || input.maxLevel < 1 || input.maxLevel > 5) return { ok: false, error: "I livelli vanno da 1 a 5." };
   const row = {
     kind: input.kind,
     name,
@@ -163,6 +183,15 @@ export async function saveOption(input: OptionInput): Promise<ActionResult> {
     upkeep: input.kind === "tenore" ? input.upkeep : 0,
     initial_amount: input.kind === "tenore" ? input.initialAmount : 0,
     active: input.active,
+    scope: input.kind === "tenore" ? "generale" : input.scope,
+    subgroup: clean(input.subgroup, 30),
+    max_level: input.maxLevel,
+    requires_choice: input.requiresChoice,
+    choice_hint: clean(input.choiceHint, 80),
+    effects,
+    is_origin: input.kind === "tratto" && input.isOrigin,
+    secret_default: input.secretDefault,
+    available: input.available,
   };
   return run(async (supabase) => {
     if (input.id) return supabase.from("creation_options").update(row).eq("id", input.id);

@@ -21,6 +21,8 @@ export type CreationPatch = {
   };
   attributes?: Record<string, number>;
   optionIds?: string[];
+  /** livello e scelta delle voci (si mandano insieme a optionIds) */
+  optionDetails?: Record<string, { level: number; choice: string }>;
   skills?: Record<string, number>;
   background?: {
     studyTrackId: string | null;
@@ -108,9 +110,15 @@ export async function saveCreation(characterId: string, patch: CreationPatch): P
     const { error: delError } = ids.length ? await del.not("option_id", "in", `(${ids.join(",")})`) : await del;
     if (delError) return { ok: false, error: `Scelte non salvate: ${delError.message}` };
     if (ids.length) {
-      const { error } = await supabase
-        .from("character_options")
-        .upsert(ids.map((option_id) => ({ character_id: characterId, option_id })), { ignoreDuplicates: true });
+      const details = patch.optionDetails ?? {};
+      const { error } = await supabase.from("character_options").upsert(
+        ids.map((option_id) => ({
+          character_id: characterId,
+          option_id,
+          level: Math.min(5, Math.max(1, Math.trunc(details[option_id]?.level ?? 1))),
+          choice_value: (details[option_id]?.choice ?? "").slice(0, 80),
+        })),
+      );
       if (error) return { ok: false, error: `Scelte non salvate: ${error.message}` };
     }
   }

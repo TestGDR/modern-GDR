@@ -19,6 +19,8 @@ export type InterlockSettings = {
   skillMax: number;
   pxPerLevel: number;
   modifierCap: number;
+  /** Massimi delle voci del catalogo */
+  traitLimits: { adv: number; advAcademic: number; advSport: number; dis: number; traits: number; ambAdv: number; ambInterp: number; ambDis: number };
 };
 
 /** Legge le impostazioni dalle righe di game_settings */
@@ -41,7 +43,17 @@ export function parseSettings(rows: GameSetting[]): InterlockSettings {
     pxStart: num("px_iniziali", 0),
     skillMax: num("abilita_max", 10),
     pxPerLevel: num("costo_px_livello", 10),
-    modifierCap: num("tetto_modificatori", 3),
+    modifierCap: num("tetto_modificatori", 4),
+    traitLimits: {
+      adv: num("voci_max_vantaggi", 5),
+      advAcademic: num("voci_max_vantaggi_accademici", 2),
+      advSport: num("voci_max_vantaggi_sportivi", 2),
+      dis: num("voci_max_svantaggi", 5),
+      traits: num("voci_max_tratti", 3),
+      ambAdv: num("voci_max_amb_vantaggi", 4),
+      ambInterp: num("voci_max_amb_interpretativi", 2),
+      ambDis: num("voci_max_amb_svantaggi", 4),
+    },
   };
 }
 
@@ -85,8 +97,9 @@ export function pxSummary(
   chosenOptions: CreationOption[],
   skillLevels: Record<string, number>,
   settings: InterlockSettings,
+  details: Record<string, { level: number }> = {},
 ): PxSummary {
-  const options = chosenOptions.reduce((sum, o) => sum + o.cost_px, 0);
+  const options = chosenOptions.reduce((sum, o) => sum + o.cost_px * (details[o.id]?.level ?? 1), 0);
   const skills = Object.values(skillLevels).reduce((sum, l) => sum + skillCost(l, settings), 0);
   return { start: settings.pxStart, options, skills, remaining: settings.pxStart - options - skills };
 }
@@ -130,6 +143,7 @@ export type Build = {
   nationality: string;
   attributes: Record<string, number>;
   optionIds: string[];
+  optionDetails: Record<string, { level: number; choice: string }>;
   skills: Record<string, number>;
   studyTrackId: string | null;
   yearId: string | null;
@@ -174,6 +188,16 @@ export function findAnomalies(
   if (chosen.some((o) => o.incompatible_ids.some((id) => build.optionIds.includes(id)))) {
     out.push({ step: 3, message: "Hai scelto voci incompatibili tra loro." });
   }
+  for (const o of chosen) {
+    if (!o.available) out.push({ step: 3, message: `"${o.name}" non si può ancora scegliere: toglila.` });
+    const choice = build.optionDetails[o.id]?.choice?.trim() ?? "";
+    if (o.requires_choice && o.requires_choice !== "master" && !choice) out.push({ step: 3, message: `"${o.name}": indica ${o.choice_hint || "la scelta richiesta"}.` });
+    const same = chosen.find((x) => o.same_choice_incompatible_ids.includes(x.id) && (build.optionDetails[x.id]?.choice ?? "").trim().toLowerCase() === choice.toLowerCase());
+    if (same && o.name < same.name) out.push({ step: 3, message: `"${o.name}" e "${same.name}" non vanno insieme sulla stessa scelta.` });
+  }
+  for (const [label, count, max] of traitCounts(chosen, settings)) {
+    if (count > max) out.push({ step: 3, message: `Troppi ${label}: ${count} su ${max}.` });
+  }
 
   // 4. Abilità
   for (const skill of data.skills) {
@@ -182,11 +206,28 @@ export function findAnomalies(
       out.push({ step: 4, message: `${skill.name} (${level}) supera la caratteristica collegata.` });
     }
   }
-  const px = pxSummary(chosen, build.skills, settings);
+  const px = pxSummary(chosen, build.skills, settings, build.optionDetails);
   if (px.remaining < 0) out.push({ step: 4, message: `Hai speso ${-px.remaining} PX in più di quelli disponibili.` });
 
   // 5. Background
   if (!build.studyTrackId || !build.yearId) out.push({ step: 5, message: "Scegli indirizzo di studio e anno di corso." });
 
   return out;
+}
+
+/** Quante voci per gruppo e il loro massimo (le stesse regole di check_character_options) */
+export function traitCounts(chosen: CreationOption[], settings: InterlockSettings): [string, number, number][] {
+  const l = settings.traitLimits;
+  const n = (f: (o: CreationOption) => boolean) => chosen.filter(f).length;
+  return [
+    ["vantaggi", n((o) => o.kind === "vantaggio" && o.scope !== "ambientazione"), l.adv],
+    ["vantaggi accademici", n((o) => o.kind === "vantaggio" && o.scope === "accademica"), l.advAcademic],
+    ["vantaggi sportivi", n((o) => o.kind === "vantaggio" && o.scope === "sportiva"), l.advSport],
+    ["svantaggi", n((o) => o.kind === "svantaggio" && o.scope !== "ambientazione"), l.dis],
+    ["tratti", n((o) => o.kind === "tratto" && !o.is_origin), l.traits],
+    ["provenienze", n((o) => o.is_origin), 1],
+    ["vantaggi di ambientazione", n((o) => o.kind === "vantaggio" && o.scope === "ambientazione"), l.ambAdv],
+    ["vantaggi interpretativi", n((o) => o.kind === "vantaggio" && o.scope === "ambientazione" && o.subgroup === "interpretativo"), l.ambInterp],
+    ["svantaggi di ambientazione", n((o) => o.kind === "svantaggio" && o.scope === "ambientazione"), l.ambDis],
+  ];
 }

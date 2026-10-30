@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, Dices, Lock, Pencil, Shirt, Swords, Trash2, UserPlus, X } from "lucide-react";
 import { CombatDetail } from "@/components/game/combat-panel";
 import { FloatingWindow } from "@/components/floating-window";
 import { Button } from "@/components/ui/button";
 import { expelFromRoom, inviteToRoom, rollDice, setMasterMode } from "@/lib/actions/chat";
+import { createClient } from "@/lib/supabase/client";
 import { EDIT_WINDOW_MS } from "@/lib/chat";
 import { firstName, formatTime, initials } from "@/lib/format";
 import type { Message } from "@/lib/types";
@@ -73,9 +74,12 @@ type RowProps = {
   onLook?: (m: Message) => void;
   /** Staff e Master: vedono i numeri dei messaggi di combattimento */
   canSeeRolls?: boolean;
+  /** Ritiro del d10: Fortunato (chi tira) o Sfortunato (il Master) */
+  rerolls?: ("fortunato" | "sfortunato")[];
+  onReroll?: (m: Message, kind: "fortunato" | "sfortunato") => void;
 };
 
-export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit, onDelete, avatar, onLook, canSeeRolls = false }: RowProps) {
+export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit, onDelete, avatar, onLook, canSeeRolls = false, rerolls = [], onReroll }: RowProps) {
   const time = formatTime(m.created_at);
   const names = mine ? [] : myNames;
   const editable =
@@ -119,6 +123,12 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
           <strong className="font-heading tracking-wide text-peach">{firstName(m.character_name)}</strong>{" "}
           {/* i critici in evidenza: verde il successo, rosso il fallimento */}
           <span className={cn(m.roll_data?.die === 10 && "font-semibold text-mint", m.roll_data?.die === 1 && "font-semibold text-destructive")}>{m.content}</span>
+          {onReroll &&
+            rerolls.map((k) => (
+              <button key={k} type="button" onClick={() => onReroll(m, k)} className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[0.7rem] hover:bg-white/20">
+                {k === "fortunato" ? "🍀 Fortunato: ritira" : "🐈‍⬛ Sfortunato"}
+              </button>
+            ))}
         </p>
         {tools}
       </div>
@@ -172,9 +182,11 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
     );
   }
 
-  // azione: ritratto tondo e, accanto, il pallino della maglia (il look)
+  // azione (o PNG): ritratto tondo e, accanto, il pallino della maglia (il look)
+  const npc = m.kind === "png";
+  const own = mine && !npc;
   return (
-    <article className={cn("group flex gap-3 rounded-2xl px-3 py-3 sm:px-4", mine ? "bg-flamingo/10" : "bg-white/5")}>
+    <article className={cn("group flex gap-3 rounded-2xl px-3 py-3 sm:px-4", own ? "bg-flamingo/10" : npc ? "bg-orchid/10 ring-1 ring-orchid/25" : "bg-white/5")}>
       <div className="relative shrink-0 self-start">
         {avatar ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -184,7 +196,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
             {initials(m.character_name || "?")}
           </span>
         )}
-        {onLook && (
+        {onLook && !npc && (
           <button
             type="button"
             onClick={() => onLook(m)}
@@ -198,10 +210,11 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
       </div>
       <div className="min-w-0 flex-1">
         <header className="mb-1 flex items-baseline gap-2">
-          <span className={cn("font-heading text-lg tracking-wide", mine ? "text-flamingo" : "text-peach")}>
-            {firstName(m.character_name)}
+          <span className={cn("font-heading text-lg tracking-wide", own ? "text-flamingo" : npc ? "text-orchid" : "text-peach")}>
+            {npc ? m.character_name : firstName(m.character_name)}
             {to}
           </span>
+          {npc && <span className="rounded bg-orchid/25 px-1.5 py-0.5 text-[0.6rem] font-semibold tracking-wider text-orchid uppercase">PNG</span>}
           <span className="ml-auto text-xs text-muted-foreground">{time}</span>
           {tools}
         </header>
@@ -301,6 +314,26 @@ export function DicePanel({
 }) {
   const [choice, setChoice] = useState("");
   const [pending, setPending] = useState(false);
+  const supabase = useMemo(() => createClient(), []);
+  // voci situazionali: le spunta chi tira, prima del tiro
+  const [situational, setSituational] = useState<{ id: string; name: string; choice: string; when: string; value: string }[]>([]);
+  const [ticked, setTicked] = useState<string[]>([]);
+  // privilegi narrativi a uso limitato ("Usa")
+  const [privileges, setPrivileges] = useState<{ id: string; name: string; type: string; holder: string; left: number }[]>([]);
+  useEffect(() => {
+    let alive = true;
+    Promise.all([
+      supabase.rpc("my_situational_traits", { p_character: characterId }),
+      supabase.rpc("my_trait_uses", { p_character: characterId }),
+    ]).then(([s, u]) => {
+      if (!alive) return;
+      setSituational((s.data ?? []) as typeof situational);
+      setPrivileges(((u.data ?? []) as typeof privileges).filter((x) => x.type === "narrative_privilege" && x.holder === "player"));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [supabase, characterId]);
 
   async function roll() {
     const [type, id] = choice.split(":");
@@ -308,10 +341,17 @@ export function DicePanel({
     setPending(true);
     onError(null);
     const skill = type === "s" ? skills.find((s) => s.id === id) : null;
-    const res = await rollDice(roomId, characterId, skill ? skill.attribute_id : id, skill ? skill.id : null);
+    const res = await rollDice(roomId, characterId, skill ? skill.attribute_id : id, skill ? skill.id : null, ticked);
     setPending(false);
     if (res.error) onError(res.error);
     else onClose();
+  }
+
+  async function activatePrivilege(optionId: string) {
+    onError(null);
+    const { error } = await supabase.rpc("trait_use", { p_character: characterId, p_option: optionId, p_room: roomId });
+    if (error) return onError(error.message);
+    setPrivileges((list) => list.map((x) => (x.id === optionId ? { ...x, left: 0 } : x)));
   }
 
   return (
@@ -356,6 +396,39 @@ export function DicePanel({
           <Dices /> Tira
         </Button>
       </div>
+      {situational.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <p className="text-xs text-muted-foreground">Vale qualcosa in questa situazione? Spunta le tue voci (le vede anche il Master):</p>
+          <div className="flex flex-wrap gap-1.5">
+            {situational.map((v) => {
+              const on = ticked.includes(v.id);
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setTicked((t) => (on ? t.filter((x) => x !== v.id) : [...t, v.id]))}
+                  className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-peach bg-peach/20 text-white" : "border-white/15 bg-white/5 hover:bg-white/10")}
+                  title={v.when}
+                >
+                  {v.name}
+                  {v.choice ? ` (${v.choice})` : ""} <span className="text-muted-foreground">{v.value}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {privileges.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="text-muted-foreground">Privilegi:</span>
+          {privileges.map((v) => (
+            <Button key={v.id} type="button" size="xs" variant="ghost" disabled={v.left < 1} onClick={() => activatePrivilege(v.id)} className="rounded-full" title={v.left < 1 ? "Già usato: torna disponibile più avanti" : "Lo annuncia in chat"}>
+              Usa {v.name}
+            </Button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
