@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { isValidFirstName, isValidName, NAME_MAX, NAME_MIN, normalizeName } from "@/lib/character-name";
 import { ACCESS_COOKIE, getClientIp, logAccess } from "@/lib/access-log";
 import { findEmailByName } from "@/lib/supabase/admin";
+import { createClient as createPlainClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import type { FormState } from "@/lib/types";
 
@@ -189,6 +190,36 @@ export async function requestPasswordReset(_prev: FormState, formData: FormData)
   return {
     success: `Se esiste un account con ${email}, riceverai a breve un'email con il link per scegliere una nuova password.`,
   };
+}
+
+/** Cambio password dal gioco (Utility → Cambio password): serve quella attuale */
+export async function changePassword(_prev: FormState, formData: FormData): Promise<FormState> {
+  const current = String(formData.get("current") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+  if (!current) return { error: "Scrivi la password attuale." };
+  if (password.length < 8) return { error: "La nuova password deve avere almeno 8 caratteri." };
+  if (password !== confirm) return { error: "Le due password nuove non coincidono." };
+  if (password === current) return { error: "La nuova password deve essere diversa da quella attuale." };
+
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  const email = data.user?.email;
+  if (!email) return { error: "Sessione scaduta: accedi di nuovo." };
+  // controllo della password attuale con un client a parte (non tocca la sessione del sito)
+  const check = createPlainClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { error: wrong } = await check.auth.signInWithPassword({ email, password: current });
+  if (wrong) return { error: "La password attuale non è giusta." };
+  await check.auth.signOut({ scope: "local" });
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    if (error.code === "weak_password") return { error: "Password troppo debole: usane una più lunga o più varia." };
+    return { error: `Password non aggiornata: ${error.message}` };
+  }
+  return { success: "Password cambiata. Dal prossimo accesso usa quella nuova." };
 }
 
 /** Salva la nuova password (l'utente arriva qui dal link dell'email) */

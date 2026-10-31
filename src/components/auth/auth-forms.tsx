@@ -7,7 +7,7 @@ import { MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { requestPasswordReset, signIn, signUp, updatePassword } from "@/lib/actions/auth";
+import { changePassword, requestPasswordReset, signIn, signUp, updatePassword } from "@/lib/actions/auth";
 import { NAME_MAX, NAME_MIN } from "@/lib/character-name";
 import { createClient } from "@/lib/supabase/client";
 import type { FormState } from "@/lib/types";
@@ -176,6 +176,22 @@ export function NewPasswordForm() {
       <Field id="confirm" label="Ripeti la nuova password" type="password" autoComplete="new-password" minLength={8} />
       <Button type="submit" size="lg" disabled={pending} className="mt-2 h-11 rounded-full text-base">
         {pending ? "Salvataggio…" : "Salva la nuova password"}
+      </Button>
+    </form>
+  );
+}
+
+/** Cambio password dal gioco: password attuale e due volte quella nuova */
+export function ChangePasswordForm() {
+  const [state, action, pending] = useActionState(changePassword, initial);
+  return (
+    <form action={action} className="glass flex max-w-md flex-col gap-4 rounded-2xl p-5">
+      <FormMessage state={state} />
+      <Field id="current" label="Password attuale" type="password" autoComplete="current-password" />
+      <Field id="password" label="Nuova password (almeno 8 caratteri)" type="password" autoComplete="new-password" minLength={8} />
+      <Field id="confirm" label="Ripeti la nuova password" type="password" autoComplete="new-password" minLength={8} />
+      <Button type="submit" disabled={pending} className="mt-1 h-10 self-start rounded-full">
+        {pending ? "Salvataggio…" : "Cambia password"}
       </Button>
     </form>
   );
