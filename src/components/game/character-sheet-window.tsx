@@ -32,7 +32,7 @@ import { AffectionsSection } from "@/components/game/affections";
 import { ErrorBoundary } from "@/components/game/error-boundary";
 import { AlterationSection } from "@/components/game/alteration-section";
 import { HealthSection } from "@/components/game/health-section";
-import { CharacterLevelIcon } from "@/components/game/level-icon";
+import { SheetStatus } from "@/components/game/status-icons";
 import { OptionRequestPanel } from "@/components/game/option-request";
 import { AdminSheetPanel } from "@/components/game/admin-sheet";
 import { useCloseModal } from "@/components/game/page-modal";
@@ -141,7 +141,8 @@ export function CharacterSheetWindow({
         <aside className="flex flex-col border-white/10 @2xl:min-h-0 @2xl:border-r">
           <div className="flex items-center gap-3 p-4 @2xl:justify-center @2xl:pb-3">
             <Portrait character={character} />
-            <CharacterLevelIcon characterId={character.id} className="size-7" withName />
+            {/* ruolo staff e stati del personaggio (alcol, droghe, insonnia) */}
+            <SheetStatus characterId={character.id} />
           </div>
 
           <nav className="flex gap-1 overflow-x-auto px-3 pb-3 @2xl:flex-1 @2xl:flex-col @2xl:overflow-y-auto @2xl:px-0 @2xl:pb-0" aria-label="Sezioni della scheda">
