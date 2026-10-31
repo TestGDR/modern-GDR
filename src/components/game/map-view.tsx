@@ -115,7 +115,8 @@ export function MapView({ maps, districts, groups, rooms, activity, initialDistr
         <FloatingWindow
           label={open.name}
           onClose={close}
-          initialWidth={520}
+          initialWidth={780}
+          initialHeight={600}
           header={
             <div className="pb-4">
               <p className="text-xs tracking-widest text-muted-foreground uppercase">{map.name}</p>
