@@ -8,6 +8,7 @@ GDR (gioco di ruolo) play by chat moderno ambientato a Miami: chat di gioco, mes
 - Next.js 16 (App Router, cartella `src/app`), TypeScript, Tailwind CSS v4, shadcn/ui.
 - Supabase (database Postgres, Auth, Realtime) tramite `@supabase/supabase-js` e `@supabase/ssr`.
 - In Next.js 16 il middleware si chiama **proxy**: il file è `src/proxy.ts`, non `middleware.ts`.
+- Regione: il database Supabase è a Dublino (eu-west-1), quindi `vercel.json` fa girare le funzioni di Vercel a Dublino (`dub1`); non cambiarla, altrimenti ogni query attraversa l’oceano.
 - Porta locale: **3001** (`npm run dev` → http://localhost:3001). La 3000 è usata da un altro progetto.
 
 ## Struttura
