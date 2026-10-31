@@ -78,9 +78,9 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]/[discus
               <div className="flex shrink-0 items-center gap-2 @xl:w-20 @xl:flex-col @xl:gap-1 @xl:text-center">
                 {post.character?.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={post.character.avatar_url} alt="" className="size-10 rounded-xl object-cover ring-1 ring-white/15 @xl:size-16" />
+                  <img src={post.character.avatar_url} alt="" className="size-10 rounded-full object-cover @xl:size-16" />
                 ) : (
-                  <CharacterAvatar initials={initials(name)} className="size-10 rounded-xl @xl:size-16" />
+                  <CharacterAvatar initials={initials(name)} className="size-10 ring-0 @xl:size-16" />
                 )}
                 {post.character ? (
                   <Link href={`/scheda/${post.character.id}`} className="font-heading text-sm leading-tight tracking-wide break-words text-peach hover:underline">
