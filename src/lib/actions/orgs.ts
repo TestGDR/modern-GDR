@@ -38,7 +38,7 @@ async function checked(query: PromiseLike<{ data: unknown[] | null; error: DbErr
 
 /* ------------------------------ Lavori e gruppi ------------------------------ */
 
-export type OrgInput = { id?: string; name: string; description: string; jobKind?: JobKind; iconUrl?: string; active: boolean };
+export type OrgInput = { id?: string; name: string; description: string; jobKind?: JobKind; iconUrl?: string; active: boolean; /** gruppi: tag (es. malavita) */ tags?: string[] };
 
 export async function saveOrg(kind: OrgKind, input: OrgInput): Promise<ActionResult> {
   if (!validKind(kind)) return { ok: false, error: "Tipo non valido." };
@@ -50,6 +50,8 @@ export async function saveOrg(kind: OrgKind, input: OrgInput): Promise<ActionRes
   if (icon && (!/^https:\/\/\S+$/.test(icon) || icon.length > 500)) return { ok: false, error: "L'icona va indicata con un link che inizia con https://" };
   const row: Record<string, unknown> = { name, description: clean(input.description, 4000), active: input.active, icon_url: icon || null };
   if (kind === "job") row.kind = input.jobKind;
+  // gruppi: solo tag conosciuti ("malavita" apre il mercato nero)
+  if (kind === "group" && input.tags) row.tags = input.tags.filter((t) => t === "malavita");
   await requirePlayer();
   const supabase = await createClient();
   if (input.id) {

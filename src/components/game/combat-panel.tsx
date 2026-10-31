@@ -39,21 +39,28 @@ type Props = {
   onError: (e: string | null) => void;
 };
 
-type State = { combat: Combat | null; people: CombatParticipant[]; pending: CombatAction | null };
+type Fight = { combat: Combat; people: CombatParticipant[]; pending: CombatAction | null };
 
 export function CombatPanel({ roomId, me, present, isMaster, tick, starting, onCloseStart, onError }: Props) {
   const supabase = useMemo(() => createClient(), []);
-  const [state, setState] = useState<State>({ combat: null, people: [], pending: null });
+  // tutti gli scontri in corso nella chat (possono essere più d'uno)
+  const [fights, setFights] = useState<Fight[]>([]);
   const [busy, setBusy] = useState(false);
+  // scontri chiusi nel pannello (solo per chi guarda, non per gli altri)
+  const [collapsed, setCollapsed] = useState<string[]>([]);
 
   const load = useCallback(async () => {
-    const { data: combat } = await supabase.from("combats").select("*").eq("room_id", roomId).eq("status", "in_corso").maybeSingle<Combat>();
-    if (!combat) return setState({ combat: null, people: [], pending: null });
+    const { data: combats } = await supabase.from("combats").select("*").eq("room_id", roomId).eq("status", "in_corso").order("number");
+    const list = (combats ?? []) as Combat[];
+    if (list.length === 0) return setFights([]);
+    const ids = list.map((c) => c.id);
     const [{ data: people }, { data: pending }] = await Promise.all([
-      supabase.from("combat_participants").select("*").eq("combat_id", combat.id),
-      supabase.from("combat_actions").select("*").eq("combat_id", combat.id).eq("status", "attesa_difesa").maybeSingle<CombatAction>(),
+      supabase.from("combat_participants").select("*").in("combat_id", ids),
+      supabase.from("combat_actions").select("*").in("combat_id", ids).eq("status", "attesa_difesa"),
     ]);
-    setState({ combat, people: (people ?? []) as CombatParticipant[], pending: pending ?? null });
+    const ppl = (people ?? []) as CombatParticipant[];
+    const pend = (pending ?? []) as CombatAction[];
+    setFights(list.map((c) => ({ combat: c, people: ppl.filter((p) => p.combat_id === c.id), pending: pend.find((a) => a.combat_id === c.id) ?? null })));
   }, [supabase, roomId]);
 
   useEffect(() => {
@@ -77,26 +84,99 @@ export function CombatPanel({ roomId, me, present, isMaster, tick, starting, onC
     return true;
   }
 
-  const { combat, people, pending } = state;
+  // chi sta già combattendo (e dove): un personaggio è in un solo scontro alla volta
+  const engagedIn = new Map<string, number>();
+  for (const f of fights) for (const p of f.people) if (!p.out) engagedIn.set(p.character_id, f.combat.number);
+  const myFight = me ? fights.find((f) => f.people.some((p) => p.character_id === me.id && !p.out)) : undefined;
+  const many = fights.length > 1;
+  // il mio scontro per primo
+  const ordered = myFight ? [myFight, ...fights.filter((f) => f !== myFight)] : fights;
+
+  if (fights.length === 0 && !(starting && me)) return null;
+  return (
+    <div className="flex max-h-[45vh] flex-col gap-2 overflow-y-auto">
+      {starting && me && (
+        myFight ? (
+          <p className="flex items-center gap-2 rounded-2xl border border-flamingo/40 bg-night/80 p-3 text-sm">
+            <Swords className="size-4 shrink-0 text-flamingo" />
+            Sei già nello scontro {myFight.combat.number}: per iniziarne un altro prima abbandonalo.
+            <button type="button" onClick={onCloseStart} className="ml-auto rounded p-1 text-muted-foreground hover:bg-white/10" aria-label="Chiudi">
+              <X className="size-4" />
+            </button>
+          </p>
+        ) : (
+          <StartPanel
+            me={me}
+            present={present}
+            engagedIn={engagedIn}
+            others={fights.length}
+            busy={busy}
+            onClose={onCloseStart}
+            onStart={async (ids) => (await run("combat_start", { p_room: roomId, p_character: me.id, p_opponents: ids })) && onCloseStart()}
+          />
+        )
+      )}
+      {ordered.map((f) => (
+        <FightCard
+          key={f.combat.id}
+          fight={f}
+          me={me}
+          isMaster={isMaster}
+          busy={busy}
+          showNumber={many}
+          canJoin={!!me && !myFight}
+          open={!collapsed.includes(f.combat.id) || f === myFight}
+          onToggle={() => setCollapsed((c) => (c.includes(f.combat.id) ? c.filter((x) => x !== f.combat.id) : [...c, f.combat.id]))}
+          run={run}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Uno scontro: ordine di turno, attacco in attesa, il mio turno */
+function FightCard({
+  fight,
+  me,
+  isMaster,
+  busy,
+  showNumber,
+  canJoin,
+  open,
+  onToggle,
+  run,
+}: {
+  fight: Fight;
+  me: { id: string; name: string } | null;
+  isMaster: boolean;
+  busy: boolean;
+  showNumber: boolean;
+  /** non sono in nessuno scontro: posso entrare in questo */
+  canJoin: boolean;
+  open: boolean;
+  onToggle: () => void;
+  run: (fn: string, args: Record<string, unknown>) => Promise<boolean>;
+}) {
+  const { combat, people, pending } = fight;
   const byId = new Map(people.map((p) => [p.character_id, p]));
   const name = (id: string | undefined) => firstName(byId.get(id ?? "")?.name ?? "…");
-
-  if (!combat) {
-    if (!starting || !me) return null;
-    return <StartPanel me={me} present={present} busy={busy} onClose={onCloseStart} onStart={async (ids) => (await run("combat_start", { p_room: roomId, p_character: me.id, p_opponents: ids })) && onCloseStart()} />;
-  }
-
   const order = combat.turn_order.map((id) => byId.get(id)).filter((p): p is CombatParticipant => !!p);
   const current = combat.turn_order[combat.turn_index];
   const mine = me ? byId.get(me.id) : undefined;
-  const myTurn = !!me && current === me.id && !!mine && !mine.out && !pending;
+  const inside = !!mine && !mine.out;
+  const myTurn = !!me && current === me.id && inside && !pending;
   const defendAs = pending && ((me && pending.target_id === me.id) || isMaster) ? pending.target_id : null;
+  const waitingOnMe = !!defendAs || myTurn;
 
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-flamingo/40 bg-night/80 p-3 backdrop-blur">
+    <div className={cn("flex flex-col gap-2 rounded-2xl border bg-night/80 p-3 backdrop-blur", inside || waitingOnMe ? "border-flamingo/60" : "border-white/15")}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <Swords className="size-4 text-flamingo" />
-        <p className="font-heading text-lg tracking-wide text-flamingo">Scontro · round {combat.round}</p>
+        <button type="button" onClick={onToggle} className="flex items-center gap-2" aria-expanded={open}>
+          <Swords className="size-4 text-flamingo" />
+          <span className="font-heading text-lg tracking-wide text-flamingo">
+            Scontro{showNumber ? ` ${combat.number}` : ""} · round {combat.round}
+          </span>
+        </button>
         <ol className="flex flex-wrap items-center gap-1 text-xs">
           {order.map((p) => (
             <li
@@ -113,12 +193,12 @@ export function CombatPanel({ roomId, me, present, isMaster, tick, starting, onC
           ))}
         </ol>
         <span className="ml-auto flex gap-1">
-          {me && !mine && (
+          {me && canJoin && (
             <Button type="button" size="sm" variant="ghost" disabled={busy} className="rounded-full" onClick={() => run("combat_join", { p_combat: combat.id, p_character: me.id })}>
               <UserPlus /> Entra
             </Button>
           )}
-          {me && mine && !mine.out && (
+          {me && inside && (
             <Button
               type="button"
               size="sm"
@@ -137,7 +217,7 @@ export function CombatPanel({ roomId, me, present, isMaster, tick, starting, onC
               variant="ghost"
               disabled={busy}
               className="rounded-full text-destructive"
-              onClick={() => window.confirm("Chiudere lo scontro per tutti?") && run("combat_end", { p_combat: combat.id })}
+              onClick={() => window.confirm(`Chiudere lo scontro${showNumber ? ` ${combat.number}` : ""} per tutti?`) && run("combat_end", { p_combat: combat.id })}
             >
               <Flag /> Chiudi
             </Button>
@@ -145,7 +225,7 @@ export function CombatPanel({ roomId, me, present, isMaster, tick, starting, onC
         </span>
       </div>
 
-      {pending ? (
+      {!open ? null : pending ? (
         <div className="flex flex-col gap-2 rounded-xl border border-peach/30 bg-peach/10 p-2.5 text-sm">
           <p>
             <strong className="text-peach">{name(pending.attacker_id)}</strong>: {ACTION_LABEL[pending.action].split(" (")[0].toLowerCase()}
@@ -193,37 +273,62 @@ export function CombatPanel({ roomId, me, present, isMaster, tick, starting, onC
   );
 }
 
-/** Scelta degli avversari tra i presenti in giocata */
-function StartPanel({ me, present, busy, onClose, onStart }: { me: { id: string }; present: ChatPresent[]; busy: boolean; onClose: () => void; onStart: (ids: string[]) => void }) {
+/** Scelta degli avversari tra i presenti in giocata (chi è già in un altro scontro non si può scegliere) */
+function StartPanel({
+  me,
+  present,
+  engagedIn,
+  others,
+  busy,
+  onClose,
+  onStart,
+}: {
+  me: { id: string };
+  present: ChatPresent[];
+  engagedIn: Map<string, number>;
+  /** scontri già in corso nella chat */
+  others: number;
+  busy: boolean;
+  onClose: () => void;
+  onStart: (ids: string[]) => void;
+}) {
   const [chosen, setChosen] = useState<string[]>([]);
-  const others = present.filter((p) => p.character_id !== me.id);
+  const candidates = present.filter((p) => p.character_id !== me.id);
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-flamingo/40 bg-night/80 p-3 backdrop-blur">
       <div className="flex items-center gap-2">
         <Swords className="size-4 text-flamingo" />
-        <p className="font-heading text-lg tracking-wide text-flamingo">Inizia uno scontro</p>
+        <p className="font-heading text-lg tracking-wide text-flamingo">{others > 0 ? "Inizia un altro scontro" : "Inizia uno scontro"}</p>
         <button type="button" onClick={onClose} className="ml-auto rounded p-1 text-muted-foreground hover:bg-white/10" aria-label="Chiudi">
           <X className="size-4" />
         </button>
       </div>
       <p className="text-xs text-muted-foreground">
-        Scegli contro chi combatti. L&apos;iniziativa (RIF + d10) la tira il server e decide l&apos;ordine dei turni. Gli altri presenti potranno entrare dopo.
+        Scegli contro chi combatti (anche più di uno). L&apos;iniziativa (RIF + d10) la tira il server e decide l&apos;ordine dei turni. Gli altri presenti potranno entrare dopo.
+        {others > 0 && " In questa chat ci sono già altri scontri: puoi anche entrare in uno di quelli qui sotto."}
       </p>
-      {others.length === 0 ? (
+      {candidates.length === 0 ? (
         <p className="text-sm text-muted-foreground">Non c&apos;è nessun altro in giocata in questa chat.</p>
       ) : (
         <div className="flex flex-wrap gap-2">
-          {others.map((p) => {
+          {candidates.map((p) => {
             const on = chosen.includes(p.character_id);
+            const busyIn = engagedIn.get(p.character_id);
             return (
               <button
                 key={p.character_id}
                 type="button"
                 aria-pressed={on}
+                disabled={busyIn !== undefined}
                 onClick={() => setChosen((c) => (on ? c.filter((x) => x !== p.character_id) : [...c, p.character_id]))}
-                className={cn("rounded-full border px-3 py-1 text-sm", on ? "border-flamingo bg-flamingo/25 text-white" : "border-white/15 bg-white/5 hover:bg-white/10")}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-sm disabled:opacity-40",
+                  on ? "border-flamingo bg-flamingo/25 text-white" : "border-white/15 bg-white/5 hover:bg-white/10",
+                )}
+                title={busyIn !== undefined ? `Sta già combattendo (scontro ${busyIn})` : undefined}
               >
                 {firstName(p.name)}
+                {busyIn !== undefined && <span className="ml-1 text-xs text-muted-foreground">· in scontro {busyIn}</span>}
               </button>
             );
           })}

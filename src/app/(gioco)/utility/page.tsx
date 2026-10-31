@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BookUser, BriefcaseBusiness, Drama, Landmark, PenLine, Shield, Sparkles, VenetianMask } from "lucide-react";
+import { BookUser, BriefcaseBusiness, Drama, Landmark, PenLine, Shield, ShoppingBag, Sparkles, VenetianMask } from "lucide-react";
 import { PageHeader } from "@/components/game/page-header";
 
 export const metadata: Metadata = { title: "Utility" };
@@ -12,6 +12,7 @@ const BOXES = [
   { href: "/utility/png", label: "PNG", hint: "I personaggi non giocanti della città e i tuoi", icon: Drama, color: "text-orchid" },
   { href: "/utility/lavori", label: "Lavori", hint: "Full time e part time: scegli il tuo", icon: BriefcaseBusiness, color: "text-peach" },
   { href: "/utility/gruppi", label: "Gruppi", hint: "Gruppi della land, ruoli e membri", icon: Shield, color: "text-lavender" },
+  { href: "/utility/mercato", label: "Mercato", hint: "Compra oggetti, alcolici e sigarette con il tuo conto", icon: ShoppingBag, color: "text-flamingo" },
   { href: "/utility/banca", label: "Servizi bancari", hint: "Stipendio, conto e soldi agli altri", icon: Landmark, color: "text-sand" },
   { href: "/utility/nome", label: "Cambio nome", hint: "Nome e cognome: una volta sola", icon: PenLine, color: "text-flamingo" },
 ];

@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowLeft, Crown, Dices, Eye, EyeOff, SendHorizontal, Swords, Users } from "lucide-react";
+import { ArrowDown, ArrowLeft, Crown, Dices, Eye, EyeOff, Package, SendHorizontal, Swords, Users } from "lucide-react";
+import { ItemsPanel } from "@/components/game/chat-items";
 import {
   BlurredRows,
   DicePanel,
@@ -204,7 +205,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [panel, setPanel] = useState<"dadi" | "master" | "scontro" | null>(null);
+  const [panel, setPanel] = useState<"dadi" | "master" | "scontro" | "oggetti" | null>(null);
   // Fortunato del mio personaggio (ritiro del d10, una volta per periodo)
   const [lucky, setLucky] = useState(false);
   useEffect(() => {
@@ -539,6 +540,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
             onError={setError}
           />
           {panel === "dadi" && <DicePanel roomId={roomId} characterId={me.id} attributes={attributes} skills={skills} onClose={() => setPanel(null)} onError={setError} />}
+          {panel === "oggetti" && <ItemsPanel roomId={roomId} characterId={me.id} onClose={() => setPanel(null)} onError={setError} />}
           {panel === "master" && <MasterPanel roomId={roomId} characterId={me.id} active={master} onClose={() => setPanel(null)} onError={setError} />}
           {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -588,6 +590,9 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
             <span className="ml-auto flex gap-1">
               <Button type="button" variant="ghost" size="sm" onClick={() => setPanel(panel === "scontro" ? null : "scontro")} className="rounded-full" aria-pressed={panel === "scontro"}>
                 <Swords /> Combattimento
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setPanel(panel === "oggetti" ? null : "oggetti")} className="rounded-full" aria-pressed={panel === "oggetti"}>
+                <Package /> Oggetti
               </Button>
               {canDice && (
                 <Button type="button" variant="ghost" size="sm" onClick={() => setPanel(panel === "dadi" ? null : "dadi")} className="rounded-full" aria-pressed={panel === "dadi"}>

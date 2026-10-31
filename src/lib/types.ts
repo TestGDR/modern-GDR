@@ -199,6 +199,8 @@ export type Combat = {
   round: number;
   turn_order: string[];
   turn_index: number;
+  /** numero dello scontro nella chat (più scontri contemporanei) */
+  number: number;
   created_by: string | null;
   created_at: string;
   closed_at: string | null;

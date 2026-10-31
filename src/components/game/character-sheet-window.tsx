@@ -30,6 +30,7 @@ import {
 import { FormMessage } from "@/components/auth/auth-forms";
 import { AffectionsSection } from "@/components/game/affections";
 import { ErrorBoundary } from "@/components/game/error-boundary";
+import { AlterationSection } from "@/components/game/alteration-section";
 import { HealthSection } from "@/components/game/health-section";
 import { CharacterLevelIcon } from "@/components/game/level-icon";
 import { OptionRequestPanel } from "@/components/game/option-request";
@@ -273,6 +274,8 @@ export function CharacterSheetWindow({
                 <HeartPulse className="size-5" /> Salute
               </h3>
               <HealthSection characterId={character.id} canManage={canManageHealth} />
+              {/* alcol, droghe e postumi in corso */}
+              <AlterationSection characterId={character.id} canClear={canManageHealth} />
             </SectionFrame>
           ) : section.key === "abilita" ? (
             <SectionFrame title="Abilità">

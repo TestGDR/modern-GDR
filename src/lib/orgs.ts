@@ -31,6 +31,8 @@ export type Org = {
   sport: boolean;
   /** Icona (link https, circa 20x20) */
   icon_url: string | null;
+  /** Solo i gruppi: tag, es. "malavita" (vede il mercato nero) */
+  tags: string[];
   sort_order: number;
   active: boolean;
   roles: OrgRole[];

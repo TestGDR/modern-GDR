@@ -81,6 +81,7 @@ function OrgForm({ kind, org, onDone }: { kind: OrgKind; org?: Org; onDone: () =
     jobKind: org?.kind ?? "part_time",
     iconUrl: org?.icon_url ?? "",
     active: org?.active ?? true,
+    tags: org?.tags ?? [],
   });
   const { pending, error, execute } = useAdminAction();
   const label = ORG_LABELS[kind];
@@ -119,6 +120,16 @@ function OrgForm({ kind, org, onDone }: { kind: OrgKind; org?: Org; onDone: () =
       <FieldLabel label="Descrizione" hint="La vedono i giocatori in Utility">
         <textarea className={cn(textareaClass, "min-h-28")} value={form.description} maxLength={4000} onChange={(e) => setForm({ ...form, description: e.target.value })} />
       </FieldLabel>
+      {kind === "group" && (
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={(form.tags ?? []).includes("malavita")}
+            onChange={(e) => setForm({ ...form, tags: e.target.checked ? ["malavita"] : [] })}
+          />
+          Malavita: i membri vedono il mercato nero (Utility → Mercato)
+        </label>
+      )}
       <ActiveToggle checked={form.active} onChange={(active) => setForm({ ...form, active })} label={form.active ? "Attivo (visibile e con stipendio)" : "Disattivato (nascosto, niente stipendio)"} />
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onDone}>
