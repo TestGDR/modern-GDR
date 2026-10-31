@@ -4,12 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Clock, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { logoutIdle } from "@/lib/actions/auth";
+import { logoutExpired, logoutIdle } from "@/lib/actions/auth";
 import { useResync } from "@/lib/use-resync";
 
 // Due controlli del sito che girano nel browser (dal Westeros):
 // - banner "Aggiorna" quando è stata pubblicata una nuova versione;
-// - uscita automatica dopo il tempo di inattività, con avviso 5 minuti prima.
+// - uscita automatica dopo il tempo di inattività, con avviso 5 minuti prima;
+// - uscita alla fine della durata massima della sessione.
 
 /** Banner "nuova versione": confronta la propria versione con /api/versione ogni 10 minuti */
 export function VersionBanner() {
@@ -124,6 +125,45 @@ export function IdleLogout({ minutes }: { minutes: number }) {
           Resto collegato
         </Button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Durata massima della sessione: a `endsAt` (ms) si esce anche se si sta giocando,
+ * con un avviso 5 minuti prima. L'ora d'ingresso la scrive il server al login.
+ */
+export function SessionExpiry({ endsAt }: { endsAt: number }) {
+  const leaving = useRef(false);
+  const [minutesLeft, setMinutesLeft] = useState<number | null>(null);
+  const [hidden, setHidden] = useState(false);
+
+  useEffect(() => {
+    const tick = () => {
+      if (leaving.current) return;
+      const left = endsAt - Date.now();
+      if (left <= 0) {
+        leaving.current = true;
+        logoutExpired();
+      } else if (left <= WARN_BEFORE_MS) {
+        setMinutesLeft(Math.max(1, Math.ceil(left / 60_000)));
+      }
+    };
+    tick();
+    const check = setInterval(tick, 10_000);
+    return () => clearInterval(check);
+  }, [endsAt]);
+
+  if (minutesLeft === null || hidden) return null;
+  return (
+    <div className="fixed inset-x-0 bottom-4 z-[70] mx-auto flex w-[min(28rem,calc(100vw-2rem))] items-center gap-3 rounded-2xl border border-peach/40 bg-night/95 px-4 py-3 text-sm shadow-xl backdrop-blur">
+      <Clock className="size-5 shrink-0 text-peach" />
+      <span className="flex-1">
+        La sessione scade tra {minutesLeft} {minutesLeft === 1 ? "minuto" : "minuti"}: salva quello che stai scrivendo, poi dovrai rientrare.
+      </span>
+      <Button type="button" size="sm" variant="ghost" className="rounded-full" onClick={() => setHidden(true)}>
+        Ok
+      </Button>
     </div>
   );
 }

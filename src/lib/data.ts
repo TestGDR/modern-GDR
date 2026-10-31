@@ -75,9 +75,9 @@ export async function getChatSettings(): Promise<ChatSettings> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("chat_settings")
-    .select("max_length, ttl_minutes, idle_minutes")
+    .select("*")
     .maybeSingle<ChatSettings>();
-  return data ?? DEFAULT_CHAT_SETTINGS;
+  return { ...DEFAULT_CHAT_SETTINGS, ...data };
 }
 
 export type ChatPresent = { character_id: string; name: string; avatar_url: string | null };

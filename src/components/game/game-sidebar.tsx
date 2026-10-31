@@ -24,6 +24,7 @@ import {
 import { Logo } from "@/components/brand/logo";
 import { CharacterAvatar } from "@/components/game/character-avatar";
 import { HoverTip } from "@/components/game/hover-tip";
+import { LevelIcon } from "@/components/game/level-icon";
 import { WindowButton } from "@/components/game/info-window";
 import { closeAllWindows, isModalPath } from "@/components/game/page-modal";
 import { TicketIcon } from "@/components/game/ticket-icon";
@@ -343,6 +344,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
           <span className="flex items-center gap-2">
             <span className={cn("size-2 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} title={AVAILABILITY[c.availability].label} />
             <span className={cn("truncate font-medium", seeking && "font-semibold text-peach")}>{c.name}</span>
+            <LevelIcon icon={c.levelIcon} name={c.levelName} />
             {c.userId === me && <span className="text-xs text-muted-foreground">(tu)</span>}
             {c.invisible && <EyeOff className="size-3.5 shrink-0 text-muted-foreground" aria-label="Invisibile" />}
             {seeking && <span className="ml-auto shrink-0 truncate text-[0.7rem] text-muted-foreground">{c.placeKey.startsWith("chat:") ? c.place || "In chat" : "Mappa"}</span>}
@@ -393,6 +395,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
                 <>
                   <span className={cn("size-2 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} title={AVAILABILITY[c.availability].label} />
                   <span className="truncate">{c.name}</span>
+                  <LevelIcon icon={c.levelIcon} name={c.levelName} className="size-3.5" />
                   {c.invisible && <EyeOff className="size-3 shrink-0" aria-label="Invisibile" />}
                 </>
               );

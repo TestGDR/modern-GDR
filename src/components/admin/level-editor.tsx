@@ -22,6 +22,7 @@ export function LevelEditor({ level, myRank, isAdmin, grantable }: Props) {
   const [name, setName] = useState(level.name);
   const [description, setDescription] = useState(level.description);
   const [color, setColor] = useState<string | null>(level.color);
+  const [iconUrl, setIconUrl] = useState(level.icon_url ?? "");
   const [rank, setRank] = useState(level.rank);
   const [maxCharacters, setMaxCharacters] = useState(level.max_characters);
   const [permissions, setPermissions] = useState<string[]>(level.permissions.filter((p) => ALL_PERMISSION_KEYS.includes(p)));
@@ -42,7 +43,7 @@ export function LevelEditor({ level, myRank, isAdmin, grantable }: Props) {
 
   function save() {
     setSaved(false);
-    execute(() => saveLevel({ id: level.id, name, description, color, rank, permissions, maxCharacters }), () => setSaved(true));
+    execute(() => saveLevel({ id: level.id, name, description, color, iconUrl, rank, permissions, maxCharacters }), () => setSaved(true));
   }
 
   return (
@@ -72,6 +73,15 @@ export function LevelEditor({ level, myRank, isAdmin, grantable }: Props) {
             </Button>
           )}
         </div>
+        <FieldLabel label="Icona del livello" hint="Link https a un'immagine piccola (circa 20x20). Compare accanto al nome nei presenti online e sotto il ritratto della scheda; passandoci sopra si legge il nome del livello. Vuoto = nessuna icona.">
+          <span className="flex items-center gap-2">
+            <input className={inputClass} type="url" value={iconUrl} maxLength={500} placeholder="https://…" onChange={(e) => setIconUrl(e.target.value)} />
+            {iconUrl.startsWith("https://") && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={iconUrl} alt="Anteprima" className="size-6 shrink-0 object-contain" />
+            )}
+          </span>
+        </FieldLabel>
       </section>
 
       <p className="text-sm">

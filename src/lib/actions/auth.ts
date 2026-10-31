@@ -156,6 +156,14 @@ export async function logoutIdle() {
   redirect("/login?inattivo=1");
 }
 
+/** Uscita alla fine della durata massima della sessione (Gestione → Chat) */
+export async function logoutExpired() {
+  const supabase = await createClient();
+  await supabase.rpc("leave_online");
+  await supabase.auth.signOut();
+  redirect("/login?scaduta=1");
+}
+
 export async function signOut() {
   const supabase = await createClient();
   // si sparisce subito dai presenti online

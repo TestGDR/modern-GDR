@@ -46,10 +46,12 @@ export function LoginForm({ onForgotPassword }: { onForgotPassword?: () => void 
   const params = useSearchParams();
   const confirmError = params.get("errore") === "conferma";
   const idle = params.get("inattivo") === "1";
+  const expired = params.get("scaduta") === "1";
 
   return (
     <form action={action} className="flex flex-col gap-4">
       {idle && !state.error && <FormMessage state={{ success: "Sei stato disconnesso per inattività. Accedi di nuovo per tornare in gioco." }} />}
+      {expired && !state.error && <FormMessage state={{ success: "La sessione è scaduta. Accedi di nuovo per tornare in gioco." }} />}
       {confirmError && !state.error && (
         <FormMessage state={{ error: "Il link non è valido o è scaduto. Prova ad accedere o richiedi un nuovo link." }} />
       )}

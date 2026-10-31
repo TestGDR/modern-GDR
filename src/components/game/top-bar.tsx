@@ -5,7 +5,7 @@ import { MenuButton } from "@/components/game/game-sidebar";
 import { MessageButtons } from "@/components/game/message-buttons";
 import { NewsButton } from "@/components/game/news-panel";
 import { CommunityButtons } from "@/components/game/community";
-import { IdleLogout } from "@/components/game/site-watch";
+import { IdleLogout, SessionExpiry } from "@/components/game/site-watch";
 import { getChatSettings } from "@/lib/data";
 import { barButtonClass } from "@/components/game/sidebar-styles";
 import { activeCharacter, can, getPlayer, requirePlayer } from "@/lib/auth";
@@ -100,12 +100,20 @@ export async function PlayerCommunity() {
   );
 }
 
-/** Uscita automatica: il tempo è quello di Gestione → Chat (uscita dalla giocata) */
+/** Uscite automatiche: inattività e durata massima della sessione (Gestione → Chat) */
 export async function PlayerIdle() {
   const player = await getPlayer();
   if (!player) return null;
   const settings = await getChatSettings();
-  return <IdleLogout minutes={settings.idle_minutes} />;
+  const started = player.profile.session_started_at;
+  // senza ora d'ingresso registrata (accessi di prima) nessun limite: ripartirà al prossimo login
+  const endsAt = settings.session_hours > 0 && started ? Date.parse(started) + settings.session_hours * 3_600_000 : null;
+  return (
+    <>
+      <IdleLogout minutes={settings.idle_minutes} />
+      {endsAt !== null && <SessionExpiry endsAt={endsAt} />}
+    </>
+  );
 }
 
 /** Gestione nella barra in alto a sinistra: solo per chi può accedere al pannello (Livelli e permessi) */

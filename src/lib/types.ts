@@ -14,6 +14,8 @@ export type UserLevel = {
   /** Amministratore: ha sempre tutti i permessi */
   is_admin: boolean;
   max_characters: number;
+  /** Icona del livello (link https, circa 20x20): presenti online e scheda */
+  icon_url?: string | null;
 };
 
 export type Profile = {
@@ -22,6 +24,8 @@ export type Profile = {
   level_id: string;
   created_at: string;
   last_login_at: string | null;
+  /** ultimo accesso con nome e password: da qui parte la durata massima della sessione */
+  session_started_at?: string | null;
   last_played_at: string | null;
   /** Quando ha usato il cambio di nome (una volta sola); null = ancora disponibile */
   name_changed_at: string | null;
@@ -266,6 +270,8 @@ export type ChatSettings = {
   max_length: number;
   ttl_minutes: number;
   idle_minutes: number;
+  /** ore massime di una sessione dall'accesso con nome e password (0 = nessun limite) */
+  session_hours: number;
 };
 
 export type Character = {

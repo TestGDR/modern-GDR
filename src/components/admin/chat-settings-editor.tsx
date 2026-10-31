@@ -10,10 +10,10 @@ import type { ChatSettings } from "@/lib/types";
 
 /** Gestione → Chat (dal Westeros: ChatSettingsEditor) */
 export function ChatSettingsEditor({ settings }: { settings: ChatSettings }) {
-  const [form, setForm] = useState({ maxLength: settings.max_length, ttlMinutes: settings.ttl_minutes, idleMinutes: settings.idle_minutes });
+  const [form, setForm] = useState({ maxLength: settings.max_length, ttlMinutes: settings.ttl_minutes, idleMinutes: settings.idle_minutes, sessionHours: settings.session_hours });
   const [saved, setSaved] = useState(false);
   const { pending, error, execute } = useAdminAction();
-  const changed = form.maxLength !== settings.max_length || form.ttlMinutes !== settings.ttl_minutes || form.idleMinutes !== settings.idle_minutes;
+  const changed = form.maxLength !== settings.max_length || form.ttlMinutes !== settings.ttl_minutes || form.idleMinutes !== settings.idle_minutes || form.sessionHours !== settings.session_hours;
 
   return (
     <form
@@ -62,6 +62,19 @@ export function ChatSettingsEditor({ settings }: { settings: ChatSettings }) {
           max={CHAT_LIMITS.idle_minutes.max}
           value={form.idleMinutes}
           onChange={(e) => setForm({ ...form, idleMinutes: Number(e.target.value) })}
+        />
+      </FieldLabel>
+      <FieldLabel
+        label="Durata massima della sessione"
+        hint={`In ore, da ${CHAT_LIMITS.session_hours.min} a ${CHAT_LIMITS.session_hours.max} (0 = nessun limite). Passato questo tempo dall'accesso con nome e password si viene disconnessi anche se si sta giocando, con un avviso 5 minuti prima: basta rientrare.`}
+      >
+        <input
+          type="number"
+          className={inputClass}
+          min={CHAT_LIMITS.session_hours.min}
+          max={CHAT_LIMITS.session_hours.max}
+          value={form.sessionHours}
+          onChange={(e) => setForm({ ...form, sessionHours: Number(e.target.value) })}
         />
       </FieldLabel>
       <div className="flex items-center justify-end gap-3">

@@ -236,6 +236,8 @@ export type LevelInput = {
   name: string;
   description: string;
   color: string | null;
+  /** link https dell'icona (vuoto = nessuna) */
+  iconUrl?: string | null;
   rank: number;
   permissions: string[];
   maxCharacters: number;
@@ -246,6 +248,8 @@ export async function saveLevel(input: LevelInput): Promise<ActionResult & { id?
   if (name.length < 2) return { ok: false, error: "Scrivi il nome del livello." };
   if (!Number.isInteger(input.rank) || input.rank < 0 || input.rank > 999) return { ok: false, error: "Il rango va da 0 a 999." };
   if (input.color && !/^#[0-9a-fA-F]{6}$/.test(input.color)) return { ok: false, error: "Colore non valido." };
+  const iconUrl = (input.iconUrl ?? "").trim();
+  if (iconUrl && !/^https:\/\/\S{4,500}$/.test(iconUrl)) return { ok: false, error: "L'icona deve essere un link https a un'immagine." };
   if (!Number.isInteger(input.maxCharacters) || input.maxCharacters < 0 || input.maxCharacters > 20) {
     return { ok: false, error: "Il numero massimo di personaggi va da 0 a 20." };
   }
@@ -253,6 +257,7 @@ export async function saveLevel(input: LevelInput): Promise<ActionResult & { id?
     name,
     description: clean(input.description, 300),
     color: input.color || null,
+    ...(input.iconUrl !== undefined ? { icon_url: iconUrl || null } : {}),
     rank: input.rank,
     permissions: [...new Set(input.permissions.filter((p) => /^[a-z_.]{3,60}$/.test(p)))],
     max_characters: input.maxCharacters,

@@ -254,15 +254,16 @@ export async function moveWorldItem(table: "maps" | "locations" | "rooms" | "roo
 
 /* ------------------------------ Impostazioni della chat ------------------------------ */
 
-export async function saveChatSettings(input: { maxLength: number; ttlMinutes: number; idleMinutes: number }): Promise<ActionResult> {
+export async function saveChatSettings(input: { maxLength: number; ttlMinutes: number; idleMinutes: number; sessionHours: number }): Promise<ActionResult> {
   const within = (v: number, l: { min: number; max: number }) => Number.isInteger(v) && v >= l.min && v <= l.max;
   if (!within(input.maxLength, CHAT_LIMITS.max_length)) return { ok: false, error: "La lunghezza massima va da 100 a 4000 caratteri." };
   if (!within(input.ttlMinutes, CHAT_LIMITS.ttl_minutes)) return { ok: false, error: "La durata dei messaggi va da 10 a 1440 minuti." };
   if (!within(input.idleMinutes, CHAT_LIMITS.idle_minutes)) return { ok: false, error: "L'uscita automatica va da 15 a 1440 minuti." };
+  if (!within(input.sessionHours, CHAT_LIMITS.session_hours)) return { ok: false, error: "La durata della sessione va da 0 a 72 ore." };
   return run((supabase) =>
     supabase
       .from("chat_settings")
-      .update({ max_length: input.maxLength, ttl_minutes: input.ttlMinutes, idle_minutes: input.idleMinutes })
+      .update({ max_length: input.maxLength, ttl_minutes: input.ttlMinutes, idle_minutes: input.idleMinutes, session_hours: input.sessionHours })
       .eq("id", true)
       .then((r) => r),
   );

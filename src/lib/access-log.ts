@@ -69,7 +69,9 @@ export async function logAccess({ userId, event, ip, userAgent }: { userId: stri
   if (!admin) return;
   try {
     if (event !== "iscrizione") {
-      await admin.from("profiles").update({ last_login_at: new Date().toISOString() }).eq("id", userId);
+      const now = new Date().toISOString();
+      // l'ingresso con nome e password fa ripartire la durata massima della sessione
+      await admin.from("profiles").update(event === "login" ? { last_login_at: now, session_started_at: now } : { last_login_at: now }).eq("id", userId);
     }
     if (!ip) return;
 

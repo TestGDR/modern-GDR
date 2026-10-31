@@ -19,6 +19,7 @@ export type OnlinePlayer = {
   characterId: string | null;
   levelName: string | null;
   levelColor: string | null;
+  levelIcon: string | null;
   availability: Availability;
   place: string;
   placeKey: string;
@@ -40,6 +41,7 @@ type Row = {
   character_id: string | null;
   level_name: string | null;
   level_color: string | null;
+  level_icon?: string | null;
   info: Partial<PresenceInfo> | null;
   invisible: boolean;
 };
@@ -72,6 +74,7 @@ export function usePresence(info: PresenceInfo) {
           characterId: r.character_id,
           levelName: r.level_name,
           levelColor: r.level_color,
+          levelIcon: r.level_icon ?? null,
           availability: isAvailability(r.info?.availability) ? r.info.availability : "disponibile",
           place: r.info?.place ?? "",
           placeKey: r.info?.placeKey ?? "",
