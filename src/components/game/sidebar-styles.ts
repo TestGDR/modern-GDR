@@ -1,6 +1,7 @@
 // Stile delle icone della barra laterale (condiviso da server e browser)
+// solo icona: il nome compare nel fumetto (HoverTip) ed è letto dagli screen reader
 export const sidebarIconClass =
-  "flex flex-col items-center gap-1 rounded-xl py-2 text-[0.7rem] font-medium text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground [&_svg]:size-5 [&_svg]:text-lavender";
+  "relative grid size-9 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground [&_svg]:size-[1.15rem] [&_svg]:text-lavender";
 
 // Pulsanti della barra in alto (icona con etichetta sotto)
 export const barButtonClass =

@@ -52,9 +52,10 @@ export function ForumIcon() {
   return (
     <>
       <Link href="/forum" className={cn(sidebarIconClass, "relative", unread > 0 && "blink-call")} aria-label={unread ? `Forum: ${unread} discussioni nuove` : "Forum"}>
-        <MessagesSquare /> Forum
+        <MessagesSquare />
+        <span className="sr-only">Forum</span>
         {unread > 0 && (
-          <span className="absolute top-1 right-3 grid min-w-4 place-items-center rounded-full bg-flamingo px-1 text-[0.6rem] leading-4 font-bold text-white">{unread}</span>
+          <span className="absolute -top-1 -right-1 grid min-w-4 place-items-center rounded-full bg-flamingo px-1 text-[0.6rem] leading-4 font-bold text-white">{unread}</span>
         )}
       </Link>
       {first && (

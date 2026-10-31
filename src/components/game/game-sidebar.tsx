@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { CharacterAvatar } from "@/components/game/character-avatar";
+import { HoverTip } from "@/components/game/hover-tip";
 import { WindowButton } from "@/components/game/info-window";
 import { closeAllWindows, isModalPath } from "@/components/game/page-modal";
 import { TicketIcon } from "@/components/game/ticket-icon";
@@ -215,28 +216,36 @@ function MainButtons() {
 
 const iconCls = sidebarIconClass;
 
-/** Calendario, Social, Forum, Scheda, Ticket, Utility, Università, Sport */
+/** Calendario, Social, Forum, Scheda, Ticket, Utility, Università, Sport: solo icone, il nome nel fumetto */
 function FeatureIcons() {
+  const links: [string, string, React.ReactNode][] = [
+    ["/calendario", "Calendario", <CalendarDays key="i" />],
+    ["/scheda", "Scheda", <CircleUserRound key="i" />],
+    ["/utility", "Utility", <BriefcaseBusiness key="i" />],
+    ["/universita", "Università", <GraduationCap key="i" />],
+    ["/sport", "Sport", <Trophy key="i" />],
+  ];
+  const link = ([href, label, icon]: (typeof links)[number]) => (
+    <HoverTip key={href} label={label}>
+      <Link href={href} className={iconCls} aria-label={label}>
+        {icon}
+      </Link>
+    </HoverTip>
+  );
   return (
-    <div className="grid grid-cols-3 gap-1">
-      <Link href="/calendario" className={iconCls}>
-        <CalendarDays /> Calendario
-      </Link>
-      <SocialIcon />
-      <ForumIcon />
-      <Link href="/scheda" className={iconCls}>
-        <CircleUserRound /> Scheda
-      </Link>
-      <TicketIcon />
-      <Link href="/utility" className={iconCls}>
-        <BriefcaseBusiness /> Utility
-      </Link>
-      <Link href="/universita" className={iconCls}>
-        <GraduationCap /> Università
-      </Link>
-      <Link href="/sport" className={iconCls}>
-        <Trophy /> Sport
-      </Link>
+    <div className="grid grid-cols-4 justify-items-center gap-1">
+      {link(links[0])}
+      <HoverTip label="Social">
+        <SocialIcon />
+      </HoverTip>
+      <HoverTip label="Forum">
+        <ForumIcon />
+      </HoverTip>
+      {link(links[1])}
+      <HoverTip label="Ticket">
+        <TicketIcon />
+      </HoverTip>
+      {links.slice(2).map(link)}
     </div>
   );
 }

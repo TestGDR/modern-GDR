@@ -61,9 +61,10 @@ export function TicketIcon() {
   return (
     <>
       <Link href="/ticket" className={cn(sidebarIconClass, "relative", ids.length > 0 && "blink-call")} aria-label={ids.length ? `Ticket: ${ids.length} da leggere` : "Ticket"}>
-        <LifeBuoy /> Ticket
+        <LifeBuoy />
+        <span className="sr-only">Ticket</span>
         {ids.length > 0 && (
-          <span className="absolute top-1 right-3 grid min-w-4 place-items-center rounded-full bg-flamingo px-1 text-[0.6rem] leading-4 font-bold text-white">{ids.length}</span>
+          <span className="absolute -top-1 -right-1 grid min-w-4 place-items-center rounded-full bg-flamingo px-1 text-[0.6rem] leading-4 font-bold text-white">{ids.length}</span>
         )}
       </Link>
       {toast && (
