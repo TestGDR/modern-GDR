@@ -85,6 +85,8 @@ export type CreationOption = {
   upkeep: number;
   /** Patrimonio: soldi sul conto all'approvazione */
   initial_amount: number;
+  /** Patrimonio: camere del college che si possono prenotare (la retta è compresa) */
+  dorm_kinds: ("singola" | "doppia")[];
   sort_order: number;
   /** Catalogo nuovo: livello della voce */
   scope: "generale" | "ambientazione" | "accademica" | "sportiva";
@@ -474,6 +476,8 @@ export type BankOverview = {
   income_parts: { label: string; amount: number }[];
   /** Mantenimento del patrimonio a ogni accredito */
   upkeep: number;
+  /** Affitto delle case a ogni accredito */
+  rent: number;
   period_days: number;
   /** Giorno del prossimo accredito (AAAA-MM-GG) */
   next_on: string;
@@ -483,7 +487,7 @@ export type BankTransaction = {
   id: number;
   character_id: string;
   amount: number;
-  kind: "stipendio" | "bonifico" | "staff" | "mantenimento" | "iniziale";
+  kind: "stipendio" | "bonifico" | "staff" | "mantenimento" | "iniziale" | "acquisto" | "affitto" | "casa";
   description: string;
   counterpart_id: string | null;
   balance_after: number;

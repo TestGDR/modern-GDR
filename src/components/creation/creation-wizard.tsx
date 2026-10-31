@@ -636,6 +636,7 @@ function StepOptions({
                         {o.kind === "tenore" && (
                           <span className="block text-xs text-sand">
                             Entrata {formatDollars(o.salary)} al mese · mantenimento {formatDollars(o.upkeep)} al mese · quota iniziale {formatDollars(o.initial_amount)}
+                            {" "}· camera al college: {o.dorm_kinds?.length ? o.dorm_kinds.join(" o ") : "nessuna"}
                           </span>
                         )}
                         {!o.available && <span className="block text-xs text-destructive">Non ancora disponibile: toglila.</span>}

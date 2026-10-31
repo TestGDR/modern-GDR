@@ -103,7 +103,8 @@ export function OptionsManager({ options, skills, usage, pxPerLevel, kinds }: Pr
                   )}
                   {o.kind === "tenore" && (
                     <span className="text-xs text-sand">
-                      entrata {formatDollars(o.salary)} · mantenimento {formatDollars(o.upkeep)} · iniziale {formatDollars(o.initial_amount)}
+                      entrata {formatDollars(o.salary)} · mantenimento {formatDollars(o.upkeep)} · iniziale {formatDollars(o.initial_amount)} · college:{" "}
+                      {o.dorm_kinds?.length ? o.dorm_kinds.join(" o ") : "nessuna camera"}
                     </span>
                   )}
                   <StatusPill active={o.active} />
@@ -151,6 +152,7 @@ function OptionForm({
     salary: option?.salary ?? 0,
     upkeep: option?.upkeep ?? 0,
     initialAmount: option?.initial_amount ?? 0,
+    dormKinds: option?.dorm_kinds ?? [],
     active: option?.active ?? true,
     scope: option?.scope ?? "generale",
     subgroup: option?.subgroup ?? "",
@@ -208,6 +210,20 @@ function OptionForm({
           </FieldLabel>
           <FieldLabel label="Quota iniziale in $" hint="Sul conto all'approvazione">
             <input className={inputClass} type="number" min={0} max={100000000} value={form.initialAmount} onChange={(e) => setForm({ ...form, initialAmount: Number(e.target.value) })} />
+          </FieldLabel>
+          <FieldLabel label="Camere del college comprese" hint="La retta è nel patrimonio: quali camere si possono prenotare in Utility → Dormitori">
+            <span className="flex gap-4 text-sm">
+              {(["singola", "doppia"] as const).map((k) => (
+                <label key={k} className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={form.dormKinds.includes(k)}
+                    onChange={(e) => setForm({ ...form, dormKinds: e.target.checked ? [...form.dormKinds, k] : form.dormKinds.filter((x) => x !== k) })}
+                  />
+                  {k === "singola" ? "Singola" : "Doppia"}
+                </label>
+              ))}
+            </span>
           </FieldLabel>
         </div>
       )}

@@ -478,7 +478,8 @@ function Balance({ overview }: { overview: BankOverview }) {
 }
 
 function Salary({ overview }: { overview: BankOverview }) {
-  const net = overview.income - overview.upkeep;
+  const rent = overview.rent ?? 0;
+  const net = overview.income - overview.upkeep - rent;
   return (
     <section className="glass flex flex-col gap-2 rounded-2xl p-5">
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -497,7 +498,13 @@ function Salary({ overview }: { overview: BankOverview }) {
             <span className="text-flamingo tabular-nums">−{formatDollars(overview.upkeep)}</span>
           </li>
         )}
-        {overview.income_parts.length === 0 && overview.upkeep === 0 && (
+        {rent > 0 && (
+          <li className="flex justify-between gap-3">
+            <span>Affitto delle case</span>
+            <span className="text-flamingo tabular-nums">−{formatDollars(rent)}</span>
+          </li>
+        )}
+        {overview.income_parts.length === 0 && overview.upkeep === 0 && rent === 0 && (
           <li className="text-muted-foreground">
             Nessuna entrata: la danno il patrimonio, i <Link href="/utility/lavori" className="text-lavender underline">lavori</Link> e i gruppi.
           </li>

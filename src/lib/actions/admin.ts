@@ -137,6 +137,8 @@ export type OptionInput = {
   salary: number;
   upkeep: number;
   initialAmount: number;
+  /** Patrimonio: camere del college comprese */
+  dormKinds: ("singola" | "doppia")[];
   active: boolean;
   /** Catalogo nuovo */
   scope: "generale" | "ambientazione" | "accademica" | "sportiva";
@@ -182,6 +184,7 @@ export async function saveOption(input: OptionInput): Promise<ActionResult> {
     salary: input.kind === "tenore" ? input.salary : 0,
     upkeep: input.kind === "tenore" ? input.upkeep : 0,
     initial_amount: input.kind === "tenore" ? input.initialAmount : 0,
+    dorm_kinds: input.kind === "tenore" ? (["singola", "doppia"] as const).filter((k) => input.dormKinds.includes(k)) : [],
     active: input.active,
     scope: input.kind === "tenore" ? "generale" : input.scope,
     subgroup: clean(input.subgroup, 30),
