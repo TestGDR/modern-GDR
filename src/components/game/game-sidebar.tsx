@@ -541,9 +541,11 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
               )}
               {groups.map((g) => (
                 <section key={g.key}>
-                  {/* nome del posto: cliccando si entra in quella chat (o si va alla mappa) */}
+                  {/* nome del posto, al centro tra due linee: cliccando si entra in quella chat (o si va alla mappa) */}
+                  <div className="mb-2 flex items-center gap-2">
+                  <span className="h-px flex-1 bg-gradient-to-r from-transparent to-lavender/50" aria-hidden="true" />
                   {g.name === "Chat privata" ? (
-                    <p className="mb-1 flex w-fit items-center gap-2 px-1 font-heading text-lg tracking-[0.12em] text-lavender uppercase">
+                    <p className="flex max-w-[85%] items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-1 font-heading text-lg tracking-[0.12em] text-lavender uppercase">
                       <MessagesSquare className="size-4" />
                       {g.name}
                       <span className="font-sans text-xs tracking-normal text-muted-foreground normal-case">({g.count})</span>
@@ -554,7 +556,10 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
                     href={g.chatId ? `/chat/${g.chatId}` : "/mappa"}
                     onClick={() => setOpen(false)}
                     title={g.chatId ? `Entra in ${g.name}` : "Vai alla mappa"}
-                    className="mb-1 flex w-fit items-center gap-2 rounded-lg px-1 font-heading text-lg tracking-[0.12em] text-lavender uppercase hover:text-flamingo hover:underline"
+                    className={cn(
+                      "flex max-w-[85%] items-center gap-2 rounded-full border px-4 py-1 font-heading text-lg tracking-[0.12em] uppercase transition-colors hover:border-flamingo/50 hover:text-flamingo",
+                      g.key === placeKey ? "border-mint/30 bg-mint/10 text-lavender" : "border-white/10 bg-white/10 text-lavender",
+                    )}
                   >
                     {g.chatId ? <MessagesSquare className="size-4" /> : <MapIcon className="size-4" />}
                     {g.name}
@@ -562,6 +567,8 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
                     {g.key === placeKey && <span className="font-sans text-[0.65rem] tracking-normal text-mint normal-case">· sei qui</span>}
                   </Link>
                   )}
+                  <span className="h-px flex-1 bg-gradient-to-l from-transparent to-lavender/50" aria-hidden="true" />
+                  </div>
                   {g.members.length > 0 ? (
                     <ul className="flex flex-col gap-1">{g.members.map((c) => playerRow(c, false))}</ul>
                   ) : (
