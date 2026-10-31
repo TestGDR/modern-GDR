@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { Lock, Plus, Save } from "lucide-react";
-import { ActiveToggle, DeleteButton, ErrorText, FieldLabel, MoveButtons, inputClass, useAdminAction } from "@/components/admin/admin-ui";
+import { ActiveToggle, DeleteButton, ErrorText, FieldLabel, inputClass, useAdminAction } from "@/components/admin/admin-ui";
+import { SortableList, type DragHandle } from "@/components/sortable-list";
 import { Button } from "@/components/ui/button";
-import { deleteForumBoard, deleteForumSection, moveForumItem, saveForumBoard, saveForumSection } from "@/lib/actions/forum-admin";
+import { deleteForumBoard, deleteForumSection, reorderForumItems, saveForumBoard, saveForumSection } from "@/lib/actions/forum-admin";
 import type { ForumAccess, ForumBoard, ForumSection } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -20,12 +21,14 @@ const ACCESS_LABEL: Record<ForumAccess, string> = {
 /** Categorie del forum con le loro sezioni (pubbliche o riservate) */
 export function ForumManager({ sections, levels, groups }: { sections: ForumSection[] } & Lists) {
   const [adding, setAdding] = useState(false);
+  const { error, execute } = useAdminAction();
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
         Le categorie raggruppano le sezioni. Ogni sezione può essere pubblica o riservata a dei livelli o a dei gruppi: chi non ne fa parte non la vede proprio
         (l’Amministratore e chi ha il permesso «Leggere le sezioni riservate» le vedono tutte). Nelle sezioni «solo staff» aprono discussioni solo i membri dello staff
-        con il permesso «Pubblicare annunci e scrivere a tutti». Eliminando una categoria o una sezione si eliminano anche le sue discussioni.
+        con il permesso «Pubblicare annunci e scrivere a tutti». Eliminando una categoria o una sezione si eliminano anche le sue discussioni. Per cambiare
+        l’ordine trascina la maniglia ⋮⋮ accanto al nome.
       </p>
       {adding ? (
         <SectionForm onDone={() => setAdding(false)} />
@@ -34,14 +37,19 @@ export function ForumManager({ sections, levels, groups }: { sections: ForumSect
           <Plus /> Nuova categoria
         </Button>
       )}
-      {sections.map((s, i) => (
-        <SectionBlock key={s.id} section={s} first={i === 0} last={i === sections.length - 1} levels={levels} groups={groups} />
-      ))}
+      <ErrorText error={error} />
+      <SortableList
+        as="div"
+        className="flex flex-col gap-4"
+        items={sections}
+        onReorder={(ids) => execute(() => reorderForumItems("forum_sections", ids))}
+        renderItem={(s, handle) => <SectionBlock section={s} handle={handle} levels={levels} groups={groups} />}
+      />
     </div>
   );
 }
 
-function SectionBlock({ section, first, last, levels, groups }: { section: ForumSection; first: boolean; last: boolean } & Lists) {
+function SectionBlock({ section, handle, levels, groups }: { section: ForumSection; handle: DragHandle } & Lists) {
   const [editing, setEditing] = useState(false);
   const [addingBoard, setAddingBoard] = useState(false);
   const { pending, error, execute } = useAdminAction();
@@ -52,20 +60,22 @@ function SectionBlock({ section, first, last, levels, groups }: { section: Forum
         <SectionForm section={section} onDone={() => setEditing(false)} />
       ) : (
         <div className="flex items-center gap-2">
+          {handle}
           <button type="button" onClick={() => setEditing(true)} className="min-w-0 flex-1 text-left">
             <p className="truncate font-heading text-2xl tracking-wide text-peach">{section.title}</p>
             <p className="text-xs text-muted-foreground">{section.is_on_game ? "On Game" : "Off Game"} · {boards.length} sezioni</p>
           </button>
-          <MoveButtons first={first} last={last} disabled={pending} onMove={(d) => execute(() => moveForumItem("forum_sections", section.id, d))} />
           <DeleteButton what={`la categoria «${section.title}» con tutte le sue sezioni e discussioni`} disabled={pending} onConfirm={() => execute(() => deleteForumSection(section.id))} />
         </div>
       )}
       <ErrorText error={error} />
-      <ul className="flex flex-col gap-2">
-        {boards.map((b, i) => (
-          <BoardRow key={b.id} board={b} first={i === 0} last={i === boards.length - 1} levels={levels} groups={groups} />
-        ))}
-      </ul>
+      <SortableList
+        className="flex flex-col gap-2"
+        items={boards}
+        disabled={pending}
+        onReorder={(ids) => execute(() => reorderForumItems("forum_boards", ids))}
+        renderItem={(b, h) => <BoardRow board={b} handle={h} levels={levels} groups={groups} />}
+      />
       {addingBoard ? (
         <BoardForm sectionId={section.id} onDone={() => setAddingBoard(false)} levels={levels} groups={groups} />
       ) : (
@@ -105,7 +115,7 @@ function SectionForm({ section, onDone }: { section?: ForumSection; onDone: () =
   );
 }
 
-function BoardRow({ board, first, last, levels, groups }: { board: ForumBoard; first: boolean; last: boolean } & Lists) {
+function BoardRow({ board, handle, levels, groups }: { board: ForumBoard; handle: DragHandle } & Lists) {
   const [editing, setEditing] = useState(false);
   const { pending, error, execute } = useAdminAction();
   if (editing) return <BoardForm board={board} sectionId={board.section_id} onDone={() => setEditing(false)} levels={levels} groups={groups} />;
@@ -116,8 +126,9 @@ function BoardRow({ board, first, last, levels, groups }: { board: ForumBoard; f
         ? `Gruppi: ${groups.filter((g) => board.group_ids.includes(g.id)).map((g) => g.name).join(", ") || "—"}`
         : "Pubblica";
   return (
-    <li className="flex flex-col gap-1 rounded-xl bg-white/5 p-2.5">
+    <div className="flex flex-col gap-1 rounded-xl bg-white/5 p-2.5">
       <div className="flex items-center gap-2">
+        {handle}
         <button type="button" onClick={() => setEditing(true)} className="min-w-0 flex-1 text-left">
           <p className="truncate font-medium">
             {board.access !== "pubblica" && <Lock className="mr-1 inline size-3.5 text-lavender" aria-label="Riservata" />}
@@ -128,11 +139,10 @@ function BoardRow({ board, first, last, levels, groups }: { board: ForumBoard; f
             {board.staff_only && " · scrive solo lo staff"} · {board.description || "Nessuna descrizione"}
           </p>
         </button>
-        <MoveButtons first={first} last={last} disabled={pending} onMove={(d) => execute(() => moveForumItem("forum_boards", board.id, d))} />
         <DeleteButton what={`la sezione «${board.name}» con tutte le sue discussioni`} disabled={pending} onConfirm={() => execute(() => deleteForumBoard(board.id))} />
       </div>
       <ErrorText error={error} />
-    </li>
+    </div>
   );
 }
 

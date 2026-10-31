@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import DOMPurify from "dompurify";
-import { ArrowDown, ArrowUp, BookOpen, Check, ChevronDown, ChevronRight, Pencil, Plus, Save, Trash2 } from "lucide-react";
+import { BookOpen, Check, ChevronDown, ChevronRight, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import { FloatingWindow } from "@/components/floating-window";
 import { RichEditor } from "@/components/guide/rich-editor";
+import { SortableList } from "@/components/sortable-list";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -138,13 +139,8 @@ function GuideApp({ canEdit, onClose }: { canEdit: boolean; onClose: () => void 
     await run(supabase.from(table).delete().eq("id", id));
   }
 
-  /** Sposta su o giù tra le voci dello stesso livello (rinumera l'ordine) */
-  async function move<T extends { id: string }>(table: Table, list: T[], id: string, dir: -1 | 1) {
-    const ids = list.map((x) => x.id);
-    const i = ids.indexOf(id);
-    const j = i + dir;
-    if (i < 0 || j < 0 || j >= ids.length) return;
-    [ids[i], ids[j]] = [ids[j], ids[i]];
+  /** Nuovo ordine dopo il trascinamento, tra le voci dello stesso livello */
+  async function reorder(table: Table, ids: string[]) {
     setError(null);
     for (const [index, rowId] of ids.entries()) {
       const { error: e } = await supabase.from(table).update({ sort_order: index + 1 }).eq("id", rowId);
@@ -171,15 +167,9 @@ function GuideApp({ canEdit, onClose }: { canEdit: boolean; onClose: () => void 
     setEditing(false);
   }
 
-  const tools = (table: Table, list: { id: string }[], id: string, name: string, what: string) =>
+  const tools = (table: Table, id: string, name: string, what: string) =>
     editing && (
       <span className="flex shrink-0 items-center opacity-70 group-hover:opacity-100">
-        <IconBtn label="Sposta su" onClick={() => move(table, list, id, -1)}>
-          <ArrowUp />
-        </IconBtn>
-        <IconBtn label="Sposta giù" onClick={() => move(table, list, id, 1)}>
-          <ArrowDown />
-        </IconBtn>
         <IconBtn label={`Rinomina ${name}`} onClick={() => rename(table, id, name)}>
           <Pencil />
         </IconBtn>
@@ -216,37 +206,54 @@ function GuideApp({ canEdit, onClose }: { canEdit: boolean; onClose: () => void 
         <nav className="max-h-[40%] shrink-0 overflow-y-auto border-b border-white/10 p-3 @3xl:max-h-none @3xl:w-80 @3xl:border-r @3xl:border-b-0" aria-label="Sezioni della guida">
           {macros === null && <p className="p-2 text-sm text-muted-foreground">Caricamento…</p>}
           {macros?.length === 0 && !editing && <p className="p-2 text-sm text-muted-foreground">La guida è ancora vuota.</p>}
-          <ul className="flex flex-col">
-            {(macros ?? []).map((m) => {
+          <SortableList
+            className="flex flex-col"
+            items={macros ?? []}
+            disabled={!editing}
+            onReorder={(ids) => reorder("guide_macros", ids)}
+            renderItem={(m, handle) => {
               const mSections = sections.filter((s) => s.macro_id === m.id);
               const mOpen = openIds.has(m.id);
               return (
-                <li key={m.id} className="border-b border-white/5 py-1">
+                <div className="border-b border-white/5 py-1">
                   <div className="group flex items-center gap-1">
+                    {handle}
                     <button type="button" onClick={() => toggle(m.id)} className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1.5 py-1.5 text-left hover:bg-white/5">
                       {mOpen ? <ChevronDown className="size-4 shrink-0 text-flamingo" /> : <ChevronRight className="size-4 shrink-0 text-flamingo" />}
                       <span className="font-heading text-lg tracking-[0.12em] text-peach uppercase">{m.name}</span>
                     </button>
-                    {tools("guide_macros", macros ?? [], m.id, m.name, "la macrosezione")}
+                    {tools("guide_macros", m.id, m.name, "la macrosezione")}
                   </div>
                   {mOpen && (
-                    <ul className="ml-3 flex flex-col border-l border-white/10 pl-2">
-                      {mSections.map((s) => {
+                    <div className="ml-3 flex flex-col border-l border-white/10 pl-2">
+                      <SortableList
+                        className="flex flex-col"
+                        items={mSections}
+                        disabled={!editing}
+                        onReorder={(ids) => reorder("guide_sections", ids)}
+                        renderItem={(s, sHandle) => {
                         const sPages = pages.filter((p) => p.section_id === s.id);
                         const sOpen = openIds.has(s.id);
                         return (
-                          <li key={s.id}>
+                          <div>
                             <div className="group flex items-center gap-1">
+                              {sHandle}
                               <button type="button" onClick={() => toggle(s.id)} className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1.5 py-1 text-left text-sm font-medium hover:bg-white/5">
                                 {sOpen ? <ChevronDown className="size-3.5 shrink-0 text-lavender" /> : <ChevronRight className="size-3.5 shrink-0 text-lavender" />}
                                 <span className="break-words">{s.name}</span>
                               </button>
-                              {tools("guide_sections", mSections, s.id, s.name, "la sottosezione")}
+                              {tools("guide_sections", s.id, s.name, "la sottosezione")}
                             </div>
                             {sOpen && (
-                              <ul className="ml-3 flex flex-col border-l border-white/10 pl-2">
-                                {sPages.map((p) => (
-                                  <li key={p.id} className="group flex items-center gap-1">
+                              <div className="ml-3 flex flex-col border-l border-white/10 pl-2">
+                                <SortableList
+                                  className="flex flex-col"
+                                  items={sPages}
+                                  disabled={!editing}
+                                  onReorder={(ids) => reorder("guide_pages", ids)}
+                                  renderItem={(p, pHandle) => (
+                                  <div className="group flex items-center gap-1">
+                                    {pHandle}
                                     <button
                                       type="button"
                                       onClick={() => open(p)}
@@ -257,28 +264,30 @@ function GuideApp({ canEdit, onClose }: { canEdit: boolean; onClose: () => void 
                                     >
                                       {p.name}
                                     </button>
-                                    {tools("guide_pages", sPages, p.id, p.name, "la discussione")}
-                                  </li>
-                                ))}
-                                {sPages.length === 0 && !editing && <li className="px-2 py-1 text-xs text-muted-foreground">Nessuna discussione.</li>}
+                                    {tools("guide_pages", p.id, p.name, "la discussione")}
+                                  </div>
+                                  )}
+                                />
+                                {sPages.length === 0 && !editing && <p className="px-2 py-1 text-xs text-muted-foreground">Nessuna discussione.</p>}
                                 {editing && <AddRow placeholder="Nuova discussione" onAdd={(n) => add("guide_pages", n, { key: "section_id", id: s.id })} />}
-                              </ul>
+                              </div>
                             )}
-                          </li>
+                          </div>
                         );
-                      })}
+                        }}
+                      />
                       {editing && <AddRow placeholder="Nuova sottosezione" onAdd={(n) => add("guide_sections", n, { key: "macro_id", id: m.id })} />}
-                    </ul>
+                    </div>
                   )}
-                </li>
+                </div>
               );
-            })}
-          </ul>
+            }}
+          />
           {editing && (
             <div className="mt-3 rounded-xl border border-dashed border-white/15 p-2">
               <AddRow placeholder="Nuova macrosezione" onAdd={(n) => add("guide_macros", n)} />
               <p className="mt-1.5 px-1 text-[0.65rem] text-muted-foreground">
-                Le frecce spostano le voci; la matita rinomina; il cestino elimina (con tutto il contenuto).
+                La maniglia ⋮⋮ si trascina per spostare le voci; la matita rinomina; il cestino elimina (con tutto il contenuto).
               </p>
             </div>
           )}

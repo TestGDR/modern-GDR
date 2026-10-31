@@ -101,6 +101,25 @@ export async function deleteForumBoard(id: string): Promise<ActionResult> {
   return run((supabase) => supabase.from("forum_boards").delete().eq("id", id).then((r) => r));
 }
 
+/** Nuovo ordine dopo il trascinamento (categorie, o sezioni della stessa categoria) */
+export async function reorderForumItems(table: "forum_sections" | "forum_boards", ids: string[]): Promise<ActionResult> {
+  if (!["forum_sections", "forum_boards"].includes(table) || ids.length === 0 || ids.length > 200 || !ids.every(isUuid) || new Set(ids).size !== ids.length) {
+    return { ok: false, error: "Ordine non valido." };
+  }
+  return run(async (supabase) => {
+    if (table === "forum_boards") {
+      // tutte della stessa categoria
+      const { data } = await supabase.from("forum_boards").select("section_id").in("id", ids).overrideTypes<{ section_id: string }[], { merge: false }>();
+      if (!data || data.length !== ids.length || new Set(data.map((d) => d.section_id)).size !== 1) return { error: { message: "Sezioni non valide." } };
+    }
+    for (const [index, rowId] of ids.entries()) {
+      const { error } = await supabase.from(table).update({ sort_order: index + 1 }).eq("id", rowId);
+      if (error) return { error };
+    }
+    return { error: null };
+  });
+}
+
 export async function moveForumItem(table: "forum_sections" | "forum_boards", id: string, direction: -1 | 1): Promise<ActionResult> {
   if (!isUuid(id) || !["forum_sections", "forum_boards"].includes(table)) return { ok: false, error: "Voce non valida." };
   return run(async (supabase) => {
