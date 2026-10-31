@@ -29,5 +29,10 @@ async function Content() {
     loadOrgs("group"),
     supabase.from("characters").select("id, name").eq("status", "approvata").order("name").overrideTypes<{ id: string; name: string }[], { merge: false }>(),
   ]);
-  return <OrgsManager kind="group" orgs={orgs} characters={characters ?? []} />;
+  return (
+    <>
+      <p className="mb-3 text-sm text-muted-foreground">Le squadre sportive non sono qui: le crea e le gestisce Gestione → Sport, e i giocatori ci entrano dalla pagina Sport.</p>
+      <OrgsManager kind="group" orgs={orgs.filter((o) => !o.sport)} characters={characters ?? []} />
+    </>
+  );
 }

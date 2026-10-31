@@ -27,6 +27,8 @@ export type Org = {
   description: string;
   /** Solo i lavori */
   kind: JobKind | null;
+  /** Solo i gruppi: squadra di uno sport (si entra dalla pagina Sport, la gestisce Gestione → Sport) */
+  sport: boolean;
   /** Icona (link https, circa 20x20) */
   icon_url: string | null;
   sort_order: number;

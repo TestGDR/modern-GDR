@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { BriefcaseBusiness, ChevronDown, LogOut, Users } from "lucide-react";
+import { BriefcaseBusiness, ChevronDown, LogOut, Trophy, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NeedsCharacter } from "@/components/game/needs-character";
 import { joinJob, leaveJob } from "@/lib/actions/orgs";
@@ -40,7 +40,10 @@ export function OrgsView({ kind, orgs, characterId, periodDays, maxGroups }: Pro
           { title: "Full time", items: visible.filter((o) => o.kind === "full_time") },
           { title: "Part time", items: visible.filter((o) => o.kind === "part_time") },
         ]
-      : [{ title: "", items: visible }];
+      : [
+          { title: "Gruppi di gioco", items: visible.filter((o) => !o.sport) },
+          { title: "Squadre sportive", items: visible.filter((o) => o.sport) },
+        ];
 
   return (
     <div className="flex flex-col gap-5">
@@ -60,6 +63,7 @@ export function OrgsView({ kind, orgs, characterId, periodDays, maxGroups }: Pro
                   <OrgIcon url={o.icon_url} />
                   <span className="font-medium">{o.name}</span>
                   {o.kind && <KindBadge kind={o.kind} />}
+                  {o.sport && <SportBadge />}
                   {role && <span className="text-muted-foreground">· {role.name}</span>}
                   {kind === "job" && (
                     <Button
@@ -80,7 +84,7 @@ export function OrgsView({ kind, orgs, characterId, periodDays, maxGroups }: Pro
           <p className="text-xs text-muted-foreground">
             {kind === "job"
               ? "Puoi avere un full time, un part time, un full time e un part time insieme, oppure due part time. Mai due full time. I ruoli segnati «dallo staff» si chiedono con un ticket."
-              : `I gruppi li assegna lo staff: per entrare in un gruppo apri un ticket. Al massimo ${maxGroups} gruppi per personaggio.`}
+              : `I gruppi di gioco li assegna lo staff: per entrare apri un ticket. Al massimo ${maxGroups} gruppi per personaggio; le squadre sportive non contano.`}
           </p>
           {error && <p className="rounded-lg bg-destructive/15 px-3 py-2 text-destructive">{error}</p>}
         </section>
@@ -94,6 +98,15 @@ export function OrgsView({ kind, orgs, characterId, periodDays, maxGroups }: Pro
       {sections.map((s) => (
         <section key={s.title || "tutti"} className="flex flex-col gap-2">
           {s.title && <h2 className="border-b border-white/10 pb-1 font-heading text-2xl tracking-wide text-peach">{s.title}</h2>}
+          {s.title === "Squadre sportive" && (
+            <p className="text-xs text-muted-foreground">
+              Ogni sport ha la sua squadra: si entra e si esce dalla pagina{" "}
+              <Link href="/sport" className="text-peach hover:underline">
+                Sport
+              </Link>
+              , dove ci sono anche calendario, risultati e classifiche. Niente stipendio.
+            </p>
+          )}
           {s.items.map((o) => (
             <OrgCard
               key={o.id}
@@ -105,7 +118,7 @@ export function OrgsView({ kind, orgs, characterId, periodDays, maxGroups }: Pro
               onJoin={(roleId) => characterId && act(() => joinJob(characterId, roleId))}
             />
           ))}
-          {s.items.length === 0 && <p className="text-sm text-muted-foreground">{kind === "job" ? "Nessun lavoro." : "Nessun gruppo."}</p>}
+          {s.items.length === 0 && <p className="text-sm text-muted-foreground">{kind === "job" ? "Nessun lavoro." : s.title === "Squadre sportive" ? "Nessuna squadra." : "Nessun gruppo."}</p>}
         </section>
       ))}
     </div>
@@ -116,6 +129,14 @@ function KindBadge({ kind }: { kind: NonNullable<Org["kind"]> }) {
   return (
     <span className={cn("rounded-full px-2 py-0.5 text-[0.7rem]", kind === "full_time" ? "bg-flamingo/20 text-flamingo" : "bg-lavender/15 text-lavender")}>
       {JOB_KIND_LABEL[kind]}
+    </span>
+  );
+}
+
+function SportBadge() {
+  return (
+    <span className="flex items-center gap-1 rounded-full bg-mint/15 px-2 py-0.5 text-[0.7rem] text-mint">
+      <Trophy className="size-3" /> Squadra
     </span>
   );
 }
@@ -152,6 +173,7 @@ function OrgCard({
             <OrgIcon url={org.icon_url} />
             <span className="font-heading text-2xl tracking-wide">{org.name}</span>
             {org.kind && <KindBadge kind={org.kind} />}
+            {org.sport && <SportBadge />}
           </span>
           <span className="block text-xs text-muted-foreground">
             {org.members.length} {org.members.length === 1 ? "membro" : "membri"} · {org.roles.length} {org.roles.length === 1 ? "ruolo" : "ruoli"}

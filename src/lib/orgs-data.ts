@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { ORG_TABLES, type JobKind, type Org, type OrgKind, type OrgRole } from "@/lib/orgs";
 
-type OrgRow = { id: string; name: string; description: string; kind?: JobKind; icon_url?: string | null; sort_order: number; active: boolean };
+type OrgRow = { id: string; name: string; description: string; kind?: string; icon_url?: string | null; sort_order: number; active: boolean };
 type RoleRow = Omit<OrgRole, "self_select"> & { self_select?: boolean; job_id?: string; group_id?: string };
 type MemberRow = {
   role_id: string;
@@ -27,7 +27,9 @@ export async function loadOrgs(kind: OrgKind): Promise<Org[]> {
     id: o.id,
     name: o.name,
     description: o.description,
-    kind: o.kind ?? null,
+    // per i gruppi "kind" è normale/sport, non full/part time
+    kind: kind === "job" ? ((o.kind as JobKind | undefined) ?? null) : null,
+    sport: kind === "group" && o.kind === "sport",
     icon_url: o.icon_url ?? null,
     sort_order: o.sort_order,
     active: o.active,

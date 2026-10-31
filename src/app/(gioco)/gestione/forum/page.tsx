@@ -29,7 +29,7 @@ async function Content() {
   const [sections, levels, { data: groups }] = await Promise.all([
     getForumSections(),
     getLevels(),
-    supabase.from("game_groups").select("id, name").order("sort_order").overrideTypes<{ id: string; name: string }[], { merge: false }>(),
+    supabase.from("game_groups").select("id, name, kind").order("kind").order("sort_order").overrideTypes<{ id: string; name: string; kind: string }[], { merge: false }>(),
   ]);
-  return <ForumManager sections={sections} levels={levels.map((l) => ({ id: l.id, name: l.name }))} groups={groups ?? []} />;
+  return <ForumManager sections={sections} levels={levels.map((l) => ({ id: l.id, name: l.name }))} groups={(groups ?? []).map((g) => ({ id: g.id, name: g.kind === "sport" ? `${g.name} (squadra)` : g.name }))} />;
 }

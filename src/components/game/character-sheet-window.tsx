@@ -119,7 +119,7 @@ export function CharacterSheetWindow({
   rules,
   canReview = false,
   isAdmin = false,
-  affiliations = { jobs: [], groups: [], wealth: null, joinedAt: null, lastLoginAt: null },
+  affiliations = { jobs: [], groups: [], teams: [], wealth: null, joinedAt: null, lastLoginAt: null },
   canSeePrivate = false,
   canManageHealth = false,
 }: CharacterSheetWindowProps) {
@@ -417,6 +417,12 @@ function DataList({ character, rules, affiliations }: { character: SheetCharacte
   const born = character.birth_date ? `${formatBirthDate(character.birth_date)}${character.age ? ` (${character.age} anni)` : ""}` : "—";
   const jobs = affiliations.jobs.map((j) => ({ icon: j.icon, text: `${j.role ? `${j.role} · ` : ""}${j.name} (${j.kind === "full_time" ? "FT" : "PT"})` }));
   const groups = affiliations.groups.map((g) => ({ icon: g.icon, text: g.role ? `${g.name} · ${g.role}` : g.name }));
+  // squadre sportive (dal roster) e, sotto, il club scelto in creazione
+  const squad = { starter: "titolare", reserve: "riserva", captain: "capitano", redshirt: "redshirt" } as const;
+  const teams = [
+    ...affiliations.teams.map((t) => ({ icon: null, text: `${t.icon} ${t.sport}${t.position ? ` · ${t.position}` : ""} (${squad[t.status]})` })),
+    ...(character.club_id ? [{ icon: null, text: option(character.club_id) }] : []),
+  ];
   return (
     <div className="flex flex-col">
       <DataBanner name={character.name} subtitle={subtitle as string[]} />
@@ -439,7 +445,7 @@ function DataList({ character, rules, affiliations }: { character: SheetCharacte
         <DataBlock icon={<BriefcaseBusiness />} title="Gruppi e lavoro" cols={3}>
           <DataCard label={jobs.length > 1 ? "Lavori" : "Lavoro"} value="—" lines={jobs} />
           <DataCard label="Gruppi di gioco" value="—" lines={groups} />
-          <DataCard label="Squadra o club" value={option(character.club_id)} />
+          <DataCard label="Squadra o club" value="—" lines={teams} />
         </DataBlock>
         {/* in piccolo, fuori dalle categorie */}
         <p className="flex flex-wrap gap-x-4 gap-y-0.5 px-1 text-[0.7rem] text-muted-foreground">
