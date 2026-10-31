@@ -76,8 +76,10 @@ export type CollegeCosts = {
   /** va all'università (paga la retta se non ha la borsa) */
   student: boolean;
   scholarship: boolean;
-  /** retta al mese (0 con la borsa) */
+  /** rata mensile della retta (0 con la borsa) */
   tuition: number;
+  /** retta annuale (12 rate) */
+  tuition_year?: number;
   doppia: number;
   singola: number;
 };

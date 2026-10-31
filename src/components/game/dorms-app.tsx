@@ -153,7 +153,9 @@ function CostsBox({ costs }: { costs: CollegeCosts }) {
     <section className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs">
       <GraduationCap className="size-4 text-lavender" />
       {costs.scholarship && <span className="text-mint">Hai la borsa di studio: niente retta e camera doppia pagata.</span>}
-      {!costs.scholarship && costs.student && <span>Retta del college: <b className="text-sand">{formatDollars(costs.tuition)}</b> al mese</span>}
+      {!costs.scholarship && costs.student && <span>
+          Retta del college: <b className="text-sand">{formatDollars(costs.tuition_year ?? costs.tuition * 12)}</b> l&apos;anno, in rate da {formatDollars(costs.tuition)} al mese
+        </span>}
       <span>
         Doppia: <b className="text-sand">{costs.doppia > 0 ? `${formatDollars(costs.doppia)}/mese` : "pagata"}</b>
       </span>
