@@ -138,11 +138,11 @@ function OrgForm({ kind, org, categories, onDone }: { kind: OrgKind; org?: Org; 
           </FieldLabel>
         )}
       </div>
-      <FieldLabel label="Icona" hint="Link a un'immagine (https://…), circa 20x20: compare accanto al nome in Utility e nelle schede">
+      <FieldLabel label="Icona" hint="Link a un'immagine (https://…), circa 30x30: compare accanto al nome in Utility e nelle schede">
         <span className="flex items-center gap-2">
           {form.iconUrl?.startsWith("https://") && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={form.iconUrl} alt="" className="size-5 shrink-0 rounded object-contain" />
+            <img src={form.iconUrl} alt="" className="size-[30px] shrink-0 rounded object-contain" />
           )}
           <input className={inputClass} value={form.iconUrl ?? ""} maxLength={500} placeholder="https://…" onChange={(e) => setForm({ ...form, iconUrl: e.target.value })} />
         </span>

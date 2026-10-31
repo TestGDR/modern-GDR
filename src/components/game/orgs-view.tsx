@@ -350,9 +350,9 @@ function SportBadge() {
   );
 }
 
-/** Icona del lavoro o del gruppo (20x20) */
+/** Icona del lavoro o del gruppo (30x30) */
 export function OrgIcon({ url }: { url: string | null | undefined }) {
   if (!url) return null;
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={url} alt="" className="size-5 shrink-0 rounded object-contain" />;
+  return <img src={url} alt="" className="size-[30px] shrink-0 rounded object-contain" />;
 }

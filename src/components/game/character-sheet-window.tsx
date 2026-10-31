@@ -523,7 +523,7 @@ function DataCard({ label, value, lines }: { label: string; value: string; lines
             <span key={i} className="flex items-center gap-1.5 break-words">
               {l.icon && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={l.icon} alt="" className="size-5 shrink-0 rounded object-contain" />
+                <img src={l.icon} alt="" className="size-[30px] shrink-0 rounded object-contain" />
               )}
               {l.text}
             </span>
