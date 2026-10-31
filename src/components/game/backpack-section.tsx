@@ -17,6 +17,7 @@ export function BackpackSection({ characterId, isOwner, canSeeAll }: { character
   const [items, setItems] = useState<Item[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<"con" | "zaino">("con");
 
   const load = useCallback(async () => {
     const { data } = await supabase.from("character_items").select("*").eq("character_id", characterId).order("category").order("name");
@@ -41,21 +42,22 @@ export function BackpackSection({ characterId, isOwner, canSeeAll }: { character
   const inBag = items.filter((i) => !i.carried);
   const seeBag = isOwner || canSeeAll;
 
+  const current = seeBag ? tab : "con";
   return (
-    <div className="flex max-w-3xl flex-col gap-5">
+    <div className="flex max-w-3xl flex-col gap-3">
+      {/* linguette: "Con sé" per tutti, "Zaino" solo per proprietario e staff */}
+      <nav className="flex gap-1 self-start rounded-full bg-white/5 p-1" role="tablist" aria-label="Zaino">
+        <TabButton active={current === "con"} onClick={() => setTab("con")} icon={Eye} label="Con sé" count={withMe.length} />
+        {seeBag && <TabButton active={current === "zaino"} onClick={() => setTab("zaino")} icon={Backpack} label="Zaino" count={inBag.length} />}
+      </nav>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <section>
-        <h3 className="mb-1 flex items-center gap-2 font-heading text-xl tracking-wide text-peach">
-          <Eye className="size-5" /> Con sé
-        </h3>
-        <p className="mb-2 text-xs text-muted-foreground">Quello che porta dietro e si vede: lo vedono tutti.</p>
-        <ItemList items={withMe} empty="Non porta niente con sé." action={isOwner ? { label: "Metti nello zaino", icon: ArrowDownToLine, carried: false } : null} busy={busy} onMove={move} />
-      </section>
-      {seeBag && (
-        <section>
-          <h3 className="mb-1 flex items-center gap-2 font-heading text-xl tracking-wide text-peach">
-            <Backpack className="size-5" /> Zaino
-          </h3>
+      {current === "con" ? (
+        <section role="tabpanel">
+          <p className="mb-2 text-xs text-muted-foreground">Quello che porta dietro e si vede: lo vedono tutti.</p>
+          <ItemList items={withMe} empty="Non porta niente con sé." action={isOwner ? { label: "Metti nello zaino", icon: ArrowDownToLine, carried: false } : null} busy={busy} onMove={move} />
+        </section>
+      ) : (
+        <section role="tabpanel">
           <p className="mb-2 text-xs text-muted-foreground">
             Quello che possiede ma non porta dietro{isOwner ? ": lo vedete solo tu e lo staff." : " (lo vede lo staff)."} Gli oggetti si comprano in Utility → Mercato.
           </p>
@@ -63,6 +65,21 @@ export function BackpackSection({ characterId, isOwner, canSeeAll }: { character
         </section>
       )}
     </div>
+  );
+}
+
+function TabButton({ active, onClick, icon: Icon, label, count }: { active: boolean; onClick: () => void; icon: typeof Eye; label: string; count: number }) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={cn("flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm", active ? "bg-flamingo/30 text-white" : "text-muted-foreground hover:bg-white/5")}
+    >
+      <Icon className="size-4" /> {label}
+      {count > 0 && <span className="text-xs text-peach">{count}</span>}
+    </button>
   );
 }
 
