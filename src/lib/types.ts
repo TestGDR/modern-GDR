@@ -142,6 +142,8 @@ export type RoomGroup = {
   id: string;
   location_id: string;
   name: string;
+  /** Breve descrizione sotto il nome (finestra del quartiere) */
+  description?: string;
   sort_order: number;
 };
 

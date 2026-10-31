@@ -134,14 +134,15 @@ export async function saveDistrictPositions(positions: { id: string; x: number; 
 
 /* ------------------------------ Gruppi di chat ------------------------------ */
 
-export async function saveRoomGroup(input: { id?: string; districtId: string; name: string }): Promise<ActionResult> {
+export async function saveRoomGroup(input: { id?: string; districtId: string; name: string; description?: string }): Promise<ActionResult> {
   const name = clean(input.name, 80);
+  const extra = input.description !== undefined ? { description: clean(input.description, 300) } : {};
   if (!name) return { ok: false, error: "Dai un nome al gruppo." };
   if (!isUuid(input.districtId)) return { ok: false, error: "Quartiere non valido." };
   return run(async (supabase) => {
-    if (input.id) return supabase.from("room_groups").update({ name }).eq("id", input.id);
+    if (input.id) return supabase.from("room_groups").update({ name, ...extra }).eq("id", input.id);
     const { count } = await supabase.from("room_groups").select("id", { count: "exact", head: true }).eq("location_id", input.districtId);
-    return supabase.from("room_groups").insert({ location_id: input.districtId, name, sort_order: (count ?? 0) + 1 });
+    return supabase.from("room_groups").insert({ location_id: input.districtId, name, ...extra, sort_order: (count ?? 0) + 1 });
   });
 }
 
@@ -164,6 +165,8 @@ export type RoomInput = {
   access: "pubblica" | "su_invito";
   /** Nome del personaggio proprietario (chat su invito) */
   ownerName: string;
+  /** Gruppo nuovo da creare insieme alla chat (al posto di groupId) */
+  newGroupName?: string;
 };
 
 export async function saveRoom(input: RoomInput): Promise<ActionResult> {
@@ -171,6 +174,8 @@ export async function saveRoom(input: RoomInput): Promise<ActionResult> {
   if (name.length < 2) return { ok: false, error: "Dai un nome alla chat." };
   if (!isUuid(input.districtId)) return { ok: false, error: "Scegli il quartiere." };
   if (input.groupId !== null && !isUuid(input.groupId)) return { ok: false, error: "Gruppo non valido." };
+  const newGroup = clean(input.newGroupName ?? "", 80);
+  if (input.newGroupName !== undefined && !newGroup) return { ok: false, error: "Dai un nome al gruppo nuovo." };
   if (!["pubblica", "su_invito"].includes(input.access)) return { ok: false, error: "Accesso non valido." };
   if (!imageOk(input.imageUrl)) return { ok: false, error: "Immagine non valida." };
 
@@ -190,7 +195,7 @@ export async function saveRoom(input: RoomInput): Promise<ActionResult> {
     owner = data.id;
   }
 
-  const row = {
+  const row: { location_id: string; group_id: string | null; name: string; description: string; image_url: string | null; is_open: boolean; access: string; owner_character_id: string | null } = {
     location_id: input.districtId,
     group_id: input.groupId,
     name,
@@ -201,6 +206,17 @@ export async function saveRoom(input: RoomInput): Promise<ActionResult> {
     owner_character_id: owner,
   };
   return run(async (db) => {
+    // gruppo nuovo, creato insieme alla chat
+    if (newGroup) {
+      const { count } = await db.from("room_groups").select("id", { count: "exact", head: true }).eq("location_id", input.districtId);
+      const { data: g, error: ge } = await db
+        .from("room_groups")
+        .insert({ location_id: input.districtId, name: newGroup, sort_order: (count ?? 0) + 1 })
+        .select("id")
+        .single<{ id: string }>();
+      if (ge || !g) return { error: ge };
+      row.group_id = g.id;
+    }
     let old: string | null = null;
     if (input.id) {
       const { data } = await db.from("rooms").select("image_url").eq("id", input.id).maybeSingle<{ image_url: string | null }>();

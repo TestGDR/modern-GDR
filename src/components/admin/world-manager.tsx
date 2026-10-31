@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ImagePlus, Lock, Plus, Save, X } from "lucide-react";
+import { ImagePlus, Lock, Pencil, Plus, Save, X } from "lucide-react";
 import {
   ActiveToggle,
   DeleteButton,
@@ -436,7 +436,7 @@ function RoomsTab({ world, ownerNames }: { world: World; ownerNames: Record<stri
         </select>
       </FieldLabel>
 
-      <GroupsEditor key={`g-${district.id}`} districtId={district.id} groups={groups} />
+      <GroupsEditor key={`g-${district.id}`} districtId={district.id} groups={groups} rooms={rooms} />
 
       {adding ? (
         <RoomForm districtId={district.id} groups={groups} onDone={() => setAdding(false)} />
@@ -445,29 +445,84 @@ function RoomsTab({ world, ownerNames }: { world: World; ownerNames: Record<stri
           <Plus /> Nuova chat in {district.name}
         </Button>
       )}
-      <ul className="flex flex-col gap-2">
-        {rooms.map((r, i) => (
-          <RoomRow key={r.id} room={r} groups={groups} ownerName={r.owner_character_id ? (ownerNames[r.owner_character_id] ?? "") : ""} first={i === 0} last={i === rooms.length - 1} />
+      {/* le chat divise per gruppo, come nella finestra del quartiere sulla mappa */}
+      {[...groups.map((g) => ({ key: g.id, title: g.name, list: rooms.filter((r) => r.group_id === g.id) })), { key: "senza", title: groups.length ? "Senza gruppo" : "", list: rooms.filter((r) => !r.group_id || !groups.some((g) => g.id === r.group_id)) }]
+        .filter((s) => s.list.length > 0)
+        .map((s) => (
+          <section key={s.key} className="flex flex-col gap-2">
+            {s.title && <h3 className="border-b border-white/10 pb-1 font-heading text-lg tracking-wide text-peach">{s.title}</h3>}
+            <ul className="flex flex-col gap-2">
+              {s.list.map((r) => {
+                const i = rooms.indexOf(r);
+                return <RoomRow key={r.id} room={r} groups={groups} ownerName={r.owner_character_id ? (ownerNames[r.owner_character_id] ?? "") : ""} first={i === 0} last={i === rooms.length - 1} />;
+              })}
+            </ul>
+          </section>
         ))}
-      </ul>
       {rooms.length === 0 && <p className="text-sm text-muted-foreground">Nessuna chat in questo quartiere.</p>}
     </div>
   );
 }
 
 /** Gruppi di chat del quartiere (dal Westeros: GroupsEditor) */
-function GroupsEditor({ districtId, groups }: { districtId: string; groups: RoomGroup[] }) {
+function GroupsEditor({ districtId, groups, rooms }: { districtId: string; groups: RoomGroup[]; rooms: Room[] }) {
   const [name, setName] = useState("");
+  // gruppo che si sta rinominando
+  const [renaming, setRenaming] = useState<{ id: string; name: string; description: string } | null>(null);
   const { pending, error, execute } = useAdminAction();
   return (
     <div className="glass flex flex-col gap-2 rounded-2xl p-3">
       <p className="text-sm font-medium">Gruppi di chat</p>
-      <p className="text-xs text-muted-foreground">Dividono le chat nella finestra del quartiere (es. «Locali», «Case», «Campus»). Eliminando un gruppo le chat restano, senza gruppo.</p>
+      <p className="text-xs text-muted-foreground">
+        Dividono le chat nella finestra del quartiere (es. «Locali», «Case», «Campus»); con la matita si cambiano nome e breve descrizione, che compare sotto il nome. Eliminando un gruppo le chat restano, senza gruppo.
+      </p>
       <ErrorText error={error} />
       <ul className="flex flex-wrap gap-2">
         {groups.map((g, i) => (
           <li key={g.id} className="flex items-center gap-1 rounded-full bg-white/10 py-0.5 pr-1 pl-3 text-sm">
-            {g.name}
+            {renaming?.id === g.id ? (
+              <form
+                className="flex flex-wrap items-center gap-1 py-1"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  execute(() => saveRoomGroup({ id: g.id, districtId, name: renaming.name, description: renaming.description }), () => setRenaming(null));
+                }}
+              >
+                <input
+                  className="h-7 w-36 rounded-full border border-input bg-night/40 px-2 text-sm outline-none"
+                  value={renaming.name}
+                  maxLength={80}
+                  autoFocus
+                  onChange={(e) => setRenaming({ ...renaming, name: e.target.value })}
+                  aria-label="Nome del gruppo"
+                />
+                <input
+                  className="h-7 w-64 rounded-full border border-input bg-night/40 px-2 text-sm outline-none"
+                  value={renaming.description}
+                  maxLength={300}
+                  placeholder="Breve descrizione (facoltativa)"
+                  onChange={(e) => setRenaming({ ...renaming, description: e.target.value })}
+                  aria-label="Descrizione del gruppo"
+                />
+                <button type="submit" className="rounded-full p-1 text-mint hover:bg-white/10" aria-label="Salva il nome">
+                  <Save className="size-3.5" />
+                </button>
+              </form>
+            ) : (
+              <>
+                {g.name}
+                <span className="text-xs text-muted-foreground">({rooms.filter((r) => r.group_id === g.id).length})</span>
+                <button
+                  type="button"
+                  onClick={() => setRenaming({ id: g.id, name: g.name, description: g.description ?? "" })}
+                  className="rounded-full p-1 text-muted-foreground hover:bg-white/10 hover:text-foreground"
+                  aria-label={`Modifica il gruppo «${g.name}»`}
+                  title={g.description ? `Modifica · ${g.description}` : "Modifica nome e descrizione"}
+                >
+                  <Pencil className="size-3.5" />
+                </button>
+              </>
+            )}
             <MoveButtons first={i === 0} last={i === groups.length - 1} disabled={pending} onMove={(d) => execute(() => moveWorldItem("room_groups", g.id, d))} />
             <DeleteButton what={`il gruppo «${g.name}»`} disabled={pending} onConfirm={() => execute(() => deleteRoomGroup(g.id))} />
           </li>
@@ -521,6 +576,8 @@ function RoomForm({ room, districtId, groups, ownerName = "", onDone }: { room?:
     name: room?.name ?? "",
     description: room?.description ?? "",
     groupId: room?.group_id ?? null,
+    // "+ Nuovo gruppo": si crea insieme alla chat
+    newGroupName: undefined as string | undefined,
     imageUrl: room?.image_url ?? null,
     isOpen: room?.is_open ?? true,
     // le chat con password non si gestiscono da qui
@@ -541,15 +598,37 @@ function RoomForm({ room, districtId, groups, ownerName = "", onDone }: { room?:
         <FieldLabel label="Nome">
           <input className={inputClass} value={form.name} maxLength={80} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
         </FieldLabel>
-        <FieldLabel label="Gruppo">
-          <select className={inputClass} value={form.groupId ?? ""} onChange={(e) => setForm({ ...form, groupId: e.target.value || null })}>
-            <option value="">Senza gruppo</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </select>
+        <FieldLabel label="Gruppo" hint="Divide le chat nella finestra del quartiere: è solo un titolo per tenere ordine">
+          <span className="flex flex-col gap-2">
+            <select
+              className={inputClass}
+              value={form.newGroupName !== undefined ? "__nuovo" : (form.groupId ?? "")}
+              onChange={(e) =>
+                e.target.value === "__nuovo"
+                  ? setForm({ ...form, groupId: null, newGroupName: "" })
+                  : setForm({ ...form, groupId: e.target.value || null, newGroupName: undefined })
+              }
+            >
+              <option value="">Senza gruppo</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+              <option value="__nuovo">+ Nuovo gruppo…</option>
+            </select>
+            {form.newGroupName !== undefined && (
+              <input
+                className={inputClass}
+                value={form.newGroupName}
+                maxLength={80}
+                autoFocus
+                placeholder="Nome del gruppo nuovo (es. Fortezza Rossa)"
+                onChange={(e) => setForm({ ...form, newGroupName: e.target.value })}
+                required
+              />
+            )}
+          </span>
         </FieldLabel>
       </div>
       <FieldLabel label="Descrizione">

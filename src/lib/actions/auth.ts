@@ -83,11 +83,8 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
   // (Se la conferma email è disattivata Supabase apre già la sessione: la chiudiamo.)
   if (data.session) await supabase.auth.signOut();
 
-  const confirmText = data.session
-    ? "Ora puoi accedere con il nome del personaggio e la password."
-    : "Ti abbiamo mandato un'email: apri il link per confermare l'account, poi accedi con il nome del personaggio.";
-  if (formData.get("in_modal") === "1") return { success: confirmText };
-  redirect("/?registrato=1");
+  // Si accede subito (conferma email disattivata in Supabase): l'avviso lo mostra il modulo
+  return { success: "Iscrizione avvenuta con successo. Puoi loggare subito con il tuo utente e la password che hai scelto in fase d'iscrizione." };
 }
 
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {

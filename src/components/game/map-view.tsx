@@ -183,8 +183,8 @@ function RoomList({
   onEnter: () => void;
 }) {
   const sections = [
-    { id: "senza-gruppo", name: null as string | null, rooms: rooms.filter((r) => !groups.some((g) => g.id === r.group_id)) },
-    ...groups.map((g) => ({ id: g.id, name: g.name as string | null, rooms: rooms.filter((r) => r.group_id === g.id) })),
+    { id: "senza-gruppo", name: null as string | null, description: "", rooms: rooms.filter((r) => !groups.some((g) => g.id === r.group_id)) },
+    ...groups.map((g) => ({ id: g.id, name: g.name as string | null, description: g.description ?? "", rooms: rooms.filter((r) => r.group_id === g.id) })),
   ].filter((s) => s.rooms.length > 0);
 
   return (
@@ -193,7 +193,12 @@ function RoomList({
       {rooms.length === 0 && <p className="text-center text-sm text-muted-foreground">Nessuna chat in questo quartiere.</p>}
       {sections.map((section) => (
         <section key={section.id}>
-          {section.name && <h3 className="mb-2 border-b border-border pb-1 font-heading text-xl tracking-wide text-peach">{section.name}</h3>}
+          {section.name && (
+            <div className="mb-2 border-b border-border pb-1">
+              <h3 className="font-heading text-xl tracking-wide text-peach">{section.name}</h3>
+              {section.description && <p className="text-xs leading-snug text-muted-foreground italic">{section.description}</p>}
+            </div>
+          )}
           <ul className="flex flex-col gap-2">
             {section.rooms.map((room) => {
               const n = activity[room.id] ?? 0;

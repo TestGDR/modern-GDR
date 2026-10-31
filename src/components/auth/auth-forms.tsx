@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { MailCheck } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CircleCheck, MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,8 +81,29 @@ type SignUpFormProps = {
   onGoToLogin?: () => void;
 };
 
+/** Avviso in primo piano dopo l'iscrizione: si chiude con "Ok!" */
+function SignUpDone({ text, onOk }: { text: string; onOk: () => void }) {
+  // sopra a tutto, anche fuori dalla finestra di iscrizione
+  return createPortal(
+    <div role="dialog" aria-modal="true" aria-labelledby="iscrizione-ok" className="fixed inset-0 z-[100] grid place-items-center bg-night/70 p-4 backdrop-blur-sm">
+      <div className="glass flex w-full max-w-sm flex-col items-center gap-3 rounded-3xl p-6 text-center shadow-2xl">
+        <CircleCheck className="size-12 text-mint" />
+        <h2 id="iscrizione-ok" className="font-heading text-3xl tracking-wide text-sunset">
+          Benvenuto!
+        </h2>
+        <p className="text-sm leading-relaxed">{text}</p>
+        <Button type="button" onClick={onOk} autoFocus className="mt-2 h-11 w-full rounded-full text-base">
+          Ok!
+        </Button>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export function SignUpForm({ inModal, onGoToLogin }: SignUpFormProps = {}) {
   const [state, action, pending] = useActionState(signUp, initial);
+  const router = useRouter();
   // Iscrizioni chiuse dallo staff (Gestione → Iscrizioni)
   const [closed, setClosed] = useState<string | null>(null);
   useEffect(() => {
@@ -107,18 +129,8 @@ export function SignUpForm({ inModal, onGoToLogin }: SignUpFormProps = {}) {
   }
 
   if (state.success) {
-    return (
-      <div className="flex flex-col items-center gap-3 text-center">
-        <MailCheck className="size-12 text-mint" />
-        <p className="font-semibold">Registrazione completata!</p>
-        <p className="text-sm text-muted-foreground">{state.success}</p>
-        {onGoToLogin && (
-          <Button type="button" onClick={onGoToLogin} className="mt-2 h-11 w-full rounded-full text-base">
-            Accedi
-          </Button>
-        )}
-      </div>
-    );
+    // Ok!: dalla finestra della home si passa all'accesso, dalla pagina di iscrizione si torna alla home
+    return <SignUpDone text={state.success} onOk={() => (onGoToLogin ? onGoToLogin() : router.push("/"))} />;
   }
 
   return (
