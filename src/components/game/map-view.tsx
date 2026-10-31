@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { KeyRound, Lock, MapPin } from "lucide-react";
 import { FloatingWindow } from "@/components/floating-window";
 import { MiamiIllustration } from "@/components/game/miami-illustration";
+import { setCurrentMap } from "@/lib/current-map";
 import { createClient } from "@/lib/supabase/client";
 import type { District, GameMap, Room, RoomGroup } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,10 @@ export function MapView({ maps, districts, groups, rooms, activity, initialDistr
     if (pathname !== "/mappa") setOpenId(null);
   }
   const map = maps.find((m) => m.id === mapId) ?? maps[0];
+  // la barra laterale mostra nome, immagine e descrizione della mappa che si sta guardando
+  useEffect(() => {
+    if (map) setCurrentMap(map.id);
+  }, [map]);
   const open = districts.find((d) => d.id === openId) ?? null;
 
   if (!map) {

@@ -37,10 +37,12 @@ import { sidebarIconClass } from "@/components/game/sidebar-styles";
 import { FloatingWindow } from "@/components/floating-window";
 import { signOut } from "@/lib/actions/auth";
 import { AVAILABILITY, loadPresenceState, savePresenceState, type Availability } from "@/lib/availability";
+import { onCurrentMap, readCurrentMap } from "@/lib/current-map";
 import { initials } from "@/lib/format";
 import { applyPrefs, loadPrefs } from "@/lib/prefs";
 import { createClient } from "@/lib/supabase/client";
 import { setInvisible } from "@/lib/actions/chat";
+import type { GameMap } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------ Cassetto su mobile ------------------------------ */
@@ -135,21 +137,48 @@ function useCurrentRoom() {
   return { roomId, info };
 }
 
-/** Immagine della chat in cui si è, con info del luogo e meteo */
-function PlaceCard({ info }: { info: RoomInfo | null }) {
-  // fuori dalle chat (sulla mappa) niente scritte: solo il banner
-  const title = info?.name ?? "";
-  const subtitle = info?.district?.name ?? "";
+/** Fuori dalle chat: la mappa che si sta guardando (o la prima attiva) */
+function useCurrentMap(enabled: boolean) {
+  const [maps, setMaps] = useState<GameMap[] | null>(null);
+  const [chosen, setChosen] = useState<string | null>(null);
+  useEffect(() => {
+    if (!enabled || maps) return;
+    let alive = true;
+    createClient()
+      .from("maps")
+      .select("*")
+      .eq("active", true)
+      .order("sort_order")
+      .order("name")
+      .then(({ data }) => alive && setMaps((data ?? []) as GameMap[]));
+    return () => {
+      alive = false;
+    };
+  }, [enabled, maps]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mappa scelta in questa sessione del browser
+    setChosen(readCurrentMap());
+    return onCurrentMap(setChosen);
+  }, []);
+  if (!enabled || !maps) return null;
+  return maps.find((m) => m.id === chosen) ?? maps[0] ?? null;
+}
+
+/** Immagine della chat in cui si è (o della mappa, fuori dalle chat), con info del luogo e meteo */
+function PlaceCard({ info, map }: { info: RoomInfo | null; map: GameMap | null }) {
+  // in chat: nome della chat e quartiere; sulla mappa: il nome della mappa
+  const title = info?.name ?? map?.name ?? "";
+  const subtitle = info?.district?.name ?? (map ? "Mappa" : "");
   const gradient = info?.district?.gradient ?? "from-violet via-flamingo to-peach";
   const iconBtn = "grid size-8 place-items-center rounded-full bg-night/60 text-white backdrop-blur hover:bg-night/80";
   const weather = useGameWeather();
 
   return (
     <div className={cn("relative aspect-[4/3] overflow-hidden rounded-2xl bg-gradient-to-br", gradient)}>
-      {/* in chat l'immagine della chat; sulla mappa (fuori dalle chat) il banner di Miami */}
+      {/* in chat l'immagine della chat; sulla mappa l'immagine della mappa (o il banner della città) */}
       {(info?.image_url || !info) && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={info?.image_url || "/images/banner-miami.webp"} alt="" className="absolute inset-0 size-full object-cover" />
+        <img src={info?.image_url || map?.image_url || "/images/banner-miami.webp"} alt="" className="absolute inset-0 size-full object-cover" />
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-night/85 via-night/10 to-transparent" />
       <div className="absolute top-2 right-2 flex gap-1.5">
@@ -160,10 +189,14 @@ function PlaceCard({ info }: { info: RoomInfo | null }) {
               <p className="whitespace-pre-line">{info.description || "Nessuna descrizione per questa chat."}</p>
               {info.district?.description && <p className="whitespace-pre-line text-muted-foreground">{info.district.description}</p>}
             </div>
+          ) : map ? (
+            <div className="flex flex-col gap-3 text-sm leading-relaxed">
+              <p className="text-xs tracking-widest text-muted-foreground uppercase">Mappa</p>
+              <p className="whitespace-pre-line">{map.description || "Nessuna descrizione per questa mappa."}</p>
+              <p className="text-xs text-muted-foreground">Scegli un quartiere ed entra in una chat: qui vedrai la sua immagine e la sua descrizione.</p>
+            </div>
           ) : (
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Sei a Miami, Florida. Apri la mappa, scegli un quartiere ed entra in una chat: qui vedrai la sua immagine e la sua descrizione.
-            </p>
+            <p className="text-sm leading-relaxed text-muted-foreground">Scegli un quartiere sulla mappa ed entra in una chat: qui vedrai la sua immagine e la sua descrizione.</p>
           )}
         </WindowButton>
         {/* meteo reale di San Diego: icona e temperatura, cliccando il dettaglio */}
@@ -562,13 +595,14 @@ export function GameSidebar({
   communitySlot: React.ReactNode;
 }) {
   const { roomId, info } = useCurrentRoom();
+  const map = useCurrentMap(!roomId);
   return (
     <div className="flex flex-col gap-4 p-4">
       <PrefsLoader />
       <div className="hidden justify-center lg:flex">
         <Logo href="/bacheca" size="sm" />
       </div>
-      <PlaceCard info={info} />
+      <PlaceCard info={info} map={roomId ? null : map} />
       <MainButtons />
       {newsSlot}
       <FeatureIcons />
