@@ -14,7 +14,8 @@ export type Prefs = {
   sound_off: string;
   sound_chat: string;
   chat_sound_on: boolean;
-  text_scale: number;
+  /** grandezza del testo della chat, in punti */
+  chat_font_pt: number;
   speech_color: string;
   action_color: string;
 };
@@ -26,28 +27,23 @@ export const DEFAULT_PREFS: Prefs = {
   sound_off: "file-bip1",
   sound_chat: "file-chat1",
   chat_sound_on: true,
-  text_scale: 100,
+  chat_font_pt: 11,
   speech_color: "#fde68a",
   action_color: "#e4dfdb",
 };
 
-export const TEXT_SCALES = [
-  { value: 90, label: "Piccolo" },
-  { value: 100, label: "Normale" },
-  { value: 112, label: "Grande" },
-  { value: 125, label: "Più grande" },
-  { value: 140, label: "Molto grande" },
-];
+/** Grandezze del testo della chat, in pt */
+export const CHAT_FONT_SIZES = [9, 10, 11, 12, 13, 14, 15, 16, 18];
 
 // le ultime lette o salvate nel database (per tornarci uscendo dall'anteprima)
 let saved: Prefs | null = null;
-const COLUMNS = "sounds_on, volume, sound_on, sound_off, sound_chat, chat_sound_on, text_scale, speech_color, action_color";
+const COLUMNS = "sounds_on, volume, sound_on, sound_off, sound_chat, chat_sound_on, chat_font_pt, speech_color, action_color";
 
 /** Applica le preferenze alla pagina: variabili CSS e suoni */
 export function applyPrefs(p: Prefs) {
   if (typeof document === "undefined") return;
   const root = document.documentElement.style;
-  root.setProperty("--text-scale", String(p.text_scale / 100));
+  root.setProperty("--chat-font", `${p.chat_font_pt}pt`);
   root.setProperty("--chat-speech", p.speech_color);
   root.setProperty("--chat-action", p.action_color);
   setSoundPrefs({

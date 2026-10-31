@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Play, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { playSound, soundsOf, type SoundGroup } from "@/lib/notify-sound";
-import { DEFAULT_PREFS, TEXT_SCALES, applyPrefs, loadPrefs, savePrefs, savedPrefs, type Prefs } from "@/lib/prefs";
+import { CHAT_FONT_SIZES, DEFAULT_PREFS, applyPrefs, loadPrefs, savePrefs, savedPrefs, type Prefs } from "@/lib/prefs";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -107,11 +107,11 @@ export function PrefsPanel() {
       <section className="flex flex-col gap-3 rounded-xl bg-white/5 p-4">
         <h3 className="font-heading text-xl tracking-wide text-peach">Testo e colori della chat</h3>
         <label className="flex flex-col gap-1.5 text-sm">
-          Grandezza del testo
-          <select value={prefs.text_scale} onChange={(e) => set("text_scale", Number(e.target.value))} className={field}>
-            {TEXT_SCALES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label} ({t.value}%)
+          Grandezza del testo in chat
+          <select value={prefs.chat_font_pt} onChange={(e) => set("chat_font_pt", Number(e.target.value))} className={field}>
+            {CHAT_FONT_SIZES.map((pt) => (
+              <option key={pt} value={pt}>
+                {pt} pt{pt === DEFAULT_PREFS.chat_font_pt ? " (normale)" : ""}
               </option>
             ))}
           </select>
@@ -126,7 +126,7 @@ export function PrefsPanel() {
             Testo dell&apos;azione
           </label>
         </div>
-        <p className="rounded-lg bg-night/50 px-3 py-2 text-sm leading-relaxed" style={{ color: "var(--chat-action)" }}>
+        <p className="rounded-lg bg-night/50 px-3 py-2 leading-relaxed" style={{ color: "var(--chat-action)", fontSize: "var(--chat-font, 11pt)" }}>
           Lena si appoggia al bancone. <span className="font-semibold" style={{ color: "var(--chat-speech)" }}>«Stasera si va a South Beach?»</span> chiede sorridendo.
         </p>
         <button

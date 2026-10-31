@@ -127,8 +127,6 @@
   }
   html {
     @apply font-sans;
-    /* Grandezza del testo scelta nelle preferenze (Scheda -> Impostazioni) */
-    font-size: calc(100% * var(--text-scale, 1));
   }
 
   /* Barre di scorrimento sottili, nei colori del tramonto (non grigie) */

@@ -84,7 +84,8 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
   const names = mine ? [] : myNames;
   const editable =
     mine && !m.edited_at && ["azione", "fuori_gioco", "master", "sussurro"].includes(m.kind) && now - Date.parse(m.created_at) < EDIT_WINDOW_MS;
-  const deletable = canModerate || (mine && ["azione", "fuori_gioco", "master", "sussurro"].includes(m.kind));
+  // eliminare: solo amministratori e moderatori (chat.moderare); i giocatori correggono una volta entro 5 minuti
+  const deletable = canModerate;
   const tools =
     editable || deletable ? (
       <span className="flex shrink-0 items-center gap-0.5 opacity-60 transition-opacity group-hover:opacity-100">
@@ -116,7 +117,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
 
   if (m.kind === "dado") {
     return (
-      <div className="group flex items-start gap-2 rounded-xl border border-peach/25 bg-peach/10 px-3 py-2 text-sm">
+      <div className="group flex items-start gap-2 rounded-xl border border-peach/25 bg-peach/10 px-3 py-2" style={{ fontSize: "calc(var(--chat-font, 11pt) * 0.92)" }}>
         <Dices className="mt-0.5 size-4 shrink-0 text-peach" />
         <p className="min-w-0 flex-1">
           <span className="mr-2 text-xs text-muted-foreground">{time}</span>
@@ -137,7 +138,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
 
   if (m.kind === "sussurro") {
     return (
-      <div className="group flex items-start gap-2 rounded-xl border border-lavender/30 bg-violet/25 px-3 py-2 text-sm">
+      <div className="group flex items-start gap-2 rounded-xl border border-lavender/30 bg-violet/25 px-3 py-2" style={{ fontSize: "calc(var(--chat-font, 11pt) * 0.92)" }}>
         <Lock className="mt-0.5 size-3.5 shrink-0 text-lavender" />
         <p className="min-w-0 flex-1">
           <span className="mr-2 text-xs text-muted-foreground">{time}</span>
@@ -154,7 +155,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
 
   if (m.kind === "fuori_gioco") {
     return (
-      <div className="group flex items-start gap-2 px-1 text-sm text-muted-foreground">
+      <div className="group flex items-start gap-2 px-1 text-muted-foreground" style={{ fontSize: "calc(var(--chat-font, 11pt) * 0.92)" }}>
         <p className="min-w-0 flex-1">
           <span className="mr-2 text-xs">{time}</span>
           <span className="mr-1 rounded bg-white/10 px-1.5 py-0.5 text-[0.65rem] font-semibold tracking-wider uppercase">OFF</span>
@@ -174,7 +175,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
           <span className="ml-auto text-xs text-muted-foreground">{time}</span>
           {tools}
         </header>
-        <p className="leading-relaxed whitespace-pre-line" style={{ color: "var(--chat-action, #e4dfdb)" }}>
+        <p className="leading-relaxed whitespace-pre-line" style={{ color: "var(--chat-action, #e4dfdb)", fontSize: "var(--chat-font, 11pt)" }}>
           <FormattedText text={m.content} names={names} />
           {edited}
         </p>
@@ -218,7 +219,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
           <span className="ml-auto text-xs text-muted-foreground">{time}</span>
           {tools}
         </header>
-        <p className="text-[0.95rem] leading-relaxed whitespace-pre-line" style={{ color: "var(--chat-action, #e4dfdb)" }}>
+        <p className="leading-relaxed whitespace-pre-line" style={{ color: "var(--chat-action, #e4dfdb)", fontSize: "var(--chat-font, 11pt)" }}>
           <FormattedText text={m.content} names={names} />
           {edited}
         </p>
@@ -231,7 +232,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
 function CombatRow({ message: m, time, canSeeRolls, tools }: { message: Message; time: string; canSeeRolls: boolean; tools: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="group flex items-start gap-2 rounded-xl border border-flamingo/30 bg-flamingo/10 px-3 py-2 text-sm">
+    <div className="group flex items-start gap-2 rounded-xl border border-flamingo/30 bg-flamingo/10 px-3 py-2" style={{ fontSize: "calc(var(--chat-font, 11pt) * 0.92)" }}>
       <Swords className="mt-0.5 size-4 shrink-0 text-flamingo" />
       <div className="min-w-0 flex-1">
         <p>
