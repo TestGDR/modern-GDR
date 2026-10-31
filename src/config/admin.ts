@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Shield,
   Sparkles,
+  Trophy,
   UserPlus,
   Users,
   Wrench,
@@ -53,8 +54,10 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { href: "/gestione/caratteristiche", category: "regole", title: "Caratteristiche", description: "Le caratteristiche dei personaggi (INT, RIF, VIG…): sigla, nome, ordine e quali sono attive.", icon: Gauge, permissions: ["regole.gestire"] },
   { href: "/gestione/abilita", category: "regole", title: "Abilità", description: "Le abilità che si comprano in scheda e la caratteristica a cui è legata ciascuna.", icon: Sparkles, permissions: ["regole.gestire"] },
   { href: "/gestione/scelte", category: "regole", title: "Vantaggi, svantaggi e tratti", description: "Le voci scelte in creazione: costo in PX ed eventuale bonus o malus sui tiri.", icon: ListChecks, permissions: ["regole.gestire"] },
+  { href: "/gestione/voci", category: "regole", title: "Voci nuove dei personaggi", description: "Le richieste dei personaggi già approvati di aggiungere vantaggi, svantaggi e tratti (una volta, con i PX rimasti).", icon: Sparkles, permissions: ["personaggi.approvare"] },
   { href: "/gestione/patrimonio", category: "regole", title: "Patrimonio", description: "Il tenore di vita: costo in PX, entrata e mantenimento mensili, quota iniziale in banca.", icon: Gem, permissions: ["regole.gestire"] },
   { href: "/gestione/universita", category: "regole", title: "Università", description: "Corsi, corsi obbligatori degli indirizzi, semestri: iscrizioni, simulazione degli esami e pubblicazione dei voti.", icon: GraduationCap, permissions: ["universita.gestire"] },
+  { href: "/gestione/sport", category: "regole", title: "Sport", description: "Athletic Department: sport e ruoli, università rivali, stagioni e calendari, simulazione dei risultati, roster e premi.", icon: Trophy, permissions: ["sport.gestire"] },
   { href: "/gestione/elenchi", category: "regole", title: "Elenchi della scheda", description: "Le voci a tendina della scheda: indirizzi di studio, anni di corso, squadre e club.", icon: BookOpenCheck, permissions: ["elenchi.gestire"] },
   // Mondo e comunicazione
   { href: "/gestione/mondo", category: "mondo", title: "Mondo", description: "Mappe, quartieri e chat: immagini, posizione dei punti sulla mappa, accesso e gruppi di chat.", icon: MapIcon, permissions: ["mondo.gestire"] },

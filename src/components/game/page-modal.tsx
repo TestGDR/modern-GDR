@@ -9,7 +9,7 @@ import { ErrorBoundary } from "@/components/game/error-boundary";
 // pagina in cui si è (rotte intercettate in src/app/(gioco)/@modal).
 // Ricaricando (F5) l'indirizzo di una finestra si torna alla pagina che c'era
 // sotto (o alla mappa), senza riaprire la finestra (ModalReopen).
-export const MODAL_PREFIXES = ["/scheda", "/social", "/forum", "/messaggi", "/ticket", "/gestione", "/utility", "/telefono", "/universita"];
+export const MODAL_PREFIXES = ["/scheda", "/social", "/forum", "/messaggi", "/ticket", "/gestione", "/utility", "/telefono", "/universita", "/sport", "/calendario"];
 
 export function isModalPath(pathname: string) {
   return MODAL_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

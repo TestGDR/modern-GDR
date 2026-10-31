@@ -539,7 +539,7 @@ function CourseRow({ c, course, catalog, homework }: { c: EnrollmentView; course
           {homework.map((h, i) => (
             <p key={h.id} className={cn(h.crit === "success" && "text-mint", h.crit === "failure" && "text-destructive")}>
               <strong className="text-foreground">Compito {i + 1}:</strong> {attr} {h.attr} + {skill ?? "abilità"} {h.skill} + d10{" "}
-              {h.crit === "success" ? `[10 → +${h.extra}]` : h.crit === "failure" ? `[1 → −${h.extra}]` : h.d10}
+              {h.crit === "success" ? `[${h.d10} → +${h.extra}]` : h.crit === "failure" ? `[${h.d10} → −${h.extra}]` : h.d10}
               {h.mods ? ` ${h.mods > 0 ? "+" : "−"} ${Math.abs(h.mods)}` : ""} = {h.total} vs CD {h.cd} →{" "}
               {h.points > 0 ? `+${h.points}` : h.total >= h.cd ? "riuscito (tetto raggiunto)" : "non riuscito"}
             </p>
@@ -556,7 +556,7 @@ function CourseRow({ c, course, catalog, homework }: { c: EnrollmentView; course
             {hwPoints > 0 && ` (di cui +${hwPoints} dai compiti)`} (coursework {weights[0] ?? 20}%, midterm {weights[1] ?? 30}%, final {weights[2] ?? 50}%)
             {c.rolls[0] && (
               <>
-                {" "}· Modificatori: impegno {c.rolls[0].mods.impegno}, carico {c.rolls[0].mods.carico}, tratti {c.rolls[0].mods.tratti}, ripetizione {c.rolls[0].mods.ripetizione}, Master {c.rolls[0].mods.master}
+                {" "}· Modificatori: impegno {c.rolls[0].mods.impegno}, carico {c.rolls[0].mods.carico}, voci della scheda {c.rolls[0].mods.voci ? "(per prova, sopra)" : c.rolls[0].mods.tratti}, ripetizione {c.rolls[0].mods.ripetizione}, Master {c.rolls[0].mods.master}
                 {c.rolls[0].mods.nota_master && ` (“${c.rolls[0].mods.nota_master}”)`}
               </>
             )}

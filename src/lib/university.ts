@@ -31,9 +31,11 @@ export const GRADE_POINTS: Record<string, number> = { A: 4, "A-": 3.7, "B+": 3.3
 /** Il tiro come nella specifica: "INT 8 + Scienze 6 + d10 [10 → +7] + 2 = 33 vs CD 12 → 100" */
 export function rollText(r: ExamRoll, attrCode: string, skillName: string | null) {
   const die =
-    r.crit === "success" ? `d10 [10 → +${r.extra}]` : r.crit === "failure" ? `d10 [1 → −${r.extra}]` : `d10 ${r.d10}`;
+    r.crit === "success" ? `d10 [${r.d10} → +${r.extra}]` : r.crit === "failure" ? `d10 [${r.d10} → −${r.extra}]` : `d10 ${r.d10}`;
   const mods = r.mods.totale ? ` ${r.mods.totale > 0 ? "+" : "−"} ${Math.abs(r.mods.totale)}` : "";
-  return `${attrCode} ${r.attr} + ${skillName ?? "abilità"} ${r.skill} + ${die}${mods} = ${r.total} vs CD ${r.cd} → ${r.score}`;
+  const voci = (r.mods.voci ?? []).filter((v) => v.value !== 0).map((v) => `${v.name} ${v.value > 0 ? "+" : "−"}${Math.abs(v.value)}`);
+  const cool = r.mods.sangue_freddo ? ` (Sangue freddo: ritirato il ${r.mods.sangue_freddo})` : "";
+  return `${attrCode} ${r.attr} + ${skillName ?? "abilità"} ${r.skill} + ${die}${cool}${mods} = ${r.total} vs CD ${r.cd} → ${r.score}${voci.length ? ` · ${voci.join(", ")}` : ""}`;
 }
 
 /** Pagella breve da incollare in chat */

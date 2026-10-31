@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, CircleAlert, Loader2, Pencil, Send } from "lucide-react";
+import { OptionChoice } from "@/components/creation/option-choice";
 import { SheetFrame, type SheetVariant } from "@/components/game/character-sheet-window";
 import { Button } from "@/components/ui/button";
 import { saveCreation, submitCharacter, type CreationPatch } from "@/lib/actions/creation";
@@ -661,14 +662,7 @@ function StepOptions({
                           </span>
                         )}
                         {o.requires_choice && o.requires_choice !== "master" && (
-                          <input
-                            value={detail.choice}
-                            maxLength={80}
-                            onChange={(e) => onDetail(o.id, { choice: e.target.value })}
-                            placeholder={o.choice_hint ? `Indica ${o.choice_hint}` : "La tua scelta"}
-                            aria-label={`Scelta per ${o.name}`}
-                            className={cn("h-8 min-w-0 flex-1 rounded-lg border bg-night/40 px-2 outline-none", detail.choice.trim() ? "border-input" : "border-peach/60")}
-                          />
+                          <OptionChoice option={o} value={detail.choice} onChange={(v) => onDetail(o.id, { choice: v })} />
                         )}
                       </div>
                     )}

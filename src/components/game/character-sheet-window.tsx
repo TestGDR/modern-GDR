@@ -31,6 +31,7 @@ import { FormMessage } from "@/components/auth/auth-forms";
 import { AffectionsSection } from "@/components/game/affections";
 import { ErrorBoundary } from "@/components/game/error-boundary";
 import { HealthSection } from "@/components/game/health-section";
+import { OptionRequestPanel } from "@/components/game/option-request";
 import { AdminSheetPanel } from "@/components/game/admin-sheet";
 import { useCloseModal } from "@/components/game/page-modal";
 import { PrefsPanel } from "@/components/game/prefs-panel";
@@ -278,6 +279,7 @@ export function CharacterSheetWindow({
           ) : section.key === "tratti" ? (
             <SectionFrame title="Tratti">
               <ChosenOptions build={build} rules={rules} characterId={character.id} />
+              {isOwner && character.status === "approvata" && <OptionRequestPanel character={character} rules={rules} build={build} />}
               <h3 className="mt-6 mb-2 font-heading text-xl tracking-wide text-peach">Carattere</h3>
               <FreeText text={character.traits} isOwner={isOwner} />
             </SectionFrame>
@@ -693,6 +695,7 @@ function ChosenOptions({ build, rules, characterId }: { build: CharacterBuild; r
                       )}
                     </p>
                     {o.description && <p className="text-xs text-muted-foreground">{o.description}</p>}
+                    {o.effects.some((e) => e.type === "linked_npc") && <p className="text-[0.7rem] text-orchid">Ha un PNG collegato: lo trovi in Utility → PNG.</p>}
                   </li>
                 );
               })}

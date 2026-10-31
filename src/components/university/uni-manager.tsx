@@ -453,6 +453,7 @@ function CourseForm({
     attribute_id: course?.attribute_id ?? lookup.attrs[0]?.id ?? "",
     skill_id: course?.skill_id ?? "",
     cd_modifier: course?.cd_modifier ?? 0,
+    area: course?.area ?? "",
     description: course?.description ?? "",
     active: course?.active ?? true,
   });
@@ -547,6 +548,14 @@ function CourseForm({
         <label className={label}>
           Modificatore CD
           <input type="number" min={-5} max={5} value={f.cd_modifier} onChange={(e) => set("cd_modifier", Number(e.target.value))} className={inputClass} />
+        </label>
+        <label className={label}>
+          Area
+          <select value={f.area} onChange={(e) => set("area", e.target.value as Course["area"])} className={inputClass}>
+            <option value="">Nessuna</option>
+            <option value="stem">STEM</option>
+            <option value="umanistica">Umanistica</option>
+          </select>
         </label>
         <label className={cn(label, "sm:col-span-4")}>
           Descrizione

@@ -500,6 +500,8 @@ export type Course = {
   attribute_id: string;
   skill_id: string | null;
   cd_modifier: number;
+  /** stem / umanistica / "" (per i tratti Mente scientifica e Mente umanistica) */
+  area: "" | "stem" | "umanistica";
   description: string;
   active: boolean;
 };
@@ -521,7 +523,20 @@ export type ExamRoll = {
   d10: number;
   crit: "none" | "success" | "failure";
   extra: number | null;
-  mods: { tratti: number; impegno: number; carico: number; ripetizione: number; master: number; nota_master: string | null; totale: number };
+  mods: {
+    tratti: number;
+    impegno: number;
+    carico: number;
+    ripetizione: number;
+    master: number;
+    nota_master: string | null;
+    totale: number;
+    /** voci della scheda applicate alla prova (dalla seconda tappa) */
+    voci?: { name: string; value: number }[];
+    cd_voci?: number;
+    /** Sangue freddo: il d10 ritirato */
+    sangue_freddo?: number | null;
+  };
   total: number;
   cd: number;
   margin: number;
@@ -605,4 +620,121 @@ export type TermStudent = {
   record: (StudentRecord & { character_id: string }) | null;
   report: TermReport | null;
   courses: EnrollmentView[] | null;
+};
+
+/* ------------------------------ Calendario e sport ------------------------------ */
+
+export type CalendarItem = {
+  id: string;
+  source: "evento" | "sport";
+  title: string;
+  description: string;
+  category: "evento" | "festa" | "lezione" | "staff" | "sport" | "universita";
+  starts_at: string;
+  ends_at: string | null;
+  location: string;
+  room_id: string | null;
+  status?: SportEventStatus;
+  phase?: SportPhase;
+  sport_id?: string;
+  recap?: string | null;
+};
+
+export type SportSeasonKind = "fall" | "winter" | "spring" | "year_round";
+export type SportFormat = "team_match" | "individual_match" | "team_race" | "individual_race";
+export type SportPhase = "friendly" | "regular" | "conference" | "national";
+export type SportEventStatus = "scheduled" | "postponed" | "cancelled" | "simulated" | "published";
+export type SquadStatus = "starter" | "reserve" | "captain" | "redshirt";
+
+export type Sport = {
+  id: string;
+  name: string;
+  description: string;
+  season: SportSeasonKind;
+  format: SportFormat;
+  allows_draw: boolean;
+  score_profile: Record<string, unknown>;
+  icon: string;
+  color: string;
+  group_id: string | null;
+  status: "active" | "archived";
+  sort_order: number;
+};
+export type SportPosition = {
+  id: string;
+  sport_id: string;
+  name: string;
+  attribute_id: string;
+  skill_id: string | null;
+  max_slots: number | null;
+  team_bonus: boolean;
+  sort_order: number;
+};
+export type SportTeam = { id: string; name: string; nickname: string; is_player_school: boolean; conference: boolean; is_national: boolean; active: boolean };
+export type SportTeamRating = { team_id: string; sport_id: string; rating: number };
+export type SportSeason = { id: string; sport_id: string; label: string; status: "planning" | "active" | "closed"; created_at: string };
+export type SportRosterEntry = {
+  id: number;
+  sport_id: string;
+  character_id: string;
+  position_id: string | null;
+  squad_status: SquadStatus;
+  scholarship: boolean;
+  training_intensity: "light" | "normal" | "intense";
+  training_bonus: number;
+  eligibility_override: "auto" | "eligible" | "ineligible";
+  injury_events_left: number;
+  injury_note: string;
+  is_returning: boolean;
+  suspended_events: number;
+  pending_sport_id: string | null;
+  pending_position_id: string | null;
+  joined_at: string;
+  left_at: string | null;
+};
+export type SportEvent = {
+  id: string;
+  season_id: string;
+  sport_id: string;
+  kind: "partita" | "incontro" | "gara" | "regata" | "meeting" | "torneo";
+  phase: SportPhase;
+  starts_at: string;
+  venue: "home" | "away" | "neutral";
+  room_id: string | null;
+  mode: "simulated" | "played_in_chat";
+  status: SportEventStatus;
+  notes: string;
+  recap_text: string;
+  master_mods: Record<string, { value: number; note?: string }>;
+};
+export type SportEventTeam = { event_id: string; team_id: string; score: number | null; placement: number | null; time_or_measure: string; points: number };
+export type SportAward = { id: number; sport_id: string | null; season_id: string | null; character_id: string; name: string; description: string; kind: "auto" | "custom"; created_at: string };
+export type SportStanding = { team_id: string; name: string; is_player_school: boolean; won: number; lost: number; drawn: number; diff: number; pct: number; points: number };
+export type SportEligibility = { eligible: boolean; reasons: string[]; override?: boolean };
+export type MySport = {
+  roster_id: number;
+  sport_id: string;
+  sport: string;
+  icon: string;
+  season: SportSeasonKind;
+  format: SportFormat;
+  position_id: string | null;
+  position: string | null;
+  squad_status: SquadStatus;
+  scholarship: boolean;
+  training_intensity: "light" | "normal" | "intense";
+  training_bonus: number;
+  injury_events_left: number;
+  injury_note: string;
+  returning: boolean;
+  suspended_events: number;
+  pending_sport: string | null;
+  pending_position: string | null;
+  eligibility: SportEligibility;
+  seasons_used: number;
+  redshirt_years: number;
+  events: number;
+  avg_grade: number | null;
+  highlights: number;
+  season_started: boolean;
 };

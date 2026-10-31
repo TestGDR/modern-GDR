@@ -17,12 +17,13 @@ import {
   Menu,
   MessagesSquare,
   RefreshCw,
+  Trophy,
   Users,
   X,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { CharacterAvatar } from "@/components/game/character-avatar";
-import { ComingSoon, WindowButton } from "@/components/game/info-window";
+import { WindowButton } from "@/components/game/info-window";
 import { closeAllWindows, isModalPath } from "@/components/game/page-modal";
 import { TicketIcon } from "@/components/game/ticket-icon";
 import { ForumIcon } from "@/components/game/forum-icon";
@@ -214,15 +215,13 @@ function MainButtons() {
 
 const iconCls = sidebarIconClass;
 
-/** Calendario, Social, Forum, Scheda, Ticket, Utility, Università */
+/** Calendario, Social, Forum, Scheda, Ticket, Utility, Università, Sport */
 function FeatureIcons() {
   return (
     <div className="grid grid-cols-3 gap-1">
-      <WindowButton label="Calendario" icon={<CalendarDays />} className={iconCls}>
-        <ComingSoon>
-          <p>Il calendario accademico e gli eventi della land: lezioni, feste, partite e appuntamenti dello staff.</p>
-        </ComingSoon>
-      </WindowButton>
+      <Link href="/calendario" className={iconCls}>
+        <CalendarDays /> Calendario
+      </Link>
       <SocialIcon />
       <ForumIcon />
       <Link href="/scheda" className={iconCls}>
@@ -234,6 +233,9 @@ function FeatureIcons() {
       </Link>
       <Link href="/universita" className={iconCls}>
         <GraduationCap /> Università
+      </Link>
+      <Link href="/sport" className={iconCls}>
+        <Trophy /> Sport
       </Link>
     </div>
   );
