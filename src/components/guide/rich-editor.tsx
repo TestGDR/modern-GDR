@@ -3,25 +3,51 @@
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
+import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import TextAlign from "@tiptap/extension-text-align";
 import { Color, FontFamily, FontSize, TextStyle } from "@tiptap/extension-text-style";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-// Editor di testo della guida (dal Westeros: RichEditor.tsx), con due modalità:
-// visuale (TipTap) e HTML. Restituisce sempre HTML.
+// Editor di testo del sito (guida, affetti, forum…; dal Westeros: RichEditor.tsx), con due
+// modalità: visuale (TipTap) e HTML. Restituisce sempre HTML.
+// Immagini ridimensionabili e affiancabili (sono "in linea": due nella stessa riga stanno
+// una accanto all'altra), tabelle con bordi visibili o invisibili.
+
+// Tabella con l'opzione "bordi invisibili" (classe tabella-invisibile)
+const SiteTable = Table.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      borderless: {
+        default: false,
+        parseHTML: (el: HTMLElement) => el.classList.contains("tabella-invisibile"),
+        renderHTML: (attrs: { borderless?: boolean }) => (attrs.borderless ? { class: "tabella-invisibile" } : {}),
+      },
+    };
+  },
+});
 
 // Cosa sa rappresentare l'editor visuale: il resto andrebbe perso
 const VISUAL_TAGS = new Set([
   "p", "br", "strong", "b", "em", "i", "u", "s", "strike", "del", "code", "pre",
   "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "blockquote", "hr", "a", "img", "span",
+  "table", "colgroup", "col", "tbody", "thead", "tr", "th", "td",
 ]);
 const VISUAL_ATTRS: Record<string, string[]> = {
   a: ["href", "target", "rel"],
   img: ["src", "alt", "title", "width", "height"],
   ol: ["start", "type"],
+  table: ["class"],
+  td: ["colspan", "rowspan", "colwidth"],
+  th: ["colspan", "rowspan", "colwidth"],
 };
-const VISUAL_STYLES: Record<string, string[]> = { span: ["color", "font-size", "font-family"], img: ["width", "height"] };
+const VISUAL_STYLES: Record<string, string[]> = {
+  span: ["color", "font-size", "font-family"],
+  img: ["width", "height"],
+  table: ["min-width", "width"],
+  col: ["width", "min-width"],
+};
 const ALIGN_TAGS = new Set(["p", "h1", "h2", "h3", "h4", "h5", "h6"]);
 
 /** true se passando all'editor visuale una parte del codice andrebbe persa */
@@ -47,11 +73,11 @@ export function visualEditorWouldLose(html: string) {
 }
 
 const LOSE_WARNING =
-  "Questo codice contiene elementi che l'editor visuale non sa mostrare (ad esempio div, tabelle, classi o stili particolari).\n\nPassando all'editor andrebbero persi. Vuoi continuare lo stesso?";
+  "Questo codice contiene elementi che l'editor visuale non sa mostrare (ad esempio div, classi o stili particolari).\n\nPassando all'editor andrebbero persi. Vuoi continuare lo stesso?";
 
 const fieldCls = "rounded-lg border border-input bg-night/40 px-2 text-xs outline-none focus-visible:border-ring";
 
-export function RichEditor({ value, onChange }: { value: string; onChange: (html: string) => void }) {
+export function RichEditor({ value, onChange, minHeight = "min-h-80" }: { value: string; onChange: (html: string) => void; minHeight?: string }) {
   const [mode, setMode] = useState<"visuale" | "html">(() => (visualEditorWouldLose(value) ? "html" : "visuale"));
 
   const editor = useEditor({
@@ -62,7 +88,12 @@ export function RichEditor({ value, onChange }: { value: string; onChange: (html
       Color,
       FontSize,
       FontFamily,
-      Image.configure({ resize: { enabled: true, minWidth: 60, minHeight: 40, alwaysPreserveAspectRatio: true } }),
+      // in linea: più immagini nella stessa riga stanno affiancate
+      Image.configure({ inline: true, resize: { enabled: true, minWidth: 60, minHeight: 40, alwaysPreserveAspectRatio: true } }),
+      SiteTable.configure({ resizable: true }),
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
     content: value,
     immediatelyRender: false,
@@ -77,7 +108,7 @@ export function RichEditor({ value, onChange }: { value: string; onChange: (html
             .join(";");
           return kept ? `style="${kept}"` : "";
         }),
-      attributes: { class: "guide-content min-h-80 p-4 outline-none" },
+      attributes: { class: `guide-content ${minHeight} p-4 outline-none` },
     },
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
   });
@@ -115,7 +146,7 @@ export function RichEditor({ value, onChange }: { value: string; onChange: (html
           value={value}
           onChange={(e) => onChange(e.target.value)}
           spellCheck={false}
-          className="block min-h-80 w-full resize-y bg-transparent p-4 font-mono text-xs leading-relaxed outline-none"
+          className={cn("block w-full resize-y bg-transparent p-4 font-mono text-xs leading-relaxed outline-none", minHeight)}
           aria-label="Codice HTML"
         />
       )}
@@ -171,12 +202,44 @@ function Toolbar({ editor }: { editor: Editor }) {
       {btn("❝", "Riquadro esempio / citazione", editor.isActive("blockquote"), () => chain().toggleBlockquote().run())}
       {btn("🔗", "Link", editor.isActive("link"), link)}
       <ImageButton editor={editor} />
+      {btn("▦", "Inserisci una tabella", false, () => chain().insertTable({ rows: 2, cols: 2, withHeaderRow: false }).run())}
       {btn("―", "Linea separatrice", false, () => chain().setHorizontalRule().run())}
       {sep}
       {btn("↶", "Annulla", false, () => chain().undo().run())}
       {btn("↷", "Ripeti", false, () => chain().redo().run())}
+      {/* immagine selezionata: dimensioni rapide (si può anche trascinare l'angolo) */}
+      {editor.isActive("image") && (
+        <span className="flex w-full flex-wrap items-center gap-1 border-t border-white/10 pt-1 text-xs text-muted-foreground">
+          Immagine:
+          {[25, 33, 50, 75, 100].map((p) => btn(`${p}%`, `Larghezza ${p}%`, false, () => resizeImage(editor, p)))}
+          <span className="ml-1 text-[0.65rem]">Per affiancarle, mettile nella stessa riga e rimpiccioliscile.</span>
+        </span>
+      )}
+      {/* cursore in una tabella: righe, colonne, bordi */}
+      {editor.isActive("table") && (
+        <span className="flex w-full flex-wrap items-center gap-1 border-t border-white/10 pt-1 text-xs text-muted-foreground">
+          Tabella:
+          {btn("+ riga", "Aggiungi una riga sotto", false, () => chain().addRowAfter().run())}
+          {btn("+ colonna", "Aggiungi una colonna a destra", false, () => chain().addColumnAfter().run())}
+          {btn("− riga", "Togli la riga", false, () => chain().deleteRow().run())}
+          {btn("− colonna", "Togli la colonna", false, () => chain().deleteColumn().run())}
+          {btn(
+            editor.getAttributes("table").borderless ? "Mostra i bordi" : "Bordi invisibili",
+            "Bordi visibili o invisibili",
+            !!editor.getAttributes("table").borderless,
+            () => chain().updateAttributes("table", { borderless: !editor.getAttributes("table").borderless }).run(),
+          )}
+          {btn("Elimina tabella", "Elimina la tabella", false, () => chain().deleteTable().run())}
+        </span>
+      )}
     </>
   );
+}
+
+/** Larghezza dell'immagine selezionata in percentuale dell'area di testo */
+function resizeImage(editor: Editor, percent: number) {
+  const area = editor.view.dom.clientWidth - 32; // meno il margine interno
+  editor.chain().focus().updateAttributes("image", { width: Math.max(60, Math.round((area * percent) / 100)), height: null }).run();
 }
 
 function AlignIcon({ kind }: { kind: "left" | "center" | "right" | "justify" }) {
@@ -401,7 +464,9 @@ function ImageButton({ editor }: { editor: Editor }) {
           <button type="button" onClick={insert} disabled={!url.trim()} className="h-8 w-full rounded-full bg-flamingo font-medium text-night disabled:opacity-50">
             Inserisci
           </button>
-          <p className="text-[0.65rem] leading-snug text-muted-foreground">Dopo l&apos;inserimento trascina l&apos;angolo dell&apos;immagine per ridimensionarla.</p>
+          <p className="text-[0.65rem] leading-snug text-muted-foreground">
+            Dopo l&apos;inserimento cliccala: scegli la larghezza (25%, 50%…) o trascina l&apos;angolo. Due immagini nella stessa riga stanno affiancate.
+          </p>
         </div>
       )}
     </span>

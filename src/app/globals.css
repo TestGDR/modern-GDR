@@ -211,7 +211,24 @@
   font-style: italic;
 }
 .guide-content hr { border: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--orchid), transparent); margin: 1.5em 0; }
-.guide-content img { max-width: 100%; height: auto; border-radius: 0.75rem; }
+.guide-content img { display: inline-block; max-width: 100%; height: auto; border-radius: 0.75rem; vertical-align: top; margin: 0.15em; }
+.guide-content table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.guide-content th,
+.guide-content td { border: 1px solid rgb(255 255 255 / 0.2); padding: 0.4em 0.6em; vertical-align: top; }
+.guide-content th { background: rgb(255 255 255 / 0.06); font-weight: 600; }
+.guide-content td > * + *,
+.guide-content th > * + * { margin-top: 0.5em; }
+/* bordi invisibili: si vedono solo tratteggiati mentre si scrive */
+.guide-content table.tabella-invisibile th,
+.guide-content table.tabella-invisibile td { border-color: transparent; background: none; }
+.guide-content.ProseMirror table.tabella-invisibile th,
+.guide-content.ProseMirror table.tabella-invisibile td { border: 1px dashed rgb(255 255 255 / 0.18); }
+.guide-content.ProseMirror .selectedCell { background: color-mix(in oklab, var(--flamingo) 15%, transparent); }
+.guide-content.ProseMirror .column-resize-handle { position: absolute; top: 0; right: -2px; bottom: 0; width: 4px; background: var(--flamingo); pointer-events: none; }
+.guide-content.ProseMirror .tableWrapper { overflow-x: auto; }
+.guide-content.ProseMirror.resize-cursor { cursor: col-resize; }
+.guide-content td,
+.guide-content th { position: relative; }
 .guide-content code { background: rgb(255 255 255 / 0.08); border-radius: 0.3rem; padding: 0.1em 0.35em; font-size: 0.9em; }
 .guide-content p:empty::before { content: "\00a0"; }
 .guide-content.ProseMirror:focus { outline: none; }

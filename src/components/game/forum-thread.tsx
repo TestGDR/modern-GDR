@@ -1,12 +1,19 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Check, Lock, LockOpen, Megaphone, Pencil, Pin, PinOff, Star, Trash2, X } from "lucide-react";
+import { SafeHtml, plainToHtml } from "@/components/guide/safe-html";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { deletePost, deleteThread, editPost, highlightThread, moveThread, renameThread, setThreadFlag } from "@/lib/actions/forum";
 import { cn } from "@/lib/utils";
+
+// l'editor si carica solo nel browser, quando serve
+const RichEditor = dynamic(() => import("@/components/guide/rich-editor").then((m) => m.RichEditor), {
+  ssr: false,
+  loading: () => <div className="h-40 animate-pulse rounded-2xl bg-white/5" />,
+});
 
 type ModResult = { ok: true; slug?: string } | { ok: false; error: string };
 
@@ -147,7 +154,8 @@ export function ThreadModeration({
 /** Testo di un messaggio con Modifica / Elimina (autore o chi modera) */
 export function PostBody({ postId, body, canEdit }: { postId: number; body: string; canEdit: boolean }) {
   const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(body);
+  // i messaggi vecchi (testo semplice) diventano paragrafi per l'editor
+  const [value, setValue] = useState(() => plainToHtml(body));
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -165,7 +173,7 @@ export function PostBody({ postId, body, canEdit }: { postId: number; body: stri
           });
         }}
       >
-        <Textarea value={value} onChange={(e) => setValue(e.target.value)} rows={8} maxLength={20000} className="bg-night/40" aria-label="Testo del messaggio" />
+        <RichEditor value={value} onChange={setValue} minHeight="min-h-48" />
         {error && <p className="text-xs text-destructive">{error}</p>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>
@@ -180,7 +188,7 @@ export function PostBody({ postId, body, canEdit }: { postId: number; body: stri
   }
   return (
     <>
-      <p className="text-sm leading-relaxed break-words whitespace-pre-line">{body}</p>
+      <SafeHtml html={body} className="text-sm leading-relaxed" />
       {canEdit && (
         <div className="mt-3 flex justify-end gap-3 text-xs">
           {error && <span className="mr-auto text-destructive">{error}</span>}

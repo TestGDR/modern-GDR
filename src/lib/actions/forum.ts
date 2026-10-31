@@ -10,6 +10,12 @@ function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
+/** Il messaggio dell'editor è vuoto? (niente testo e niente immagini o tabelle) */
+function isEmptyBody(body: string) {
+  if (/<(img|table)\b/i.test(body)) return false;
+  return body.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim() === "";
+}
+
 export async function createThread(_prev: FormState, formData: FormData): Promise<FormState> {
   const player = await getPlayer();
   if (!player) redirect("/login");
@@ -19,7 +25,7 @@ export async function createThread(_prev: FormState, formData: FormData): Promis
   const title = text(formData, "title");
   const body = text(formData, "body");
   if (title.length < 3) return { error: "Il titolo deve avere almeno 3 caratteri." };
-  if (!body) return { error: "Scrivi il primo messaggio della discussione." };
+  if (isEmptyBody(body)) return { error: "Scrivi il primo messaggio della discussione." };
 
   // si scrive sempre con l'utente (il nome dell'utente è quello del personaggio: niente alias)
   const supabase = await createClient();
@@ -49,7 +55,7 @@ export async function replyToThread(_prev: FormState, formData: FormData): Promi
 
   const threadId = text(formData, "thread_id");
   const body = text(formData, "body");
-  if (!body) return { error: "Il messaggio è vuoto." };
+  if (isEmptyBody(body)) return { error: "Il messaggio è vuoto." };
 
   const supabase = await createClient();
   const { error } = await supabase.from("forum_posts").insert({
@@ -151,7 +157,7 @@ export async function highlightThread(firstPostId: number, on: boolean): Promise
 export async function editPost(postId: number, body: string): Promise<ModResult> {
   const clean = body.trim().slice(0, 20000);
   if (!Number.isInteger(postId)) return { ok: false, error: "Messaggio non valido." };
-  if (!clean) return { ok: false, error: "Il messaggio è vuoto." };
+  if (isEmptyBody(clean)) return { ok: false, error: "Il messaggio è vuoto." };
   await requirePlayerOrLogin();
   const supabase = await createClient();
   const { data, error } = await supabase.from("forum_posts").update({ body: clean }).eq("id", postId).select("id");
