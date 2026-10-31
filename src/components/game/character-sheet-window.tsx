@@ -31,6 +31,7 @@ import { FormMessage } from "@/components/auth/auth-forms";
 import { AffectionsSection } from "@/components/game/affections";
 import { ErrorBoundary } from "@/components/game/error-boundary";
 import { AlterationSection } from "@/components/game/alteration-section";
+import { BackpackSection } from "@/components/game/backpack-section";
 import { HealthSection } from "@/components/game/health-section";
 import { SheetStatus } from "@/components/game/status-icons";
 import { OptionRequestPanel } from "@/components/game/option-request";
@@ -77,13 +78,14 @@ const SECTIONS: Section[] = [
   { key: "tratti", label: "Tratti", icon: Fingerprint, field: "traits", hint: "Carattere: personalità, abitudini, pregi e difetti." },
   { key: "aspetto", label: "Aspetto", icon: ScanFace, field: "appearance", hint: "Com'è fisicamente, come si veste, segni particolari." },
   { key: "storia", label: "Storia", icon: BookOpen, field: "bio", hint: "Da dove viene e cosa l'ha portato a Miami." },
-  { key: "equipaggiamento", label: "Equipaggiamento", icon: Backpack, field: "equipment", hint: "Cosa porta con sé: auto, telefono, oggetti." },
+  { key: "equipaggiamento", label: "Zaino", icon: Backpack, field: "equipment", hint: "Note sullo zaino (solo tu e lo staff): gli oggetti veri si comprano al Mercato." },
 ];
 
 type View = { section: string; mode: "view" | "edit" | "settings" | "admin" };
 
 /** Sezioni visibili solo al proprietario e allo staff (personaggi.vedere_tutti) */
-const PRIVATE_SECTIONS = ["caratteristiche", "abilita", "tratti", "storia", "equipaggiamento"];
+// lo Zaino è visibile a tutti, ma gli altri vedono solo gli oggetti "con sé" (lo filtra il database)
+const PRIVATE_SECTIONS = ["caratteristiche", "abilita", "tratti", "storia"];
 
 type CharacterSheetWindowProps = {
   character: SheetCharacter;
@@ -288,6 +290,17 @@ export function CharacterSheetWindow({
               {isOwner && character.status === "approvata" && <OptionRequestPanel character={character} rules={rules} build={build} />}
               <h3 className="mt-6 mb-2 font-heading text-xl tracking-wide text-peach">Carattere</h3>
               <FreeText text={character.traits} isOwner={isOwner} />
+            </SectionFrame>
+          ) : section.key === "equipaggiamento" ? (
+            <SectionFrame title="Zaino">
+              <BackpackSection characterId={character.id} isOwner={isOwner} canSeeAll={canSeePrivate} />
+              {/* le vecchie note di testo: solo proprietario e staff (agli altri il server non le manda) */}
+              {(isOwner || canSeePrivate) && (
+                <>
+                  <h3 className="mt-8 mb-2 font-heading text-xl tracking-wide text-peach">Note</h3>
+                  <FreeText text={character.equipment} isOwner={isOwner} />
+                </>
+              )}
             </SectionFrame>
           ) : (
             <SectionFrame title={section.label}>

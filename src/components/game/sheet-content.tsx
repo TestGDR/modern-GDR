@@ -69,7 +69,7 @@ export async function OtherSheet({ id, variant }: { id: string; variant: SheetVa
     return <NoCharacterSheet name={name} variant={variant} />;
   }
   const isAdmin = player.level.is_admin;
-  // Caratteristiche, abilità, tratti, storia ed equipaggiamento: solo proprietario e staff
+  // Caratteristiche, abilità, tratti, storia e note dello zaino: solo proprietario e staff
   const canSeePrivate = can(player, "personaggi.vedere_tutti");
   const [build, rules, now, districts, affiliations] = await Promise.all([
     getCharacterBuild(id),

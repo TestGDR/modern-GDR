@@ -47,6 +47,8 @@ export type CharacterItem = {
   use_text: string;
   effect: ItemEffect | null;
   black_market: boolean;
+  /** "con sé": portato dietro, visibile a tutti in scheda */
+  carried?: boolean;
   acquired_at: string;
 };
 
