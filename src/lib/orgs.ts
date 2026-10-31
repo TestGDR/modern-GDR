@@ -7,8 +7,13 @@ export type OrgRole = {
   id: string;
   name: string;
   description: string;
-  /** Stipendio di una quota (0 = nessuno) */
+  /** Gruppi: stipendio mensile (0 = nessuno) */
   salary: number;
+  /** Lavori: paga mensile full time / part time (null = non previsto) */
+  salary_full: number | null;
+  salary_part: number | null;
+  /** Posti del ruolo (null = senza limite) */
+  max_members: number | null;
   /** Lavori: il giocatore può sceglierlo da solo. Gruppi: sempre false */
   self_select: boolean;
   sort_order: number;
@@ -19,24 +24,35 @@ export type OrgMember = {
   name: string;
   avatar_url: string | null;
   role_id: string;
+  /** Lavori: orario scelto */
+  mode: JobKind | null;
 };
 
 export type Org = {
   id: string;
   name: string;
   description: string;
-  /** Solo i lavori */
-  kind: JobKind | null;
   /** Solo i gruppi: squadra di uno sport (si entra dalla pagina Sport, la gestisce Gestione → Sport) */
   sport: boolean;
   /** Icona (link https, circa 20x20) */
   icon_url: string | null;
   /** Solo i gruppi: tag, es. "malavita" (vede il mercato nero) */
   tags: string[];
+  /** Solo i gruppi: ambito (una scheda in Utility → Gruppi) */
+  category_id: string | null;
   sort_order: number;
   active: boolean;
   roles: OrgRole[];
   members: OrgMember[];
+};
+
+/** Ambito dei gruppi (Gruppi cittadini, Club e Fratellanze…) */
+export type GroupCategory = {
+  id: string;
+  name: string;
+  /** qui finiscono le squadre sportive */
+  for_sport: boolean;
+  sort_order: number;
 };
 
 /** Tabelle del database per lavori e gruppi */

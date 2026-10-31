@@ -400,9 +400,9 @@ export async function getCharacterAffiliations(characterId: string): Promise<Cha
   const [jobs, groups, profile, wealth, teams] = await Promise.all([
     supabase
       .from("character_jobs")
-      .select("job:jobs(name, kind, active, icon_url), role:job_roles(name)")
+      .select("mode, job:jobs(name, active, icon_url), role:job_roles(name)")
       .eq("character_id", characterId)
-      .overrideTypes<{ job: { name: string; kind: "full_time" | "part_time"; active: boolean; icon_url: string | null } | null; role: { name: string } | null }[], { merge: false }>(),
+      .overrideTypes<{ mode: "full_time" | "part_time"; job: { name: string; active: boolean; icon_url: string | null } | null; role: { name: string } | null }[], { merge: false }>(),
     supabase
       .from("character_groups")
       .select("grp:game_groups(name, active, icon_url, kind), role:group_roles(name)")
@@ -420,7 +420,7 @@ export async function getCharacterAffiliations(characterId: string): Promise<Cha
       .overrideTypes<{ squad_status: CharacterAffiliations["teams"][number]["status"]; sport: { name: string; icon: string } | null; position: { name: string } | null }[], { merge: false }>(),
   ]);
   return {
-    jobs: (jobs.data ?? []).filter((j) => j.job?.active).map((j) => ({ name: j.job!.name, role: j.role?.name ?? "", kind: j.job!.kind, icon: j.job!.icon_url ?? null })),
+    jobs: (jobs.data ?? []).filter((j) => j.job?.active).map((j) => ({ name: j.job!.name, role: j.role?.name ?? "", kind: j.mode, icon: j.job!.icon_url ?? null })),
     groups: (groups.data ?? []).filter((g) => g.grp?.active && g.grp.kind !== "sport").map((g) => ({ name: g.grp!.name, role: g.role?.name ?? "", icon: g.grp!.icon_url ?? null })),
     teams: (teams.data ?? []).filter((t) => t.sport).map((t) => ({ sport: t.sport!.name, icon: t.sport!.icon, position: t.position?.name ?? "", status: t.squad_status })),
     wealth: (wealth.data as string | null) ?? null,

@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { BackToPanel } from "@/components/admin/admin-ui";
-import { OrgsManager } from "@/components/admin/orgs-manager";
+import { GroupCategoriesEditor, OrgsManager } from "@/components/admin/orgs-manager";
 import { LoadingBlocks } from "@/components/game/loading";
 import { PageHeader } from "@/components/game/page-header";
 import { requirePermission } from "@/lib/admin";
-import { loadOrgs } from "@/lib/orgs-data";
+import { loadGroupCategories, loadOrgs } from "@/lib/orgs-data";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Gruppi" };
@@ -25,14 +25,18 @@ export default function Page() {
 async function Content() {
   await requirePermission("gruppi.gestire");
   const supabase = await createClient();
-  const [orgs, { data: characters }] = await Promise.all([
+  const [orgs, categories, { data: characters }] = await Promise.all([
     loadOrgs("group"),
+    loadGroupCategories(),
     supabase.from("characters").select("id, name").eq("status", "approvata").order("name").overrideTypes<{ id: string; name: string }[], { merge: false }>(),
   ]);
   return (
     <>
       <p className="mb-3 text-sm text-muted-foreground">Le squadre sportive non sono qui: le crea e le gestisce Gestione → Sport, e i giocatori ci entrano dalla pagina Sport.</p>
-      <OrgsManager kind="group" orgs={orgs.filter((o) => !o.sport)} characters={characters ?? []} />
+      <div className="flex flex-col gap-4">
+        <GroupCategoriesEditor categories={categories} />
+        <OrgsManager kind="group" orgs={orgs.filter((o) => !o.sport)} characters={characters ?? []} categories={categories} />
+      </div>
     </>
   );
 }

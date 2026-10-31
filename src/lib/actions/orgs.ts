@@ -38,20 +38,29 @@ async function checked(query: PromiseLike<{ data: unknown[] | null; error: DbErr
 
 /* ------------------------------ Lavori e gruppi ------------------------------ */
 
-export type OrgInput = { id?: string; name: string; description: string; jobKind?: JobKind; iconUrl?: string; active: boolean; /** gruppi: tag (es. malavita) */ tags?: string[] };
+export type OrgInput = {
+  id?: string;
+  name: string;
+  description: string;
+  iconUrl?: string;
+  active: boolean;
+  /** gruppi: tag (es. malavita) */
+  tags?: string[];
+  /** gruppi: ambito */
+  categoryId?: string | null;
+};
 
 export async function saveOrg(kind: OrgKind, input: OrgInput): Promise<ActionResult> {
   if (!validKind(kind)) return { ok: false, error: "Tipo non valido." };
   const name = clean(input.name, 60);
   if (name.length < 2) return { ok: false, error: "Scrivi il nome." };
-  if (kind === "job" && input.jobKind !== "full_time" && input.jobKind !== "part_time") return { ok: false, error: "Scegli full time o part time." };
   const t = ORG_TABLES[kind];
   const icon = (input.iconUrl ?? "").trim();
   if (icon && (!/^https:\/\/\S+$/.test(icon) || icon.length > 500)) return { ok: false, error: "L'icona va indicata con un link che inizia con https://" };
   const row: Record<string, unknown> = { name, description: clean(input.description, 4000), active: input.active, icon_url: icon || null };
-  if (kind === "job") row.kind = input.jobKind;
   // gruppi: solo tag conosciuti ("malavita" apre il mercato nero)
   if (kind === "group" && input.tags) row.tags = input.tags.filter((t) => t === "malavita");
+  if (kind === "group") row.category_id = input.categoryId && isUuid(input.categoryId) ? input.categoryId : null;
   await requirePlayer();
   const supabase = await createClient();
   if (input.id) {
@@ -93,18 +102,83 @@ export async function moveOrgItem(kind: OrgKind, id: string, direction: -1 | 1, 
   return { ok: true };
 }
 
+/* ------------------------------ Ambiti dei gruppi ------------------------------ */
+
+/** Crea o rinomina un ambito; "forSport" = ci vanno le squadre sportive (uno solo) */
+export async function saveGroupCategory(input: { id?: string; name: string; forSport: boolean }): Promise<ActionResult> {
+  const name = clean(input.name, 40);
+  if (name.length < 2) return { ok: false, error: "Scrivi il nome dell'ambito." };
+  await requirePlayer();
+  const supabase = await createClient();
+  // un solo ambito per le squadre: si toglie agli altri
+  if (input.forSport) {
+    const { error } = await supabase.from("group_categories").update({ for_sport: false }).eq("for_sport", true).neq("id", input.id ?? "00000000-0000-0000-0000-000000000000");
+    if (error) return result(error);
+  }
+  const row = { name, for_sport: input.forSport };
+  if (input.id) {
+    if (!isUuid(input.id)) return { ok: false, error: "Voce non valida." };
+    return checked(supabase.from("group_categories").update(row).eq("id", input.id).select("id"));
+  }
+  const { count } = await supabase.from("group_categories").select("id", { count: "exact", head: true });
+  const { error } = await supabase.from("group_categories").insert({ ...row, sort_order: (count ?? 0) + 1 });
+  return done(error);
+}
+
+export async function deleteGroupCategory(id: string): Promise<ActionResult> {
+  if (!isUuid(id)) return { ok: false, error: "Voce non valida." };
+  await requirePlayer();
+  const supabase = await createClient();
+  return checked(supabase.from("group_categories").delete().eq("id", id).select("id"));
+}
+
+/** Nuovo ordine degli ambiti dopo il trascinamento */
+export async function reorderGroupCategories(ids: string[]): Promise<ActionResult> {
+  if (ids.length === 0 || ids.length > 100 || !ids.every(isUuid) || new Set(ids).size !== ids.length) return { ok: false, error: "Ordine non valido." };
+  await requirePlayer();
+  const supabase = await createClient();
+  for (const [index, rowId] of ids.entries()) {
+    const { error } = await supabase.from("group_categories").update({ sort_order: index + 1 }).eq("id", rowId);
+    if (error) return result(error);
+  }
+  refresh();
+  return { ok: true };
+}
+
 /* ------------------------------ Ruoli ------------------------------ */
 
-export type RoleInput = { id?: string; parentId: string; name: string; description: string; salary: number; selfSelect: boolean };
+export type RoleInput = {
+  id?: string;
+  parentId: string;
+  name: string;
+  description: string;
+  /** gruppi */
+  salary: number;
+  /** lavori: paga full time / part time (null = non previsto) */
+  salaryFull: number | null;
+  salaryPart: number | null;
+  /** posti (null = senza limite) */
+  maxMembers: number | null;
+  selfSelect: boolean;
+};
+
+const validPay = (n: number | null) => n === null || (Number.isInteger(n) && n >= 0 && n <= 1_000_000);
 
 export async function saveOrgRole(kind: OrgKind, input: RoleInput): Promise<ActionResult> {
   if (!validKind(kind) || !isUuid(input.parentId)) return { ok: false, error: "Voce non valida." };
   const name = clean(input.name, 60);
   if (name.length < 2) return { ok: false, error: "Scrivi il nome del ruolo." };
   if (!Number.isInteger(input.salary) || input.salary < 0 || input.salary > 1_000_000) return { ok: false, error: "Lo stipendio va da 0 a 1.000.000." };
+  if (!validPay(input.salaryFull) || !validPay(input.salaryPart)) return { ok: false, error: "Le paghe vanno da 0 a 1.000.000." };
+  if (kind === "job" && input.salaryFull === null && input.salaryPart === null) return { ok: false, error: "Indica almeno la paga full time o quella part time." };
+  if (input.maxMembers !== null && (!Number.isInteger(input.maxMembers) || input.maxMembers < 1 || input.maxMembers > 1000)) return { ok: false, error: "I posti vanno da 1 a 1000 (vuoto = senza limite)." };
   const t = ORG_TABLES[kind];
-  const row: Record<string, unknown> = { name, description: clean(input.description, 2000), salary: input.salary };
-  if (kind === "job") row.self_select = input.selfSelect;
+  const row: Record<string, unknown> = { name, description: clean(input.description, 2000), salary: kind === "group" ? input.salary : 0, max_members: input.maxMembers };
+  if (kind === "job") {
+    row.self_select = input.selfSelect;
+    row.salary_full = input.salaryFull;
+    row.salary_part = input.salaryPart;
+  }
   await requirePlayer();
   const supabase = await createClient();
   if (input.id) {
@@ -126,14 +200,16 @@ export async function deleteOrgRole(kind: OrgKind, id: string): Promise<ActionRe
 /* ------------------------------ Membri (staff) ------------------------------ */
 
 /** Assegna un personaggio (o gli cambia ruolo) */
-export async function assignMember(kind: OrgKind, orgId: string, characterId: string, roleId: string): Promise<ActionResult> {
+export async function assignMember(kind: OrgKind, orgId: string, characterId: string, roleId: string, mode?: JobKind): Promise<ActionResult> {
   if (!validKind(kind) || !isUuid(orgId) || !isUuid(characterId) || !isUuid(roleId)) return { ok: false, error: "Scegli il personaggio e il ruolo." };
+  if (kind === "job" && mode !== "full_time" && mode !== "part_time") return { ok: false, error: "Scegli full time o part time." };
   const t = ORG_TABLES[kind];
+  const extra = kind === "job" ? { mode } : {};
   await requirePlayer();
   const supabase = await createClient();
   const { data: existing } = await supabase.from(t.member).select("role_id").eq("character_id", characterId).eq(t.fk, orgId).maybeSingle();
-  if (existing) return checked(supabase.from(t.member).update({ role_id: roleId }).eq("character_id", characterId).eq(t.fk, orgId).select("role_id"));
-  const { error } = await supabase.from(t.member).insert({ character_id: characterId, [t.fk]: orgId, role_id: roleId });
+  if (existing) return checked(supabase.from(t.member).update({ role_id: roleId, ...extra }).eq("character_id", characterId).eq(t.fk, orgId).select("role_id"));
+  const { error } = await supabase.from(t.member).insert({ character_id: characterId, [t.fk]: orgId, role_id: roleId, ...extra });
   return done(error);
 }
 
@@ -147,11 +223,11 @@ export async function removeMember(kind: OrgKind, orgId: string, characterId: st
 
 /* ------------------------------ Giocatori: lavori ------------------------------ */
 
-export async function joinJob(characterId: string, roleId: string): Promise<ActionResult> {
-  if (!isUuid(characterId) || !isUuid(roleId)) return { ok: false, error: "Voce non valida." };
+export async function joinJob(characterId: string, roleId: string, mode: JobKind): Promise<ActionResult> {
+  if (!isUuid(characterId) || !isUuid(roleId) || (mode !== "full_time" && mode !== "part_time")) return { ok: false, error: "Voce non valida." };
   await requirePlayer();
   const supabase = await createClient();
-  const { error } = await supabase.rpc("join_job", { p_character: characterId, p_role: roleId });
+  const { error } = await supabase.rpc("join_job", { p_character: characterId, p_role: roleId, p_mode: mode });
   return done(error);
 }
 
