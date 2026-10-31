@@ -138,9 +138,9 @@ export function CharacterSheetWindow({
       <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto @2xl:grid-cols-[16rem_minmax(0,1fr)] @2xl:overflow-hidden">
         {/* Colonna sinistra: ritratto e sezioni */}
         <aside className="flex flex-col border-white/10 @2xl:min-h-0 @2xl:border-r">
-          <div className="flex items-end gap-3 p-4 @2xl:flex-col @2xl:items-center @2xl:justify-center @2xl:gap-2 @2xl:pb-3">
+          <div className="flex items-center gap-3 p-4 @2xl:justify-center @2xl:pb-3">
             <Portrait character={character} />
-            <CharacterLevelIcon characterId={character.id} className="size-6" />
+            <CharacterLevelIcon characterId={character.id} className="size-7" withName />
           </div>
 
           <nav className="flex gap-1 overflow-x-auto px-3 pb-3 @2xl:flex-1 @2xl:flex-col @2xl:overflow-y-auto @2xl:px-0 @2xl:pb-0" aria-label="Sezioni della scheda">

@@ -13,6 +13,7 @@ import {
   GraduationCap,
   Info,
   LogOut,
+  Mail,
   Map as MapIcon,
   Menu,
   MessagesSquare,
@@ -330,39 +331,51 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
     })
     .sort((a, b) => (a.key === placeKey ? -1 : b.key === placeKey ? 1 : !a.chatId ? 1 : !b.chatId ? -1 : a.name.localeCompare(b.name, "it")));
 
-  // Riga di un presente nell'elenco esteso: nome e, sotto, il suo messaggio OFF
+  // Riga di un presente nell'elenco esteso: nome e, sotto, il suo messaggio OFF;
+  // a destra le icone (livello OFF, poi le altre che verranno) e il messaggio OFF
   function playerRow(c: (typeof list)[number], seeking: boolean) {
-    const row = (
-      <>
-        {c.avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={c.avatar} alt="" className="size-10 shrink-0 rounded-full object-cover ring-2 ring-white/10" />
-        ) : (
-          <CharacterAvatar initials={initials(c.name)} />
-        )}
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2">
-            <span className={cn("size-2 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} title={AVAILABILITY[c.availability].label} />
-            <span className={cn("truncate font-medium", seeking && "font-semibold text-peach")}>{c.name}</span>
-            <LevelIcon icon={c.levelIcon} name={c.levelName} />
-            {c.userId === me && <span className="text-xs text-muted-foreground">(tu)</span>}
-            {c.invisible && <EyeOff className="size-3.5 shrink-0 text-muted-foreground" aria-label="Invisibile" />}
-            {seeking && <span className="ml-auto shrink-0 truncate text-[0.7rem] text-muted-foreground">{c.placeKey.startsWith("chat:") ? c.place || "In chat" : "Mappa"}</span>}
-          </span>
-          {c.note && <span className="block text-xs break-words text-lavender italic">{c.note}</span>}
-        </span>
-        {c.levelColor && (
-          <span className="shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold" style={{ backgroundColor: `${c.levelColor}33`, color: c.levelColor }}>
-            {c.levelName}
-          </span>
-        )}
-      </>
-    );
     return (
-      <li key={c.userId}>
-        <Link href={sheetHref(c)} title={`Apri la scheda di ${c.name}`} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/5">
-          {row}
+      <li key={c.userId} className="flex items-center gap-1 rounded-xl transition-colors hover:bg-white/5">
+        <Link href={sheetHref(c)} title={`Apri la scheda di ${c.name}`} className="flex min-w-0 flex-1 items-center gap-3 p-2">
+          {c.avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={c.avatar} alt="" className="size-10 shrink-0 rounded-full object-cover ring-2 ring-white/10" />
+          ) : (
+            <CharacterAvatar initials={initials(c.name)} />
+          )}
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-2">
+              <span className={cn("size-2 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} title={AVAILABILITY[c.availability].label} />
+              <span className={cn("truncate font-medium", seeking && "font-semibold text-peach")}>{c.name}</span>
+              {c.userId === me && <span className="text-xs text-muted-foreground">(tu)</span>}
+              {c.invisible && <EyeOff className="size-3.5 shrink-0 text-muted-foreground" aria-label="Invisibile" />}
+              {seeking && <span className="ml-auto shrink-0 truncate text-[0.7rem] text-muted-foreground">{c.placeKey.startsWith("chat:") ? c.place || "In chat" : "Mappa"}</span>}
+            </span>
+            {c.note && <span className="block text-xs break-words text-lavender italic">{c.note}</span>}
+          </span>
         </Link>
+        <span className="flex shrink-0 items-center gap-1.5 pr-2">
+          {c.levelIcon ? (
+            <LevelIcon icon={c.levelIcon} name={c.levelName} className="size-5" />
+          ) : (
+            c.levelColor && (
+              <span className="rounded-full px-2 py-0.5 text-[0.65rem] font-semibold" style={{ backgroundColor: `${c.levelColor}33`, color: c.levelColor }}>
+                {c.levelName}
+              </span>
+            )
+          )}
+          {c.userId !== me && (
+            <HoverTip label={`Messaggio OFF a ${c.name}`} className="inline-flex">
+              <Link
+                href={`/messaggi?a=${c.userId}`}
+                aria-label={`Messaggio OFF a ${c.name}`}
+                className="grid size-8 place-items-center rounded-full text-lavender transition-colors hover:bg-white/10 hover:text-foreground"
+              >
+                <Mail className="size-4" />
+              </Link>
+            </HoverTip>
+          )}
+        </span>
       </li>
     );
   }
@@ -394,8 +407,8 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
               const inner = (
                 <>
                   <span className={cn("size-2 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} title={AVAILABILITY[c.availability].label} />
-                  <span className="truncate">{c.name}</span>
                   <LevelIcon icon={c.levelIcon} name={c.levelName} className="size-3.5" />
+                  <span className="truncate">{c.name}</span>
                   {c.invisible && <EyeOff className="size-3 shrink-0" aria-label="Invisibile" />}
                 </>
               );

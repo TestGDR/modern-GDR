@@ -19,7 +19,7 @@ export function LevelIcon({ icon, name, className }: { icon: string | null | und
 }
 
 /** Livello del proprietario di una scheda, letto dal database */
-export function CharacterLevelIcon({ characterId, className }: { characterId: string; className?: string }) {
+export function CharacterLevelIcon({ characterId, className, withName = false }: { characterId: string; className?: string; withName?: boolean }) {
   const [level, setLevel] = useState<{ name: string; icon_url: string | null } | null>(null);
   useEffect(() => {
     let alive = true;
@@ -33,5 +33,12 @@ export function CharacterLevelIcon({ characterId, className }: { characterId: st
     };
   }, [characterId]);
   if (!level?.icon_url) return null;
-  return <LevelIcon icon={level.icon_url} name={level.name} className={className} />;
+  if (!withName) return <LevelIcon icon={level.icon_url} name={level.name} className={className} />;
+  // icona con sotto il nome del livello (scheda)
+  return (
+    <span className="flex flex-col items-center gap-1">
+      <LevelIcon icon={level.icon_url} name={level.name} className={className} />
+      <span className="text-[0.65rem] font-semibold tracking-wide text-muted-foreground uppercase">{level.name}</span>
+    </span>
+  );
 }
