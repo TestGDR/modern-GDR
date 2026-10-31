@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, MessageCircle, MoreHorizontal, SendHorizontal, SmilePlus, Trash2 } from "lucide-react";
+import { MapPin, MessageCircle, MoreHorizontal, Pencil, SendHorizontal, SmilePlus, Trash2 } from "lucide-react";
 import { Avatar, Caption, Carousel, PersonName, useSocial } from "@/components/social/social-ui";
 import { PERSON, REACTIONS, socialTime, type Reaction, type SocialComment, type SocialPost } from "@/lib/social";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,10 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
   const [commentCount, setCommentCount] = useState(post.social_comments[0]?.count ?? 0);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // modifica: del post (testo e luogo) e di un commento
+  const [editPost, setEditPost] = useState<{ body: string; location: string } | null>(null);
+  const [editComment, setEditComment] = useState<{ id: number; body: string } | null>(null);
+  const [current, setCurrent] = useState({ body: post.body, location: post.location, edited: post.edited_at ?? null });
   const mine = reactions.find((r) => r.character_id === me?.id)?.emoji ?? null;
   const isMine = me?.id === post.character_id;
   const tags = post.social_tags.map((t) => t.character).filter((c) => c !== null);
@@ -47,7 +51,7 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
   async function loadComments() {
     const { data } = await supabase
       .from("social_comments")
-      .select(`id, body, created_at, character_id, author:characters(${PERSON})`)
+      .select(`id, body, created_at, edited_at, character_id, author:characters(${PERSON})`)
       .eq("post_id", post.id)
       .order("created_at")
       .limit(200)
@@ -71,6 +75,33 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
     await loadComments();
   }
 
+  async function savePost() {
+    if (!editPost) return;
+    setError(null);
+    const body = editPost.body.trim().slice(0, 2200);
+    const location = editPost.location.trim().slice(0, 60) || null;
+    const { data, error: e } = await supabase
+      .from("social_posts")
+      .update({ body, location })
+      .eq("id", post.id)
+      .select("body, location, edited_at")
+      .maybeSingle<{ body: string; location: string | null; edited_at: string | null }>();
+    if (e || !data) return setError(e?.message.includes("Aggiungi") ? e.message : "Modifica non salvata.");
+    setCurrent({ body: data.body, location: data.location, edited: data.edited_at });
+    setEditPost(null);
+    onChanged();
+  }
+
+  async function saveComment() {
+    if (!editComment) return;
+    const body = editComment.body.trim().slice(0, 1000);
+    if (!body) return;
+    const { error: e } = await supabase.from("social_comments").update({ body }).eq("id", editComment.id);
+    if (e) return setError("Commento non modificato.");
+    setEditComment(null);
+    await loadComments();
+  }
+
   async function removePost() {
     setMenu(false);
     if (!window.confirm("Eliminare il post? Non si torna indietro.")) return;
@@ -89,13 +120,16 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
         </button>
         <div className="min-w-0 flex-1 leading-tight">
           <PersonName person={post.author} className="text-sm" />
-          {post.location && (
+          {current.location && (
             <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-              <MapPin className="size-3" /> {post.location}
+              <MapPin className="size-3" /> {current.location}
             </p>
           )}
         </div>
-        <span className="text-xs text-muted-foreground">{socialTime(post.created_at)}</span>
+        <span className="text-xs text-muted-foreground" title={current.edited ? `Modificato ${socialTime(current.edited)}` : undefined}>
+          {socialTime(post.created_at)}
+          {current.edited && " · modificato"}
+        </span>
         {(isMine || canModerate) && (
           <div className="relative">
             <button type="button" onClick={() => setMenu((v) => !v)} className="grid size-8 place-items-center rounded-full hover:bg-white/10" aria-label="Altro">
@@ -103,6 +137,16 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
             </button>
             {menu && (
               <div className="absolute top-9 right-0 z-10 w-44 overflow-hidden rounded-xl border border-white/15 bg-night/95 shadow-xl">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenu(false);
+                    setEditPost({ body: current.body, location: current.location ?? "" });
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/10"
+                >
+                  <Pencil className="size-4" /> Modifica il post
+                </button>
                 <button type="button" onClick={removePost} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-destructive hover:bg-white/10">
                   <Trash2 className="size-4" /> Elimina il post
                 </button>
@@ -157,11 +201,46 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
       </div>
 
       <div className="flex flex-col gap-1 px-3 pt-1 pb-3 text-sm">
-        {post.body && (
-          <p>
-            <PersonName person={post.author} className="mr-1.5" />
-            <Caption text={post.body} />
-          </p>
+        {editPost ? (
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              savePost();
+            }}
+          >
+            <textarea
+              value={editPost.body}
+              onChange={(e) => setEditPost({ ...editPost, body: e.target.value })}
+              maxLength={2200}
+              rows={4}
+              aria-label="Testo del post"
+              className="rounded-xl border border-white/15 bg-night/50 p-2 text-sm outline-none focus-visible:border-peach/60"
+            />
+            <input
+              value={editPost.location}
+              onChange={(e) => setEditPost({ ...editPost, location: e.target.value })}
+              maxLength={60}
+              placeholder="Luogo (facoltativo)"
+              aria-label="Luogo"
+              className="h-9 rounded-full border border-white/15 bg-night/50 px-3 text-sm outline-none focus-visible:border-peach/60"
+            />
+            <div className="flex gap-3 text-sm">
+              <button type="submit" className="font-semibold text-peach">
+                Salva
+              </button>
+              <button type="button" onClick={() => setEditPost(null)} className="text-muted-foreground hover:text-foreground">
+                Annulla
+              </button>
+            </div>
+          </form>
+        ) : (
+          current.body && (
+            <p>
+              <PersonName person={post.author} className="mr-1.5" />
+              <Caption text={current.body} />
+            </p>
+          )
         )}
         {tags.length > 0 && (
           <p className="text-xs text-muted-foreground">
@@ -185,15 +264,49 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
             {comments.map((c) => (
               <li key={c.id} className="group flex items-start gap-2">
                 <Avatar person={c.author} size="size-6" />
-                <p className="min-w-0 flex-1 text-sm">
-                  <PersonName person={c.author} className="mr-1.5" />
-                  <Caption text={c.body} />
-                  <span className="ml-2 text-[0.7rem] text-muted-foreground">{socialTime(c.created_at)}</span>
-                </p>
-                {(c.character_id === me?.id || isMine || canModerate) && (
-                  <button type="button" onClick={() => removeComment(c.id)} className="opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100" aria-label="Elimina il commento">
-                    <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
-                  </button>
+                {editComment?.id === c.id ? (
+                  <form
+                    className="flex min-w-0 flex-1 items-center gap-2"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      saveComment();
+                    }}
+                  >
+                    <input
+                      value={editComment.body}
+                      onChange={(e) => setEditComment({ id: c.id, body: e.target.value })}
+                      maxLength={1000}
+                      aria-label="Modifica il commento"
+                      autoFocus
+                      className="h-8 min-w-0 flex-1 rounded-full border border-white/15 bg-night/50 px-3 text-sm outline-none focus-visible:border-peach/60"
+                    />
+                    <button type="submit" disabled={!editComment.body.trim()} className="text-xs font-semibold text-peach disabled:opacity-40">
+                      Salva
+                    </button>
+                    <button type="button" onClick={() => setEditComment(null)} className="text-xs text-muted-foreground hover:text-foreground">
+                      Annulla
+                    </button>
+                  </form>
+                ) : (
+                  <p className="min-w-0 flex-1 text-sm">
+                    <PersonName person={c.author} className="mr-1.5" />
+                    <Caption text={c.body} />
+                    <span className="ml-2 text-[0.7rem] text-muted-foreground">
+                      {socialTime(c.created_at)}
+                      {c.edited_at && " · modificato"}
+                    </span>
+                  </p>
+                )}
+                {/* modifica ed eliminazione: l'autore del commento o la moderazione */}
+                {(c.character_id === me?.id || canModerate) && editComment?.id !== c.id && (
+                  <span className="flex gap-1.5 opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100">
+                    <button type="button" onClick={() => setEditComment({ id: c.id, body: c.body })} aria-label="Modifica il commento">
+                      <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
+                    </button>
+                    <button type="button" onClick={() => removeComment(c.id)} aria-label="Elimina il commento">
+                      <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
+                    </button>
+                  </span>
                 )}
               </li>
             ))}

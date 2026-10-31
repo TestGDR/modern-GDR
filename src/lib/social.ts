@@ -24,6 +24,8 @@ export type SocialPost = {
   media: Media[];
   location: string | null;
   created_at: string;
+  /** ultima modifica (testo, luogo o foto) */
+  edited_at?: string | null;
   author: SocialPerson | null;
   social_reactions: { character_id: string; emoji: Reaction }[];
   social_comments: { count: number }[];
@@ -34,6 +36,7 @@ export type SocialComment = {
   id: number;
   body: string;
   created_at: string;
+  edited_at?: string | null;
   character_id: string;
   author: SocialPerson | null;
 };
@@ -59,7 +62,7 @@ export type SocialNotification = {
 
 /** Campi da chiedere al database per un personaggio */
 export const PERSON = "id, name, avatar_url, social:social_profiles(handle, bio)";
-export const POST_SELECT = `id, character_id, body, media, location, created_at, author:characters!social_posts_character_id_fkey(${PERSON}), social_reactions(character_id, emoji), social_comments(count), social_tags(character:characters(${PERSON}))`;
+export const POST_SELECT = `id, character_id, body, media, location, created_at, edited_at, author:characters!social_posts_character_id_fkey(${PERSON}), social_reactions(character_id, emoji), social_comments(count), social_tags(character:characters(${PERSON}))`;
 
 /** Nome visibile: @nome se c'è, altrimenti il nome del personaggio */
 export function handleOf(p: SocialPerson | null | undefined) {
