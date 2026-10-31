@@ -253,7 +253,7 @@ export async function getLatestThreads(limit = 5) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("forum_threads")
-    .select("*, author:profiles(username), character:characters(name), board:forum_boards(slug, name), forum_posts(count)")
+    .select("*, author:profiles!forum_threads_author_id_fkey(username), character:characters(name), board:forum_boards(slug, name), forum_posts(count)")
     .order("updated_at", { ascending: false })
     .limit(limit)
     .overrideTypes<LatestThread[], { merge: false }>();
@@ -304,7 +304,7 @@ export async function getThreads(boardId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("forum_threads")
-    .select("*, author:profiles(username), character:characters(name), forum_posts(count)")
+    .select("*, author:profiles!forum_threads_author_id_fkey(username), character:characters(name), forum_posts(count)")
     .eq("board_id", boardId)
     .order("is_pinned", { ascending: false })
     .order("is_important", { ascending: false })
@@ -334,7 +334,7 @@ export async function getPosts(threadId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("forum_posts")
-    .select("*, author:profiles(username, level:user_levels(name, color)), character:characters(id, name, avatar_url)")
+    .select("*, author:profiles!forum_posts_author_id_fkey(username, level:user_levels(name, color)), character:characters(id, name, avatar_url)")
     .eq("thread_id", threadId)
     .order("created_at")
     .limit(500)
