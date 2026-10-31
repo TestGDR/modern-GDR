@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { KeyRound, Lock, MapPin } from "lucide-react";
 import { FloatingWindow } from "@/components/floating-window";
 import { MiamiIllustration } from "@/components/game/miami-illustration";
+import { SafetyLight } from "@/components/game/safety-light";
 import { setCurrentMap } from "@/lib/current-map";
 import { createClient } from "@/lib/supabase/client";
 import type { District, GameMap, Room, RoomGroup } from "@/lib/types";
@@ -219,6 +220,7 @@ function RoomList({
                           {room.access === "su_invito" && <Lock className="mr-1 inline size-3.5 text-lavender" aria-label="Su invito" />}
                           {room.name}
                         </span>
+                        <SafetyLight safety={room.safety} />
                         {n > 0 && <span className="text-xs text-mint">{n} in gioco</span>}
                         {!room.is_open && <span className="text-xs text-muted-foreground">chiusa</span>}
                       </span>

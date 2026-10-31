@@ -151,6 +151,9 @@ export type RoomGroup = {
 export type RoomAccess = "pubblica" | "su_invito" | "password";
 
 /** Chat di gioco dentro un quartiere */
+/** Sicurezza della zona (semaforo): verde, giallo, rosso */
+export type RoomSafety = "sicura" | "poco_sicura" | "pericolosa";
+
 export type Room = {
   id: string;
   location_id: string;
@@ -162,6 +165,7 @@ export type Room = {
   access: RoomAccess;
   /** Chat su invito: il personaggio che invita e allontana */
   owner_character_id: string | null;
+  safety: RoomSafety;
   cleared_at: string | null;
   master_min: number | null;
   master_max: number | null;

@@ -14,6 +14,7 @@ import {
   useAdminAction,
 } from "@/components/admin/admin-ui";
 import { MiamiIllustration } from "@/components/game/miami-illustration";
+import { SAFETY, SafetyLight } from "@/components/game/safety-light";
 import { Button } from "@/components/ui/button";
 import {
   deleteDistrict,
@@ -29,7 +30,7 @@ import {
 } from "@/lib/actions/world";
 import type { World } from "@/lib/data";
 import { createClient } from "@/lib/supabase/client";
-import type { District, GameMap, Room, RoomGroup } from "@/lib/types";
+import type { District, GameMap, Room, RoomGroup, RoomSafety } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { GRADIENTS, WORLD_BUCKET, WORLD_IMAGE_MAX_BYTES, WORLD_IMAGE_TYPES } from "@/lib/world";
 
@@ -553,9 +554,12 @@ function RoomRow({ room, groups, ownerName, first, last }: { room: Room; groups:
     <li className={cn("glass flex flex-col gap-2 rounded-2xl p-2.5", !room.is_open && "opacity-70")}>
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => setEditing(true)} className="min-w-0 flex-1 text-left">
-          <p className="truncate font-medium">
-            {room.access === "su_invito" && <Lock className="mr-1 inline size-3.5 text-lavender" />}
-            {room.name}
+          <p className="flex min-w-0 items-center gap-2 font-medium">
+            <SafetyLight safety={room.safety} />
+            <span className="truncate">
+              {room.access === "su_invito" && <Lock className="mr-1 inline size-3.5 text-lavender" />}
+              {room.name}
+            </span>
           </p>
           <p className="truncate text-xs text-muted-foreground">
             {[group?.name, room.access === "su_invito" ? `su invito${ownerName ? ` di ${ownerName}` : ""}` : null, room.is_open ? null : "chiusa"].filter(Boolean).join(" · ") ||
@@ -583,6 +587,7 @@ function RoomForm({ room, districtId, groups, ownerName = "", onDone }: { room?:
     // le chat con password non si gestiscono da qui
     access: (room?.access === "su_invito" ? "su_invito" : "pubblica") as "pubblica" | "su_invito",
     ownerName,
+    safety: (room?.safety ?? "sicura") as RoomSafety,
   });
   const { pending, error, execute } = useAdminAction();
   return (
@@ -647,6 +652,18 @@ function RoomForm({ room, districtId, groups, ownerName = "", onDone }: { room?:
           </FieldLabel>
         )}
       </div>
+      <FieldLabel label="Sicurezza della zona" hint="Il semaforo che i giocatori vedono sulla mappa e in chat">
+        <span className="flex items-center gap-3">
+          <select className={inputClass} value={form.safety} onChange={(e) => setForm({ ...form, safety: e.target.value as RoomSafety })}>
+            {(Object.keys(SAFETY) as RoomSafety[]).map((s) => (
+              <option key={s} value={s}>
+                {s === "sicura" ? "🟢" : s === "poco_sicura" ? "🟡" : "🔴"} {SAFETY[s].label}
+              </option>
+            ))}
+          </select>
+          <SafetyLight safety={form.safety} size="md" />
+        </span>
+      </FieldLabel>
       <ImageField label="Immagine della chat" folder="chat" value={form.imageUrl} onChange={(imageUrl) => setForm({ ...form, imageUrl })} />
       <ActiveToggle checked={form.isOpen} onChange={(isOpen) => setForm({ ...form, isOpen })} label="Aperta (si può entrare in giocata)" />
       <div className="flex justify-end gap-2">

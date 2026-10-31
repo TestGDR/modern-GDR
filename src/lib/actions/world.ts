@@ -167,6 +167,8 @@ export type RoomInput = {
   ownerName: string;
   /** Gruppo nuovo da creare insieme alla chat (al posto di groupId) */
   newGroupName?: string;
+  /** Sicurezza della zona (semaforo) */
+  safety: "sicura" | "poco_sicura" | "pericolosa";
 };
 
 export async function saveRoom(input: RoomInput): Promise<ActionResult> {
@@ -177,6 +179,7 @@ export async function saveRoom(input: RoomInput): Promise<ActionResult> {
   const newGroup = clean(input.newGroupName ?? "", 80);
   if (input.newGroupName !== undefined && !newGroup) return { ok: false, error: "Dai un nome al gruppo nuovo." };
   if (!["pubblica", "su_invito"].includes(input.access)) return { ok: false, error: "Accesso non valido." };
+  if (!["sicura", "poco_sicura", "pericolosa"].includes(input.safety)) return { ok: false, error: "Sicurezza non valida." };
   if (!imageOk(input.imageUrl)) return { ok: false, error: "Immagine non valida." };
 
   await requirePlayer();
@@ -195,7 +198,17 @@ export async function saveRoom(input: RoomInput): Promise<ActionResult> {
     owner = data.id;
   }
 
-  const row: { location_id: string; group_id: string | null; name: string; description: string; image_url: string | null; is_open: boolean; access: string; owner_character_id: string | null } = {
+  const row: {
+    location_id: string;
+    group_id: string | null;
+    name: string;
+    description: string;
+    image_url: string | null;
+    is_open: boolean;
+    access: string;
+    owner_character_id: string | null;
+    safety: string;
+  } = {
     location_id: input.districtId,
     group_id: input.groupId,
     name,
@@ -204,6 +217,7 @@ export async function saveRoom(input: RoomInput): Promise<ActionResult> {
     is_open: input.isOpen,
     access: input.access,
     owner_character_id: owner,
+    safety: input.safety,
   };
   return run(async (db) => {
     // gruppo nuovo, creato insieme alla chat

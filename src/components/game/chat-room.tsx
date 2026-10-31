@@ -19,6 +19,7 @@ import {
 } from "@/components/game/chat-parts";
 import { CombatPanel } from "@/components/game/combat-panel";
 import { NeedsCharacter } from "@/components/game/needs-character";
+import { SafetyLight } from "@/components/game/safety-light";
 import { Button } from "@/components/ui/button";
 import { deleteMessage, editMessage, joinChat, leaveChat, setInvisible } from "@/lib/actions/chat";
 import { HISTORY_SIZE, KIND_LABEL, freshSince, isFresh } from "@/lib/chat";
@@ -438,7 +439,9 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
             <ArrowLeft className="size-5" />
           </Link>
           {/* solo il nome della chat */}
-          <h1 className="min-w-0 flex-1 truncate font-heading text-xl leading-none tracking-wide text-white">{room.name}</h1>
+          <h1 className="min-w-0 truncate font-heading text-xl leading-none tracking-wide text-white">{room.name}</h1>
+          <SafetyLight safety={room.safety} size="md" />
+          <span className="flex-1" />
           {canInvisible && (
             <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={toggleInvisible} className="rounded-full text-white hover:bg-white/15" title="Staff: leggi e scrivi senza comparire tra i presenti">
               {invisible ? <EyeOff /> : <Eye />}
