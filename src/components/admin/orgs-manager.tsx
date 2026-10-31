@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { ChevronDown, Pencil, Plus, Trophy, UserPlus, X } from "lucide-react";
 import { ActiveToggle, DeleteButton, ErrorText, FieldLabel, MoveButtons, StatusPill, inputClass, textareaClass, useAdminAction } from "@/components/admin/admin-ui";
 import { Button } from "@/components/ui/button";
+import { SafeHtml, plainToHtml } from "@/components/guide/safe-html";
 import { SortableList } from "@/components/sortable-list";
 import {
   assignMember,
@@ -22,6 +24,12 @@ import {
 import { formatDollars } from "@/lib/bank";
 import { ORG_LABELS, type GroupCategory, type JobKind, type Org, type OrgKind, type OrgRole } from "@/lib/orgs";
 import { cn } from "@/lib/utils";
+
+// L'editor (TipTap) si carica solo quando serve
+const RichEditor = dynamic(() => import("@/components/guide/rich-editor").then((m) => m.RichEditor), {
+  ssr: false,
+  loading: () => <p className="text-xs text-muted-foreground">Caricamento dell&apos;editor…</p>,
+});
 
 type CharacterOption = { id: string; name: string };
 type Props = { kind: OrgKind; orgs: Org[]; characters: CharacterOption[]; categories?: GroupCategory[] };
@@ -95,7 +103,7 @@ function OrgForm({ kind, org, categories, onDone }: { kind: OrgKind; org?: Org; 
   const [form, setForm] = useState<OrgInput>({
     id: org?.id,
     name: org?.name ?? "",
-    description: org?.description ?? "",
+    description: plainToHtml(org?.description ?? ""),
     iconUrl: org?.icon_url ?? "",
     active: org?.active ?? true,
     tags: org?.tags ?? [],
@@ -139,8 +147,8 @@ function OrgForm({ kind, org, categories, onDone }: { kind: OrgKind; org?: Org; 
           <input className={inputClass} value={form.iconUrl ?? ""} maxLength={500} placeholder="https://…" onChange={(e) => setForm({ ...form, iconUrl: e.target.value })} />
         </span>
       </FieldLabel>
-      <FieldLabel label="Descrizione" hint="La vedono i giocatori in Utility">
-        <textarea className={cn(textareaClass, "min-h-28")} value={form.description} maxLength={4000} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+      <FieldLabel label="Descrizione" hint="La vedono i giocatori in Utility, nella pagina del lavoro o del gruppo">
+        <RichEditor value={form.description} onChange={(description) => setForm({ ...form, description })} minHeight="min-h-48" />
       </FieldLabel>
       {kind === "group" && (
         <label className="flex items-center gap-2 text-sm">
@@ -172,7 +180,7 @@ function OrgDetail({ kind, org, characters }: { kind: OrgKind; org: Org; charact
 
   return (
     <div className="flex flex-col gap-5 border-t border-white/10 p-4">
-      {org.description && <p className="text-sm whitespace-pre-line text-muted-foreground">{org.description}</p>}
+      {org.description && <SafeHtml html={org.description} className="text-sm text-muted-foreground" />}
       <ErrorText error={error} />
 
       {/* Ruoli */}

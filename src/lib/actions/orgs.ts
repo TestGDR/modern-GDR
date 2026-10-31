@@ -57,7 +57,7 @@ export async function saveOrg(kind: OrgKind, input: OrgInput): Promise<ActionRes
   const t = ORG_TABLES[kind];
   const icon = (input.iconUrl ?? "").trim();
   if (icon && (!/^https:\/\/\S+$/.test(icon) || icon.length > 500)) return { ok: false, error: "L'icona va indicata con un link che inizia con https://" };
-  const row: Record<string, unknown> = { name, description: clean(input.description, 4000), active: input.active, icon_url: icon || null };
+  const row: Record<string, unknown> = { name, description: clean(input.description, 20000), active: input.active, icon_url: icon || null };
   // gruppi: solo tag conosciuti ("malavita" apre il mercato nero)
   if (kind === "group" && input.tags) row.tags = input.tags.filter((t) => t === "malavita");
   if (kind === "group") row.category_id = input.categoryId && isUuid(input.categoryId) ? input.categoryId : null;

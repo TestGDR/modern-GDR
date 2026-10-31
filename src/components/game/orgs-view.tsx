@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, BriefcaseBusiness, ChevronRight, LogOut, Trophy, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NeedsCharacter } from "@/components/game/needs-character";
+import { SafeHtml } from "@/components/guide/safe-html";
 import { joinJob, leaveJob } from "@/lib/actions/orgs";
 import { formatDollars, periodLabel } from "@/lib/bank";
 import { JOB_KIND_LABEL, type GroupCategory, type JobKind, type Org, type OrgKind, type OrgRole } from "@/lib/orgs";
@@ -241,7 +242,7 @@ function OrgPage({
           </Button>
         )}
       </header>
-      {org.description ? <p className="text-sm whitespace-pre-line">{org.description}</p> : <p className="text-sm text-muted-foreground">Nessuna descrizione.</p>}
+      {org.description ? <SafeHtml html={org.description} className="text-sm" /> : <p className="text-sm text-muted-foreground">Nessuna descrizione.</p>}
       {error && <p className="rounded-lg bg-destructive/15 px-3 py-2 text-sm text-destructive">{error}</p>}
 
       {/* Ruoli */}
