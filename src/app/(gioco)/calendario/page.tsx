@@ -19,10 +19,7 @@ async function Content() {
   const player = await requirePlayer();
   return (
     <div className="flex flex-col gap-3">
-      <div>
-        <h1 className="font-heading text-3xl tracking-wide">Calendario</h1>
-        <p className="text-sm text-muted-foreground">Feste, lezioni, appuntamenti dello staff e partite delle squadre (ora italiana).</p>
-      </div>
+      <h1 className="sr-only">Calendario</h1>
       {/* solo per mostrare i pulsanti: la sicurezza è nelle policy (calendario.gestire) */}
       <CalendarApp canManage={can(player, "calendario.gestire")} />
     </div>
