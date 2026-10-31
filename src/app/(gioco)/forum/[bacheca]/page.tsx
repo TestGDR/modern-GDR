@@ -6,7 +6,7 @@ import { Lock, Pin, Plus, Star } from "lucide-react";
 import { NewThreadForm } from "@/components/game/forum-forms";
 import { ForumShell } from "@/components/game/forum-shell";
 import { LoadingBlocks } from "@/components/game/loading";
-import { activeCharacter, can, requirePlayer } from "@/lib/auth";
+import { can, requirePlayer } from "@/lib/auth";
 import { getBoard, getForumUnread, getThreads } from "@/lib/data";
 import { firstName, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -29,7 +29,6 @@ export default function BoardPage({ params }: PageProps<"/forum/[bacheca]">) {
 async function Content({ params }: { params: PageProps<"/forum/[bacheca]">["params"] }) {
   const { bacheca } = await params;
   const player = await requirePlayer();
-  const character = activeCharacter(player);
   // le sezioni riservate a chi non può leggerle non arrivano proprio (policy del database)
   const board = await getBoard(bacheca);
   if (!board) notFound();
@@ -55,7 +54,7 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]">["para
             <Plus className="size-4 transition-transform group-open:rotate-45" /> Nuova discussione
           </summary>
           <div className="border-t border-white/10 p-4">
-            <NewThreadForm boardId={board.id} boardSlug={board.slug} characterName={character ? firstName(character.name) : null} onGame={board.section.is_on_game} />
+            <NewThreadForm boardId={board.id} boardSlug={board.slug} />
           </div>
         </details>
       ) : (

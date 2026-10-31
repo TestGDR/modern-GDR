@@ -9,7 +9,7 @@ import { ReplyForm } from "@/components/game/forum-forms";
 import { PostBody, ThreadModeration } from "@/components/game/forum-thread";
 import { ForumShell } from "@/components/game/forum-shell";
 import { LoadingBlocks } from "@/components/game/loading";
-import { activeCharacter, can, requirePlayer } from "@/lib/auth";
+import { can, requirePlayer } from "@/lib/auth";
 import { getBoard, getForumNav, getPosts, getThread } from "@/lib/data";
 import { firstName, formatDateTime, initials } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -32,7 +32,6 @@ export default function ThreadPage({ params }: PageProps<"/forum/[bacheca]/[disc
 async function Content({ params }: { params: PageProps<"/forum/[bacheca]/[discussione]">["params"] }) {
   const { bacheca, discussione } = await params;
   const player = await requirePlayer();
-  const character = activeCharacter(player);
   const [thread, board] = await Promise.all([getThread(discussione), getBoard(bacheca)]);
   if (!thread || !board || thread.board_id !== board.id) notFound();
   const moderator = can(player, "forum.moderare");
@@ -117,7 +116,7 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]/[discus
         {thread.is_locked && !moderator ? (
           <p className="text-center text-sm text-muted-foreground">Discussione chiusa: non si può più rispondere.</p>
         ) : (
-          <ReplyForm threadId={thread.id} characterName={character ? firstName(character.name) : null} onGame={board.section.is_on_game} />
+          <ReplyForm threadId={thread.id} />
         )}
       </div>
     </>

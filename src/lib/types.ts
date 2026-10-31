@@ -490,6 +490,8 @@ export type FormState = {
   success?: string;
   /** Valori da rimettere nel modulo dopo un errore */
   values?: Record<string, string>;
+  /** Pagina da aprire dopo il salvataggio (la apre il browser) */
+  redirectTo?: string;
 };
 
 /* ---------- Università (sistema accademico) ---------- */

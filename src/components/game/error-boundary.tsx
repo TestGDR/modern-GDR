@@ -9,6 +9,11 @@ type State = { error: Error | null };
 // Una nuova versione pubblicata mentre il sito era aperto: i pezzi di codice vecchi
 // non esistono più. Si ricarica la pagina una volta sola.
 const RELOAD_KEY = "gdr_ricarica_versione";
+/** redirect() e notFound() di Next passano come "errori": vanno lasciati a Next */
+function isNextNavigation(error: Error) {
+  const digest = (error as Error & { digest?: string }).digest ?? "";
+  return /^NEXT_(REDIRECT|NOT_FOUND|HTTP_ERROR_FALLBACK)/.test(digest) || error.message === "NEXT_REDIRECT" || error.message === "NEXT_NOT_FOUND";
+}
 function isOldVersion(error: Error) {
   return /ChunkLoadError|Loading chunk|Failed to fetch dynamically imported module|Importing a module script failed/i.test(`${error.name} ${error.message}`);
 }
@@ -41,6 +46,7 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     const { error } = this.state;
     if (!error) return this.props.children;
+    if (isNextNavigation(error)) throw error;
     const old = isOldVersion(error);
     return (
       <div role="alert" className="m-4 flex flex-col gap-2 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm">

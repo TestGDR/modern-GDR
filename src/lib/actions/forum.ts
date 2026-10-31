@@ -10,11 +10,6 @@ function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
-/** "Scrivi come": personaggio (On Game) oppure utente (Off Game) */
-function asCharacter(formData: FormData, characterId: string | undefined) {
-  return formData.get("as_character") === "on" && characterId ? characterId : null;
-}
-
 export async function createThread(_prev: FormState, formData: FormData): Promise<FormState> {
   const player = await getPlayer();
   if (!player) redirect("/login");
@@ -26,11 +21,11 @@ export async function createThread(_prev: FormState, formData: FormData): Promis
   if (title.length < 3) return { error: "Il titolo deve avere almeno 3 caratteri." };
   if (!body) return { error: "Scrivi il primo messaggio della discussione." };
 
+  // si scrive sempre con l'utente (il nome dell'utente è quello del personaggio: niente alias)
   const supabase = await createClient();
-  const characterId = asCharacter(formData, player.character?.id);
   const { data: thread, error } = await supabase
     .from("forum_threads")
-    .insert({ board_id: boardId, title: title.slice(0, 120), character_id: characterId })
+    .insert({ board_id: boardId, title: title.slice(0, 120), character_id: null })
     .select("id")
     .single<{ id: string }>();
 
@@ -41,10 +36,11 @@ export async function createThread(_prev: FormState, formData: FormData): Promis
 
   const { error: postError } = await supabase
     .from("forum_posts")
-    .insert({ thread_id: thread.id, body: body.slice(0, 20000), character_id: characterId });
+    .insert({ thread_id: thread.id, body: body.slice(0, 20000), character_id: null });
   if (postError) return { error: `Discussione creata, ma il messaggio non è stato salvato: ${postError.message}` };
 
-  redirect(`/forum/${boardSlug}/${thread.id}`);
+  // la apre il browser: un redirect dentro la finestra del forum verrebbe preso per un errore
+  return { success: "Discussione aperta.", redirectTo: `/forum/${boardSlug}/${thread.id}` };
 }
 
 export async function replyToThread(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -59,7 +55,7 @@ export async function replyToThread(_prev: FormState, formData: FormData): Promi
   const { error } = await supabase.from("forum_posts").insert({
     thread_id: threadId,
     body: body.slice(0, 20000),
-    character_id: asCharacter(formData, player.character?.id),
+    character_id: null,
   });
 
   if (error) {
