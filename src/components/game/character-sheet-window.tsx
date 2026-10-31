@@ -78,7 +78,7 @@ const SECTIONS: Section[] = [
   { key: "tratti", label: "Tratti", icon: Fingerprint, field: "traits", hint: "Carattere: personalità, abitudini, pregi e difetti." },
   { key: "aspetto", label: "Aspetto", icon: ScanFace, field: "appearance", hint: "Com'è fisicamente, come si veste, segni particolari." },
   { key: "storia", label: "Storia", icon: BookOpen, field: "bio", hint: "Da dove viene e cosa l'ha portato a Miami." },
-  { key: "equipaggiamento", label: "Zaino", icon: Backpack, field: "equipment", hint: "Note sullo zaino (solo tu e lo staff): gli oggetti veri si comprano al Mercato." },
+  { key: "equipaggiamento", label: "Zaino", icon: Backpack, field: "equipment", hint: "Gli oggetti del Mercato: con sé (li vedono tutti) e nello zaino." },
 ];
 
 type View = { section: string; mode: "view" | "edit" | "settings" | "admin" };
@@ -129,7 +129,8 @@ export function CharacterSheetWindow({
   const [view, setView] = useState<View>({ section: "principale", mode: "view" });
   const section = SECTIONS.find((s) => s.key === view.section) ?? SECTIONS[0];
   // gli affetti si modificano direttamente nella sezione (aggiungi, sposta, dedica)
-  const canEdit = isOwner && !["caratteristiche", "abilita", "affetti"].includes(section.key);
+  // lo Zaino non si scrive: si riempie con gli oggetti del Mercato
+  const canEdit = isOwner && !["caratteristiche", "abilita", "affetti", "equipaggiamento"].includes(section.key);
   // l'Amministratore cambia caratteristiche e abilità dall'Amministrazione della scheda
   const staffEdit = isAdmin && (section.key === "caratteristiche" || section.key === "abilita");
 
@@ -294,13 +295,6 @@ export function CharacterSheetWindow({
           ) : section.key === "equipaggiamento" ? (
             <SectionFrame title="Zaino">
               <BackpackSection characterId={character.id} isOwner={isOwner} canSeeAll={canSeePrivate} />
-              {/* le vecchie note di testo: solo proprietario e staff (agli altri il server non le manda) */}
-              {(isOwner || canSeePrivate) && (
-                <>
-                  <h3 className="mt-8 mb-2 font-heading text-xl tracking-wide text-peach">Note</h3>
-                  <FreeText text={character.equipment} isOwner={isOwner} />
-                </>
-              )}
             </SectionFrame>
           ) : (
             <SectionFrame title={section.label}>
