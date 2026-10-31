@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowLeft, Crown, Dices, Eye, EyeOff, Package, SendHorizontal, Swords, Users } from "lucide-react";
+import { ArrowDown, ArrowLeft, ChevronDown, Crown, Dices, Eye, EyeOff, LayoutGrid, NotebookPen, Package, Save, SendHorizontal, Swords, Users } from "lucide-react";
 import { ItemsPanel } from "@/components/game/chat-items";
+import { ChatToolWindow, NotepadPanel, SaveChatPanel } from "@/components/game/chat-tools";
 import {
   BlurredRows,
   DicePanel,
@@ -47,6 +48,9 @@ type Props = {
 };
 
 const byTime = (a: Message, b: Message) => a.created_at.localeCompare(b.created_at) || a.id - b.id;
+
+/** Comandi della chat: ognuno si apre nella sua finestra */
+type Tool = "scontro" | "oggetti" | "dadi" | "master" | "note" | "salva";
 
 /**
  * Stanza di chat (dal Westeros: ChatRoom.tsx). Tempo reale con Supabase,
@@ -205,7 +209,16 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [panel, setPanel] = useState<"dadi" | "master" | "scontro" | "oggetti" | null>(null);
+  // finestre dei comandi aperte (più d'una insieme)
+  const [tools, setTools] = useState<Tool[]>([]);
+  const toggleTool = (t: Tool) => setTools((list) => (list.includes(t) ? list.filter((x) => x !== t) : [...list, t]));
+  const closeTool = (t: Tool) => setTools((list) => list.filter((x) => x !== t));
+  // menu dei comandi su cellulare
+  const [menu, setMenu] = useState(false);
+  // blocco note: resta finché non si manda in chat
+  const [note, setNote] = useState("");
+  // presenti su cellulare: chiusi, si apre il nome di tutti
+  const [showPresent, setShowPresent] = useState(false);
   // Fortunato del mio personaggio (ritiro del d10, una volta per periodo)
   const [lucky, setLucky] = useState(false);
   useEffect(() => {
@@ -286,8 +299,9 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
     router.refresh();
   }
 
-  async function send() {
-    const content = text.trim();
+  /** Manda in chat il testo (della casella o del blocco note); se riesce lo svuota */
+  async function send(source: string = text, clear: () => void = () => setText("")) {
+    const content = source.trim();
     if (!content || !me || sending) return;
     if (kind === "azione" && master && content.length < master.min) {
       return setError(`Modalità master: l'azione deve avere almeno ${master.min} caratteri (ne ha ${content.length}).`);
@@ -308,7 +322,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
       if (npcError) return setError(npcError.message);
       const { data: npcRow } = await supabase.from("messages").select("*").eq("id", id as number).maybeSingle<Message>();
       if (npcRow) addMessage(npcRow, true);
-      setText("");
+      clear();
       return;
     }
     setSending(true);
@@ -335,7 +349,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
       return;
     }
     addMessage(row, true);
-    setText("");
+    clear();
     // dopo un messaggio speciale si torna all'azione
     if (kind !== "azione") setKind("azione");
   }
@@ -400,6 +414,18 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
   // alla mappa senza riaprire il riquadro del quartiere
   const back = "/mappa";
   const blurred = !joined && !invisible;
+  // per salvare la chat servono almeno 3 mie azioni
+  const myActions = me ? messages.filter((m) => m.character_id === me.id && m.kind === "azione").length : 0;
+
+  // i comandi della chat, nello stesso ordine nella barra e nel menu del cellulare
+  const commands: { id: Tool; label: string; icon: React.ReactNode; show: boolean }[] = [
+    { id: "note", label: "Blocco note", icon: <NotebookPen />, show: true },
+    { id: "dadi", label: "Dadi", icon: <Dices />, show: canDice },
+    { id: "scontro", label: "Combattimento", icon: <Swords />, show: true },
+    { id: "oggetti", label: "Oggetti", icon: <Package />, show: true },
+    { id: "salva", label: "Salva chat", icon: <Save />, show: true },
+    { id: "master", label: "Master", icon: <Crown />, show: canNarrate || canModerate },
+  ];
 
   return (
     <div className="fixed inset-x-0 bottom-0 top-[calc(5rem+env(safe-area-inset-top))] z-10 p-[10px] lg:top-24 lg:left-72">
@@ -429,13 +455,25 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
       )}
 
       {/* Presenti */}
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-4 py-2 text-sm sm:px-6">
-        <Users className="size-4 shrink-0 text-mint" />
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-1.5 text-sm sm:px-6 sm:py-2">
+        <button
+          type="button"
+          onClick={() => setShowPresent((v) => !v)}
+          className="flex items-center gap-1.5 text-xs sm:pointer-events-none"
+          aria-expanded={showPresent}
+        >
+          <Users className="size-4 shrink-0 text-mint" />
+          <span className="sm:hidden">{present.length === 0 ? "Nessuno in giocata" : `${present.length} in giocata`}</span>
+          {present.length > 0 && <ChevronDown className={cn("size-3.5 transition-transform sm:hidden", showPresent && "rotate-180")} />}
+        </button>
         {present.length === 0 ? (
-          <span className="text-muted-foreground">Nessuno in giocata.</span>
+          <span className="hidden text-muted-foreground sm:inline">Nessuno in giocata.</span>
         ) : (
           present.map((p) => (
-            <span key={p.character_id} className={cn("rounded-full px-2.5 py-0.5 text-xs", p.character_id === me?.id ? "bg-flamingo/25 text-white" : "bg-white/10")}>
+            <span
+              key={p.character_id}
+              className={cn("rounded-full px-2.5 py-0.5 text-xs", showPresent ? "inline" : "hidden sm:inline", p.character_id === me?.id ? "bg-flamingo/25 text-white" : "bg-white/10")}
+            >
               {firstName(p.name)}
             </span>
           ))
@@ -459,7 +497,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
             atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
             if (atBottom.current) setUnseen(0);
           }}
-          className="flex h-full flex-col gap-3 overflow-y-auto px-4 py-4 sm:px-6"
+          className="flex h-full flex-col gap-2 overflow-y-auto px-2 py-3 sm:gap-3 sm:px-6 sm:py-4"
         >
           {blurred ? (
             <div className="flex flex-col gap-4">
@@ -527,7 +565,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
             e.preventDefault();
             send();
           }}
-          className="flex shrink-0 flex-col gap-2 border-t border-border p-3 sm:p-4"
+          className="flex shrink-0 flex-col gap-2 border-t border-border p-2 sm:p-4"
         >
           <CombatPanel
             roomId={roomId}
@@ -535,20 +573,44 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
             present={present}
             isMaster={canNarrate || canCombat}
             tick={combatTick}
-            starting={panel === "scontro"}
-            onCloseStart={() => setPanel(null)}
+            open={tools.includes("scontro")}
+            onOpen={() => toggleTool("scontro")}
+            onClose={() => closeTool("scontro")}
             onError={setError}
           />
-          {panel === "dadi" && <DicePanel roomId={roomId} characterId={me.id} attributes={attributes} skills={skills} onClose={() => setPanel(null)} onError={setError} />}
-          {panel === "oggetti" && <ItemsPanel roomId={roomId} characterId={me.id} onClose={() => setPanel(null)} onError={setError} />}
-          {panel === "master" && <MasterPanel roomId={roomId} characterId={me.id} active={master} onClose={() => setPanel(null)} onError={setError} />}
+          {tools.includes("dadi") && (
+            <ChatToolWindow title="Tiro Interlock" icon={<Dices className="size-5" />} width={460} onClose={() => closeTool("dadi")}>
+              <DicePanel roomId={roomId} characterId={me.id} attributes={attributes} skills={skills} onClose={() => closeTool("dadi")} onError={setError} />
+            </ChatToolWindow>
+          )}
+          {tools.includes("oggetti") && (
+            <ChatToolWindow title="Oggetti" icon={<Package className="size-5" />} onClose={() => closeTool("oggetti")}>
+              <ItemsPanel roomId={roomId} characterId={me.id} onError={setError} />
+            </ChatToolWindow>
+          )}
+          {tools.includes("master") && (
+            <ChatToolWindow title="Modalità master" icon={<Crown className="size-5" />} tone="text-orchid" onClose={() => closeTool("master")}>
+              <MasterPanel roomId={roomId} characterId={me.id} active={master} onClose={() => closeTool("master")} onError={setError} />
+            </ChatToolWindow>
+          )}
+          {tools.includes("note") && (
+            <ChatToolWindow title="Blocco note" icon={<NotebookPen className="size-5" />} width={520} onClose={() => closeTool("note")}>
+              <NotepadPanel value={note} onChange={setNote} sending={sending} maxLength={maxLen} kind={kind} onSend={() => send(note, () => setNote(""))} />
+              {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+            </ChatToolWindow>
+          )}
+          {tools.includes("salva") && (
+            <ChatToolWindow title="Salva chat" icon={<Save className="size-5" />} onClose={() => closeTool("salva")}>
+              <SaveChatPanel roomName={room.name} messages={messages} myActions={myActions} />
+            </ChatToolWindow>
+          )}
           {error && <p className="text-sm text-destructive">{error}</p>}
-          <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex items-center gap-1.5 text-xs sm:flex-wrap sm:gap-2">
             <select
               value={kind}
               onChange={(e) => setKind(e.target.value as MessageKind)}
               aria-label="Tipo di messaggio"
-              className="h-8 rounded-lg border border-input bg-night/40 px-2 outline-none focus-visible:border-ring"
+              className="h-8 max-w-28 shrink-0 rounded-lg border border-input bg-night/40 px-1.5 outline-none focus-visible:border-ring sm:max-w-none sm:px-2"
             >
               <option value="azione">{KIND_LABEL.azione}</option>
               <option value="fuori_gioco">{KIND_LABEL.fuori_gioco}</option>
@@ -587,22 +649,51 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
                 <option key={o.character_id} value={firstName(o.name)} />
               ))}
             </datalist>
-            <span className="ml-auto flex gap-1">
-              <Button type="button" variant="ghost" size="sm" onClick={() => setPanel(panel === "scontro" ? null : "scontro")} className="rounded-full" aria-pressed={panel === "scontro"}>
-                <Swords /> Combattimento
+            {/* computer: i comandi in fila (il nome per esteso sugli schermi larghi) */}
+            <span className="ml-auto hidden gap-0.5 sm:flex">
+              {commands
+                .filter((c) => c.show)
+                .map((c) => (
+                  <Button
+                    key={c.id}
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleTool(c.id)}
+                    className={cn("rounded-full", tools.includes(c.id) && "bg-white/10 text-peach")}
+                    aria-pressed={tools.includes(c.id)}
+                    title={c.label}
+                    aria-label={c.label}
+                  >
+                    {c.icon}
+                    <span className="hidden 2xl:inline">{c.label}</span>
+                  </Button>
+                ))}
+            </span>
+            {/* cellulare: i comandi raggruppati in un menu */}
+            <span className="relative ml-auto shrink-0 sm:hidden">
+              <Button type="button" variant="ghost" size="icon-sm" onClick={() => setMenu((v) => !v)} className="rounded-full border border-white/15" aria-expanded={menu} aria-label="Comandi della chat">
+                <LayoutGrid />
               </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setPanel(panel === "oggetti" ? null : "oggetti")} className="rounded-full" aria-pressed={panel === "oggetti"}>
-                <Package /> Oggetti
-              </Button>
-              {canDice && (
-                <Button type="button" variant="ghost" size="sm" onClick={() => setPanel(panel === "dadi" ? null : "dadi")} className="rounded-full" aria-pressed={panel === "dadi"}>
-                  <Dices /> Dadi
-                </Button>
-              )}
-              {(canNarrate || canModerate) && (
-                <Button type="button" variant="ghost" size="sm" onClick={() => setPanel(panel === "master" ? null : "master")} className="rounded-full" aria-pressed={panel === "master"}>
-                  <Crown /> Master
-                </Button>
+              {menu && (
+                <span className="absolute right-0 bottom-full z-30 mb-2 flex w-52 flex-col overflow-hidden rounded-2xl border border-white/15 bg-night/95 p-1 shadow-2xl backdrop-blur">
+                  {commands
+                    .filter((c) => c.show)
+                    .map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setMenu(false);
+                          toggleTool(c.id);
+                        }}
+                        className={cn("flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm hover:bg-white/10 [&_svg]:size-4 [&_svg]:text-peach", tools.includes(c.id) && "bg-white/10")}
+                      >
+                        {c.icon}
+                        {c.label}
+                      </button>
+                    ))}
+                </span>
               )}
             </span>
           </div>
@@ -617,18 +708,19 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
                 }
               }}
               maxLength={maxLen}
-              rows={3}
+              rows={2}
               placeholder={
                 kind === "fuori_gioco" ? "Scrivi fuori dal gioco…" : kind === "master" ? "Narra la scena…" : kind === "png" ? "Cosa dice o fa il PNG?" : "Cosa fa il tuo personaggio? Il parlato va tra < >, «» o \"\"…"
               }
-              className="min-h-0 flex-1 resize-none rounded-xl border border-input bg-night/40 px-3 py-2 text-sm outline-none focus-visible:border-ring"
+              className="min-h-0 flex-1 resize-none rounded-xl border border-input bg-night/40 px-3 py-2 text-sm outline-none focus-visible:border-ring sm:min-h-20"
             />
-            <Button type="submit" size="icon-lg" disabled={sending || !text.trim()} className="h-auto self-stretch px-4" aria-label="Invia">
+            <Button type="submit" size="icon-lg" disabled={sending || !text.trim()} className="h-auto self-stretch px-3 sm:px-4" aria-label="Invia">
               <SendHorizontal />
             </Button>
           </div>
-          <p className={cn("text-right text-xs", left < 50 ? "text-peach" : "text-muted-foreground")}>
-            Invio per mandare, Maiusc+Invio per andare a capo · {left} caratteri
+          <p className={cn("text-right text-[0.7rem] sm:text-xs", left < 50 ? "text-peach" : "text-muted-foreground")}>
+            <span className="hidden sm:inline">Invio per mandare, Maiusc+Invio per andare a capo · </span>
+            {left} caratteri
           </p>
         </form>
       ) : null}

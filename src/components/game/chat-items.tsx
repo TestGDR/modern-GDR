@@ -1,13 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Package, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { CharacterItem } from "@/lib/market";
 import { createClient } from "@/lib/supabase/client";
 
-/** Pannello «Oggetti» della chat: i consumabili con le cariche, da usare in giocata */
-export function ItemsPanel({ roomId, characterId, onClose, onError }: { roomId: string; characterId: string; onClose: () => void; onError: (e: string | null) => void }) {
+/** Pannello «Oggetti» della chat (in finestra): i consumabili con le cariche, da usare in giocata */
+export function ItemsPanel({ roomId, characterId, onError }: { roomId: string; characterId: string; onError: (e: string | null) => void }) {
   const supabase = useMemo(() => createClient(), []);
   const [items, setItems] = useState<CharacterItem[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -32,14 +31,7 @@ export function ItemsPanel({ roomId, characterId, onClose, onError }: { roomId: 
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-white/15 bg-night/80 p-3 backdrop-blur">
-      <div className="flex items-center gap-2">
-        <Package className="size-4 text-peach" />
-        <p className="font-heading text-lg tracking-wide text-peach">Oggetti</p>
-        <button type="button" onClick={onClose} className="ml-auto rounded p-1 text-muted-foreground hover:bg-white/10" aria-label="Chiudi">
-          <X className="size-4" />
-        </button>
-      </div>
+    <div className="flex flex-col gap-2">
       {items && items.length === 0 && <p className="text-sm text-muted-foreground">Niente da usare. I consumabili si comprano in Utility → Mercato.</p>}
       <ul className="flex flex-wrap gap-2">
         {(items ?? []).map((it) => (

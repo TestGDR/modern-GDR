@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Flag, HandMetal, LogOut, Shield, Swords, UserPlus, X } from "lucide-react";
+import { Flag, HandMetal, LogOut, Shield, Swords, UserPlus } from "lucide-react";
+import { ChatToolWindow } from "@/components/game/chat-tools";
 import { Button } from "@/components/ui/button";
 import type { ChatPresent } from "@/lib/data";
 import { firstName } from "@/lib/format";
@@ -33,15 +34,16 @@ type Props = {
   isMaster: boolean;
   /** Cresce a ogni messaggio di combattimento in chat: si ricarica */
   tick: number;
-  /** Pannello per avviare lo scontro aperto dal pulsante della chat */
-  starting: boolean;
-  onCloseStart: () => void;
+  /** Finestra del combattimento aperta (pulsante della chat) */
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
   onError: (e: string | null) => void;
 };
 
 type Fight = { combat: Combat; people: CombatParticipant[]; pending: CombatAction | null };
 
-export function CombatPanel({ roomId, me, present, isMaster, tick, starting, onCloseStart, onError }: Props) {
+export function CombatPanel({ roomId, me, present, isMaster, tick, open, onOpen, onClose, onError }: Props) {
   const supabase = useMemo(() => createClient(), []);
   // tutti gli scontri in corso nella chat (possono essere più d'uno)
   const [fights, setFights] = useState<Fight[]>([]);
@@ -92,17 +94,41 @@ export function CombatPanel({ roomId, me, present, isMaster, tick, starting, onC
   // il mio scontro per primo
   const ordered = myFight ? [myFight, ...fights.filter((f) => f !== myFight)] : fights;
 
-  if (fights.length === 0 && !(starting && me)) return null;
+  // tocca a me (attaccare o difendermi), o al Master se decide le difese
+  const waitingOnMe = fights.some((f) => {
+    const cur = f.combat.turn_order[f.combat.turn_index];
+    const inside = !!me && f.people.some((p) => p.character_id === me.id && !p.out);
+    return (f.pending && ((me && f.pending.target_id === me.id) || isMaster)) || (!f.pending && inside && cur === me?.id);
+  });
+
+  if (!open) {
+    // finestra chiusa: una riga sola che avvisa degli scontri in corso
+    if (fights.length === 0) return null;
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        className={cn(
+          "flex items-center gap-2 rounded-xl border px-3 py-1.5 text-left text-xs",
+          waitingOnMe ? "blink-call border-flamingo bg-flamingo/20 text-white" : "border-flamingo/40 bg-flamingo/10",
+        )}
+      >
+        <Swords className="size-4 shrink-0 text-flamingo" />
+        {fights.length === 1 ? "Uno scontro in corso" : `${fights.length} scontri in corso`}
+        {waitingOnMe && <strong className="text-peach">· tocca a te!</strong>}
+        <span className="ml-auto underline">Apri</span>
+      </button>
+    );
+  }
+
   return (
-    <div className="flex max-h-[45vh] flex-col gap-2 overflow-y-auto">
-      {starting && me && (
+    <ChatToolWindow title="Combattimento" icon={<Swords className="size-5" />} tone="text-flamingo" width={560} onClose={onClose}>
+    <div className="flex flex-col gap-2">
+      {me && (
         myFight ? (
-          <p className="flex items-center gap-2 rounded-2xl border border-flamingo/40 bg-night/80 p-3 text-sm">
+          <p className="flex items-center gap-2 rounded-2xl border border-flamingo/40 bg-night/60 p-3 text-xs text-muted-foreground">
             <Swords className="size-4 shrink-0 text-flamingo" />
-            Sei già nello scontro {myFight.combat.number}: per iniziarne un altro prima abbandonalo.
-            <button type="button" onClick={onCloseStart} className="ml-auto rounded p-1 text-muted-foreground hover:bg-white/10" aria-label="Chiudi">
-              <X className="size-4" />
-            </button>
+            Sei nello scontro {myFight.combat.number}: per iniziarne un altro prima abbandonalo.
           </p>
         ) : (
           <StartPanel
@@ -111,8 +137,7 @@ export function CombatPanel({ roomId, me, present, isMaster, tick, starting, onC
             engagedIn={engagedIn}
             others={fights.length}
             busy={busy}
-            onClose={onCloseStart}
-            onStart={async (ids) => (await run("combat_start", { p_room: roomId, p_character: me.id, p_opponents: ids })) && onCloseStart()}
+            onStart={(ids) => run("combat_start", { p_room: roomId, p_character: me.id, p_opponents: ids })}
           />
         )
       )}
@@ -131,6 +156,7 @@ export function CombatPanel({ roomId, me, present, isMaster, tick, starting, onC
         />
       ))}
     </div>
+    </ChatToolWindow>
   );
 }
 
@@ -280,7 +306,6 @@ function StartPanel({
   engagedIn,
   others,
   busy,
-  onClose,
   onStart,
 }: {
   me: { id: string };
@@ -289,7 +314,6 @@ function StartPanel({
   /** scontri già in corso nella chat */
   others: number;
   busy: boolean;
-  onClose: () => void;
   onStart: (ids: string[]) => void;
 }) {
   const [chosen, setChosen] = useState<string[]>([]);
@@ -299,9 +323,6 @@ function StartPanel({
       <div className="flex items-center gap-2">
         <Swords className="size-4 text-flamingo" />
         <p className="font-heading text-lg tracking-wide text-flamingo">{others > 0 ? "Inizia un altro scontro" : "Inizia uno scontro"}</p>
-        <button type="button" onClick={onClose} className="ml-auto rounded p-1 text-muted-foreground hover:bg-white/10" aria-label="Chiudi">
-          <X className="size-4" />
-        </button>
       </div>
       <p className="text-xs text-muted-foreground">
         Scegli contro chi combatti (anche più di uno). L&apos;iniziativa (RIF + d10) la tira il server e decide l&apos;ordine dei turni. Gli altri presenti potranno entrare dopo.

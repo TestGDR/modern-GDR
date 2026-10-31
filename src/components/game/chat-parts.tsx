@@ -186,13 +186,13 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
   const npc = m.kind === "png";
   const own = mine && !npc;
   return (
-    <article className={cn("group flex gap-3 rounded-2xl px-3 py-3 sm:px-4", own ? "bg-flamingo/10" : npc ? "bg-orchid/10 ring-1 ring-orchid/25" : "bg-white/5")}>
+    <article className={cn("group flex gap-2.5 rounded-2xl px-2.5 py-2.5 sm:gap-3 sm:px-4 sm:py-3", own ? "bg-flamingo/10" : npc ? "bg-orchid/10 ring-1 ring-orchid/25" : "bg-white/5")}>
       <div className="relative shrink-0 self-start">
         {avatar ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatar} alt="" className="size-[70px] rounded-full object-cover ring-2 ring-white/15" />
+          <img src={avatar} alt="" className="size-12 rounded-full object-cover ring-2 ring-white/15 sm:size-[70px]" />
         ) : (
-          <span className="grid size-[70px] place-items-center rounded-full bg-gradient-to-br from-violet via-orchid to-peach font-heading text-2xl text-white ring-2 ring-white/15">
+          <span className="grid size-12 place-items-center rounded-full bg-gradient-to-br from-violet via-orchid to-peach font-heading text-xl text-white ring-2 ring-white/15 sm:size-[70px] sm:text-2xl">
             {initials(m.character_name || "?")}
           </span>
         )}
@@ -200,7 +200,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
           <button
             type="button"
             onClick={() => onLook(m)}
-            className="absolute -right-1 -bottom-1 grid size-7 place-items-center rounded-full border border-white/20 bg-night/90 text-peach shadow transition-colors hover:bg-flamingo hover:text-white"
+            className="absolute -right-1 -bottom-1 grid size-6 place-items-center sm:size-7 rounded-full border border-white/20 bg-night/90 text-peach shadow transition-colors hover:bg-flamingo hover:text-white"
             aria-label={`Il look di ${firstName(m.character_name)}`}
             title={`Il look di ${firstName(m.character_name)}`}
           >
@@ -355,14 +355,7 @@ export function DicePanel({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-peach/30 bg-night/80 p-3 backdrop-blur">
-      <div className="flex items-center gap-2">
-        <Dices className="size-4 text-peach" />
-        <p className="font-heading text-lg tracking-wide text-peach">Tiro Interlock</p>
-        <button type="button" onClick={onClose} className="ml-auto rounded p-1 text-muted-foreground hover:bg-white/10" aria-label="Chiudi">
-          <X className="size-4" />
-        </button>
-      </div>
+    <div className="flex flex-col gap-3">
       <p className="text-xs text-muted-foreground">
         1d10 + caratteristica (+ abilità) + vantaggi e svantaggi. In chat compare solo l&apos;esito: 10 naturale = successo critico, 1 naturale = fallimento critico. Il tiro lo fa il server.
       </p>
@@ -463,13 +456,7 @@ export function MasterPanel({
 
   const num = "h-10 w-24 rounded-lg border border-input bg-night/40 px-2 text-sm outline-none focus-visible:border-ring";
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-orchid/40 bg-night/80 p-3 backdrop-blur">
-      <div className="flex items-center gap-2">
-        <p className="font-heading text-lg tracking-wide text-orchid">Modalità master</p>
-        <button type="button" onClick={onClose} className="ml-auto rounded p-1 text-muted-foreground hover:bg-white/10" aria-label="Chiudi">
-          <X className="size-4" />
-        </button>
-      </div>
+    <div className="flex flex-col gap-3">
       <p className="text-xs text-muted-foreground">Fissa il minimo e il massimo di caratteri delle azioni in questa chat. Si spegne da sola quando la chat si svuota.</p>
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-xs">
