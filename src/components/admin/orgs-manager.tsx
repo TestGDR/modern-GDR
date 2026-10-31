@@ -147,9 +147,12 @@ function OrgForm({ kind, org, categories, onDone }: { kind: OrgKind; org?: Org; 
           <input className={inputClass} value={form.iconUrl ?? ""} maxLength={500} placeholder="https://…" onChange={(e) => setForm({ ...form, iconUrl: e.target.value })} />
         </span>
       </FieldLabel>
-      <FieldLabel label="Descrizione" hint="La vedono i giocatori in Utility, nella pagina del lavoro o del gruppo">
+      {/* niente <label> intorno all'editor: il clic nel testo premerebbe il primo pulsante (Grassetto) */}
+      <div className="flex flex-col gap-1.5 text-sm">
+        <span className="font-medium">Descrizione</span>
         <RichEditor value={form.description} onChange={(description) => setForm({ ...form, description })} minHeight="min-h-48" />
-      </FieldLabel>
+        <span className="text-xs text-muted-foreground">La vedono i giocatori in Utility, nella pagina del lavoro o del gruppo</span>
+      </div>
       {kind === "group" && (
         <label className="flex items-center gap-2 text-sm">
           <input

@@ -140,7 +140,10 @@ export function RichEditor({ value, onChange, minHeight = "min-h-80" }: { value:
         </div>
       </div>
       {mode === "visuale" ? (
-        <EditorContent editor={editor} />
+        // se l'editor finisce dentro un <label>, il clic nel testo non deve "premere" il primo pulsante (Grassetto)
+        <div onClick={(e) => (e.target as HTMLElement).closest("label") && e.preventDefault()}>
+          <EditorContent editor={editor} />
+        </div>
       ) : (
         <textarea
           value={value}
