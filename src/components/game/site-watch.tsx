@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Clock, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logoutExpired, logoutIdle } from "@/lib/actions/auth";
+import { readLastActivity, writeLastActivity } from "@/lib/last-activity";
 import { useResync } from "@/lib/use-resync";
 
 // Due controlli del sito che girano nel browser (dal Westeros):
@@ -37,25 +38,11 @@ export function VersionBanner() {
   );
 }
 
-const KEY = "moderngdr-ultima-attivita";
 const EVENTS = ["mousemove", "mousedown", "keydown", "wheel", "touchstart", "pointerdown", "scroll"] as const;
 const WARN_BEFORE_MS = 5 * 60_000;
 
-function readLast() {
-  try {
-    const n = Number(localStorage.getItem(KEY));
-    return Number.isFinite(n) && n > 0 ? n : 0;
-  } catch {
-    return 0;
-  }
-}
-function writeLast(t: number) {
-  try {
-    localStorage.setItem(KEY, String(t));
-  } catch {
-    // senza localStorage vale solo questa scheda
-  }
-}
+const readLast = readLastActivity;
+const writeLast = writeLastActivity;
 
 /**
  * Uscita dopo `minutes` minuti senza attività. Conta come attività muovere il

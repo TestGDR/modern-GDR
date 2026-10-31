@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isAvailability, type Availability } from "@/lib/availability";
 import { firstName } from "@/lib/format";
+import { readLastActivity } from "@/lib/last-activity";
 import { createClient } from "@/lib/supabase/client";
 
 // Presenti online (dal Westeros: presence.ts).
@@ -119,7 +120,14 @@ export function usePresence(info: PresenceInfo) {
   // --- Segnale nel database ---
   useEffect(() => {
     const beat = (action = false) => supabase.rpc("touch_online", { p_info: JSON.parse(latest.current), p_action: action });
-    const beatTimer = setInterval(() => beat(), HEARTBEAT_MS);
+    // chi usa davvero il sito (mouse, tastiera, tocco, finestre, telefono, social…) resta tra gli online:
+    // il battito conta come azione se dall'ultimo c'è stata attività
+    let lastBeat = Date.now();
+    const beatTimer = setInterval(() => {
+      const active = readLastActivity() > lastBeat;
+      lastBeat = Date.now();
+      beat(active);
+    }, HEARTBEAT_MS);
     const pollTimer = setInterval(refresh, POLL_MS);
     const onBack = () => {
       if (document.visibilityState !== "visible") return;
