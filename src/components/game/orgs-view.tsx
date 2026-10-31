@@ -23,6 +23,7 @@ type Props = {
 export function OrgsView({ kind, orgs, characterId, periodDays, maxGroups }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [tab, setTab] = useState(0);
   const visible = orgs.filter((o) => o.active);
   const mine = characterId ? visible.filter((o) => o.members.some((m) => m.character_id === characterId)) : [];
 
@@ -95,9 +96,29 @@ export function OrgsView({ kind, orgs, characterId, periodDays, maxGroups }: Pro
         />
       )}
 
-      {sections.map((s) => (
-        <section key={s.title || "tutti"} className="flex flex-col gap-2">
-          {s.title && <h2 className="border-b border-white/10 pb-1 font-heading text-2xl tracking-wide text-peach">{s.title}</h2>}
+      {/* Una scheda per tipo: gruppi di gioco e squadre, oppure full time e part time */}
+      <nav className="flex flex-wrap gap-1 border-b border-white/10" role="tablist">
+        {sections.map((s, i) => (
+          <button
+            key={s.title}
+            type="button"
+            role="tab"
+            aria-selected={tab === i}
+            onClick={() => setTab(i)}
+            className={cn(
+              "-mb-px flex items-center gap-2 border-b-2 px-3 py-2 font-heading text-xl tracking-wide transition-colors",
+              tab === i ? "border-flamingo text-peach" : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {s.title === "Squadre sportive" ? <Trophy className="size-4" /> : kind === "job" ? <BriefcaseBusiness className="size-4" /> : <Users className="size-4" />}
+            {s.title}
+            <span className="rounded-full bg-white/10 px-1.5 font-sans text-xs">{s.items.length}</span>
+          </button>
+        ))}
+      </nav>
+
+      {sections.filter((_, i) => i === tab).map((s) => (
+        <section key={s.title} role="tabpanel" className="flex flex-col gap-2">
           {s.title === "Squadre sportive" && (
             <p className="text-xs text-muted-foreground">
               Ogni sport ha la sua squadra: si entra e si esce dalla pagina{" "}

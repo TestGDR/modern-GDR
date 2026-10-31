@@ -2,18 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { BedDouble, BedSingle, Building2, Loader2, LogOut } from "lucide-react";
+import { BedDouble, BedSingle, Building2, GraduationCap, Loader2, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatDollars } from "@/lib/bank";
 import { firstName } from "@/lib/format";
-import { ROOM_BEDS, ROOM_KIND_LABEL, bySortThenName, type Dorm, type DormResident, type DormRoom, type DormRoomKind } from "@/lib/housing";
+import { ROOM_BEDS, ROOM_KIND_LABEL, bySortThenName, type CollegeCosts, type Dorm, type DormResident, type DormRoom } from "@/lib/housing";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
-// Utility → Dormitori: le camere del college. La retta è nel patrimonio, che
-// decide quali camere si possono prenotare; in una doppia stanno due ragazzi
-// o due ragazze (chi ha sesso X va dove vuole). I controlli veri sono nel database.
+// Utility → Dormitori: le camere del college, a pagamento ogni mese (la borsa
+// di studio paga la doppia). In una doppia stanno due ragazzi o due ragazze
+// (chi ha sesso X va dove vuole). I controlli veri sono nel database.
 
-type Me = { id: string; sex: "M" | "F" | "X" | null; kinds: DormRoomKind[] };
+type Me = { id: string; sex: "M" | "F" | "X" | null; costs: CollegeCosts | null };
 
 export function DormsApp({ characterId }: { characterId: string | null }) {
   const supabase = useMemo(() => createClient(), []);
@@ -33,12 +34,12 @@ export function DormsApp({ characterId }: { characterId: string | null }) {
       supabase.from("dorm_rooms").select("*").eq("active", true),
       supabase.from("dorm_residents").select("character_id, room_id, since, character:characters(id, name, sex, avatar_url)"),
       characterId ? supabase.from("characters").select("id, sex").eq("id", characterId).maybeSingle<{ id: string; sex: Me["sex"] }>() : Promise.resolve({ data: null }),
-      characterId ? supabase.rpc("character_dorm_kinds", { p_character: characterId }) : Promise.resolve({ data: null }),
+      characterId ? supabase.rpc("college_costs", { p_character: characterId }) : Promise.resolve({ data: null }),
     ]);
     setDorms(((d.data ?? []) as Dorm[]).sort(bySortThenName));
     setRooms(((r.data ?? []) as DormRoom[]).sort(bySortThenName));
     setResidents((res.data ?? []) as unknown as DormResident[]);
-    setMe(c.data ? { id: c.data.id, sex: c.data.sex, kinds: ((k.data as string[] | null) ?? []) as DormRoomKind[] } : null);
+    setMe(c.data ? { id: c.data.id, sex: c.data.sex, costs: (k.data as CollegeCosts | null) ?? null } : null);
   }, [supabase, characterId]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- lettura all'apertura
@@ -52,7 +53,10 @@ export function DormsApp({ characterId }: { characterId: string | null }) {
 
   async function book(room: DormRoom) {
     if (!me) return;
-    if (mine && !window.confirm(`Lasci la camera ${myRoom?.name ?? ""} per la ${room.name}?`)) return;
+    const fee = me.costs?.[room.kind] ?? 0;
+    const pay = fee > 0 ? ` Il primo mese (${formatDollars(fee)}) si paga subito, poi ogni mese con gli altri accrediti.` : "";
+    const question = mine ? `Lasci la camera ${myRoom?.name ?? ""} per la ${room.name}?` : `Prenotare la camera ${room.name}?`;
+    if (!window.confirm(question + pay)) return;
     setBusy(true);
     setError(null);
     setInfo(null);
@@ -94,15 +98,11 @@ export function DormsApp({ characterId }: { characterId: string | null }) {
               </Button>
             </>
           ) : (
-            <span className="text-muted-foreground">
-              Non hai ancora una camera.{" "}
-              {me.kinds.length > 0
-                ? `Il tuo patrimonio comprende: ${me.kinds.map((k) => ROOM_KIND_LABEL[k].toLowerCase()).join(" o ")}.`
-                : "Il tuo patrimonio non comprende una camera al college."}
-            </span>
+            <span className="text-muted-foreground">Non hai ancora una camera.</span>
           )}
         </section>
       )}
+      {me?.costs && <CostsBox costs={me.costs} />}
       {error && <p className="text-sm text-destructive">{error}</p>}
       {info && <p className="text-sm text-mint">{info}</p>}
 
@@ -147,9 +147,26 @@ export function DormsApp({ characterId }: { characterId: string | null }) {
   );
 }
 
+/** Quanto costa il college al mese per me */
+function CostsBox({ costs }: { costs: CollegeCosts }) {
+  return (
+    <section className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs">
+      <GraduationCap className="size-4 text-lavender" />
+      {costs.scholarship && <span className="text-mint">Hai la borsa di studio: niente retta e camera doppia pagata.</span>}
+      {!costs.scholarship && costs.student && <span>Retta del college: <b className="text-sand">{formatDollars(costs.tuition)}</b> al mese</span>}
+      <span>
+        Doppia: <b className="text-sand">{costs.doppia > 0 ? `${formatDollars(costs.doppia)}/mese` : "pagata"}</b>
+      </span>
+      <span>
+        Singola: <b className="text-sand">{formatDollars(costs.singola)}/mese</b>
+      </span>
+      <span className="text-muted-foreground">Si paga con gli altri accrediti (Utility → Servizi bancari).</span>
+    </section>
+  );
+}
+
 /** Perché non posso prenotare questa camera (null = posso) */
 function blockReason(room: DormRoom, residents: DormResident[], me: Me): string | null {
-  if (!me.kinds.includes(room.kind)) return `Il tuo patrimonio non comprende una ${room.kind}`;
   if (residents.length >= ROOM_BEDS[room.kind]) return "Occupata";
   if ((me.sex === "M" || me.sex === "F") && residents.some((r) => (r.character?.sex === "M" || r.character?.sex === "F") && r.character.sex !== me.sex)) {
     return me.sex === "M" ? "Camera di ragazze" : "Camera di ragazzi";
@@ -197,7 +214,7 @@ function RoomCard({ room, residents, me, isMine, busy, onBook }: { room: DormRoo
       </ul>
       {me && !isMine && !full && (
         <Button type="button" size="sm" className="rounded-full" disabled={busy || !!reason} title={reason ?? undefined} onClick={onBook}>
-          {reason ?? "Prenota"}
+          {reason ?? `Prenota${me.costs && me.costs[room.kind] > 0 ? ` · ${formatDollars(me.costs[room.kind])}/mese` : ""}`}
         </Button>
       )}
       {isMine && <p className="text-center text-xs text-mint">La tua camera</p>}

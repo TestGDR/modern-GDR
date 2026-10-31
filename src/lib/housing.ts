@@ -46,6 +46,8 @@ export type HouseType = {
   buy_price: number | null;
   /** null = non si affitta (al mese) */
   rent_price: number | null;
+  /** Spese mensili di chi la compra (tasse, condominio, manutenzione) */
+  owner_upkeep: number;
   active: boolean;
   sort_order: number;
 };
@@ -61,10 +63,23 @@ export type CharacterHome = {
   mode: HomeMode;
   price_paid: number;
   rent: number;
+  /** spese mensili (case di proprietà) */
+  upkeep: number;
   address: string;
   location_id: string | null;
   description: string;
   created_at: string;
+};
+
+/** Costi del college per il proprio personaggio (college_costs) */
+export type CollegeCosts = {
+  /** va all'università (paga la retta se non ha la borsa) */
+  student: boolean;
+  scholarship: boolean;
+  /** retta al mese (0 con la borsa) */
+  tuition: number;
+  doppia: number;
+  singola: number;
 };
 
 /** Ordine per sort_order e poi per nome (le camere "2" prima di "10") */

@@ -94,8 +94,8 @@ function DormsAdmin({ characters }: { characters: Pg[] }) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs text-muted-foreground">
-        I dormitori sono misti: in una doppia stanno due ragazzi o due ragazze, chi ha sesso «non specificato» va dove vuole. La retta è nel patrimonio: quali camere (singola, doppia)
-        può prenotare ogni patrimonio si sceglie in Gestione → Patrimonio. Assegnando una camera da qui non valgono i limiti di patrimonio e sesso.
+        I dormitori sono misti: in una doppia stanno due ragazzi o due ragazze, chi ha sesso «non specificato» va dove vuole. Le camere si pagano ogni mese (prezzi e retta del
+        college in Impostazioni del sistema); la borsa di studio paga la doppia. Assegnando una camera da qui non si paga il primo mese e non vale il limite sul sesso.
       </p>
       <Button type="button" size="sm" className="w-fit rounded-full" onClick={() => setEditing("new")}>
         <Plus /> Nuovo dormitorio
@@ -364,7 +364,7 @@ function HousesAdmin({ characters }: { characters: Pg[] }) {
               {t.name}
             </button>
             <span className="text-xs text-muted-foreground">
-              {t.buy_price !== null ? `compra ${formatDollars(t.buy_price)}` : "non in vendita"} · {t.rent_price !== null ? `affitto ${formatDollars(t.rent_price)}/mese` : "non in affitto"}
+              {t.buy_price !== null ? `compra ${formatDollars(t.buy_price)}${t.owner_upkeep > 0 ? ` (+${formatDollars(t.owner_upkeep)}/mese)` : ""}` : "non in vendita"} · {t.rent_price !== null ? `affitto ${formatDollars(t.rent_price)}/mese` : "non in affitto"}
               {!t.active && " · nascosta"}
             </span>
           </li>
@@ -438,7 +438,7 @@ function HousesAdmin({ characters }: { characters: Pg[] }) {
   );
 }
 
-type HouseRow = Pick<HouseType, "name" | "description" | "image_url" | "buy_price" | "rent_price" | "active">;
+type HouseRow = Pick<HouseType, "name" | "description" | "image_url" | "buy_price" | "rent_price" | "owner_upkeep" | "active">;
 
 function HouseForm({ house, onCancel, onSave, onDelete }: { house: HouseType | null; onCancel: () => void; onSave: (row: HouseRow) => void; onDelete?: () => void }) {
   const [f, setF] = useState({
@@ -447,13 +447,14 @@ function HouseForm({ house, onCancel, onSave, onDelete }: { house: HouseType | n
     image_url: house?.image_url ?? "",
     buy: house?.buy_price?.toString() ?? "",
     rent: house?.rent_price?.toString() ?? "",
+    upkeep: house?.owner_upkeep ?? 0,
     active: house?.active ?? true,
   });
   const price = (s: string) => (s.trim() === "" ? null : Math.max(0, Math.round(Number(s) || 0)));
   const valid = f.name.trim().length >= 2 && (price(f.buy) !== null || price(f.rent) !== null);
   return (
     <div className="glass flex flex-col gap-2 rounded-2xl p-3 text-sm">
-      <div className="grid gap-2 sm:grid-cols-[1fr_9rem_9rem]">
+      <div className="grid gap-2 sm:grid-cols-[1fr_9rem_9rem_10rem]">
         <input className={inputClass} value={f.name} maxLength={60} placeholder="Nome (es. Monolocale a Wynwood)" onChange={(e) => setF({ ...f, name: e.target.value })} />
         <label className="flex items-center gap-1.5 text-xs">
           Compra $
@@ -462,6 +463,10 @@ function HouseForm({ house, onCancel, onSave, onDelete }: { house: HouseType | n
         <label className="flex items-center gap-1.5 text-xs">
           Affitto $
           <input className={inputClass} type="number" min={0} value={f.rent} placeholder="—" onChange={(e) => setF({ ...f, rent: e.target.value })} />
+        </label>
+        <label className="flex items-center gap-1.5 text-xs" title="Tasse, condominio e manutenzione per chi la compra (circa lo 0,2% del prezzo)">
+          Spese/mese $
+          <input className={inputClass} type="number" min={0} value={f.upkeep} onChange={(e) => setF({ ...f, upkeep: Number(e.target.value) })} />
         </label>
       </div>
       <textarea className={textareaClass} value={f.description} maxLength={1000} placeholder="Descrizione" onChange={(e) => setF({ ...f, description: e.target.value })} />
@@ -476,7 +481,7 @@ function HouseForm({ house, onCancel, onSave, onDelete }: { house: HouseType | n
           size="sm"
           disabled={!valid}
           onClick={() =>
-            onSave({ name: f.name.trim(), description: f.description.trim(), image_url: f.image_url.trim() || null, buy_price: price(f.buy), rent_price: price(f.rent), active: f.active })
+            onSave({ name: f.name.trim(), description: f.description.trim(), image_url: f.image_url.trim() || null, buy_price: price(f.buy), rent_price: price(f.rent), owner_upkeep: Math.max(0, Math.round(f.upkeep || 0)), active: f.active })
           }
         >
           Salva

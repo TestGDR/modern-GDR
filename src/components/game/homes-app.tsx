@@ -51,7 +51,8 @@ export function HomesApp({ characterId }: { characterId: string | null }) {
   async function take(t: HouseType, mode: HomeMode) {
     if (!characterId) return;
     const price = mode === "proprieta" ? t.buy_price : t.rent_price;
-    const what = mode === "proprieta" ? `Comprare ${t.name} per ${formatDollars(price ?? 0)}?` : `Prendere in affitto ${t.name} per ${formatDollars(price ?? 0)} al mese? Il primo mese si paga subito.`;
+    const what = mode === "proprieta"
+      ? `Comprare ${t.name} per ${formatDollars(price ?? 0)}?${t.owner_upkeep > 0 ? ` Poi ${formatDollars(t.owner_upkeep)} al mese di spese (tasse, manutenzione).` : ""}` : `Prendere in affitto ${t.name} per ${formatDollars(price ?? 0)} al mese? Il primo mese si paga subito.`;
     if (!window.confirm(what)) return;
     setBusy(true);
     setError(null);
@@ -106,7 +107,7 @@ export function HomesApp({ characterId }: { characterId: string | null }) {
       ) : (
         <>
           <p className="text-xs text-muted-foreground">
-            Puoi avere fino a {settings.max} case. L&apos;affitto si paga ogni mese insieme agli altri accrediti (Utility → Servizi bancari); vendendo una casa comprata torna il{" "}
+            Puoi avere fino a {settings.max} case. L&apos;affitto, e per le case comprate le spese (tasse, manutenzione), si pagano ogni mese insieme agli altri accrediti (Utility → Servizi bancari); vendendo una casa comprata torna il{" "}
             {settings.resale}% del prezzo.
           </p>
           {types.length === 0 && <p className="text-sm text-muted-foreground">L&apos;agenzia non ha ancora case da proporre.</p>}
@@ -130,6 +131,7 @@ export function HomesApp({ characterId }: { characterId: string | null }) {
                     {t.buy_price !== null && (
                       <Button type="button" size="sm" className="rounded-full" disabled={busy} onClick={() => take(t, "proprieta")}>
                         Compra · {formatDollars(t.buy_price)}
+                        {t.owner_upkeep > 0 && <span className="font-normal opacity-80">+ {formatDollars(t.owner_upkeep)}/mese</span>}
                       </Button>
                     )}
                   </div>
@@ -167,7 +169,7 @@ function MyHome({ home, places, resale, busy, onRelease, onSaved }: { home: Char
         <span className="min-w-0 flex-1">
           <span className="block font-medium">{home.name}</span>
           <span className={cn("text-xs", home.mode === "affitto" ? "text-lavender" : "text-sand")}>
-            {home.mode === "affitto" ? `In affitto · ${formatDollars(home.rent)} al mese` : `Di proprietà${home.price_paid > 0 ? ` · pagata ${formatDollars(home.price_paid)}` : ""}`}
+            {home.mode === "affitto" ? `In affitto · ${formatDollars(home.rent)} al mese` : `Di proprietà${home.price_paid > 0 ? ` · pagata ${formatDollars(home.price_paid)}` : ""}${home.upkeep > 0 ? ` · spese ${formatDollars(home.upkeep)} al mese` : ""}`}
           </span>
         </span>
         <Button type="button" size="sm" variant="ghost" className="rounded-full text-flamingo" disabled={busy} onClick={onRelease}>

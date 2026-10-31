@@ -472,14 +472,14 @@ function Balance({ overview }: { overview: BankOverview }) {
         {overview.balance < 0 ? "−" : ""}
         {formatDollars(Math.abs(overview.balance))}
       </p>
-      {overview.balance < 0 && <p className="text-xs text-flamingo">Conto in rosso: il mantenimento costa più di quello che entra.</p>}
+      {overview.balance < 0 && <p className="text-xs text-flamingo">Conto in rosso: le uscite costano più di quello che entra. Un lavoro aiuta.</p>}
     </section>
   );
 }
 
 function Salary({ overview }: { overview: BankOverview }) {
-  const rent = overview.rent ?? 0;
-  const net = overview.income - overview.upkeep - rent;
+  const expenses = overview.expense_parts ?? (overview.upkeep > 0 ? [{ label: "Mantenimento del patrimonio", amount: overview.upkeep, kind: "mantenimento" }] : []);
+  const net = overview.income - overview.upkeep;
   return (
     <section className="glass flex flex-col gap-2 rounded-2xl p-5">
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -492,19 +492,13 @@ function Salary({ overview }: { overview: BankOverview }) {
             <span className="text-mint tabular-nums">+{formatDollars(p.amount)}</span>
           </li>
         ))}
-        {overview.upkeep > 0 && (
-          <li className="flex justify-between gap-3">
-            <span>Mantenimento del patrimonio</span>
-            <span className="text-flamingo tabular-nums">−{formatDollars(overview.upkeep)}</span>
+        {expenses.map((p) => (
+          <li key={p.label} className="flex justify-between gap-3">
+            <span>{p.label}</span>
+            <span className="text-flamingo tabular-nums">−{formatDollars(p.amount)}</span>
           </li>
-        )}
-        {rent > 0 && (
-          <li className="flex justify-between gap-3">
-            <span>Affitto delle case</span>
-            <span className="text-flamingo tabular-nums">−{formatDollars(rent)}</span>
-          </li>
-        )}
-        {overview.income_parts.length === 0 && overview.upkeep === 0 && rent === 0 && (
+        ))}
+        {overview.income_parts.length === 0 && expenses.length === 0 && (
           <li className="text-muted-foreground">
             Nessuna entrata: la danno il patrimonio, i <Link href="/utility/lavori" className="text-lavender underline">lavori</Link> e i gruppi.
           </li>
