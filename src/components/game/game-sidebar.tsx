@@ -395,7 +395,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
           {(c.characterId ? (badges[c.characterId] ?? []) : []).map((b) => (
             <HoverTip key={b.key} label={b.label} className="inline-flex">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={b.icon} alt={b.label} className="size-[30px] shrink-0 rounded object-contain" />
+              <img src={b.icon} alt={b.label} className="size-5 shrink-0 rounded object-contain" />
             </HoverTip>
           ))}
           {c.levelIcon ? (
