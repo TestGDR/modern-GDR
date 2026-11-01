@@ -136,18 +136,29 @@ export function CallupsTab({ sport }: { sport: Sport }) {
   const [roster, setRoster] = useState<RosterRow[]>([]);
   const [positions, setPositions] = useState<Record<string, string>>({});
   const [callups, setCallups] = useState<CallupRow[]>([]);
+  // sport che sostengono questo a bordo campo: id → "📣 Cheerleading"
+  const [support, setSupport] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     const from = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    // sport che sostengono questo a bordo campo (es. cheerleading per il football)
+    const { data: support } = await supabase.from("sports").select("id, name, icon").eq("supports_sport_id", sport.id);
+    const supportList = (support ?? []) as { id: string; name: string; icon: string }[];
+    const ids = [sport.id, ...supportList.map((x) => x.id)];
     const [e, r, p, c] = await Promise.all([
       supabase.from("sport_events").select(EVENT_SELECT).eq("sport_id", sport.id).eq("status", "scheduled").gte("starts_at", from).order("starts_at").limit(12),
-      supabase.from("sport_roster").select("*, characters(name)").eq("sport_id", sport.id).is("left_at", null),
-      supabase.from("sport_positions").select("id, name").eq("sport_id", sport.id),
+      supabase.from("sport_roster").select("*, characters(name)").in("sport_id", ids).is("left_at", null),
+      supabase.from("sport_positions").select("id, name").in("sport_id", ids),
       supabase.from("sport_callups").select("event_id, character_id, roll"),
     ]);
     const evs = (e.data ?? []) as unknown as EventInfo[];
     setEvents(evs);
-    setRoster(((r.data ?? []) as RosterRow[]).sort((a, b) => (a.characters?.name ?? "").localeCompare(b.characters?.name ?? "", "it")));
+    setSupport(Object.fromEntries(supportList.map((x) => [x.id, `${x.icon} ${x.name}`])));
+    setRoster(
+      ((r.data ?? []) as RosterRow[]).sort(
+        (a, b) => Number(a.sport_id !== sport.id) - Number(b.sport_id !== sport.id) || (a.characters?.name ?? "").localeCompare(b.characters?.name ?? "", "it"),
+      ),
+    );
     setPositions(Object.fromEntries(((p.data ?? []) as { id: string; name: string }[]).map((x) => [x.id, x.name])));
     setCallups(((c.data ?? []) as CallupRow[]).filter((x) => evs.some((ev) => ev.id === x.event_id)));
   }, [supabase, sport.id]);
@@ -163,6 +174,9 @@ export function CallupsTab({ sport }: { sport: Sport }) {
         Scegli per ogni gara i personaggi convocati: ricevono un messaggio e, entro il giorno prima, premono «Gareggia» nella pagina Sport. Alla simulazione
         gareggiano solo i convocati (chi non ha tirato viene simulato); senza convocati gareggia tutto il roster come prima. Ogni lunedì e il giorno della gara
         arriva un promemoria agli Amministratori.
+        {Object.keys(support).length > 0 && (
+          <> Si possono convocare anche gli atleti segnati «a bordo campo» ({Object.values(support).join(", ")}): non gareggiano, ma se tirano bene danno un bonus alla squadra.</>
+        )}
       </p>
       {events.length === 0 && <p className="text-sm text-muted-foreground">Nessuna gara in programma per {sport.name}: crea o avvia una stagione in «Stagioni ed eventi».</p>}
       {roster.length === 0 && events.length > 0 && <p className="text-sm text-muted-foreground">Nessun personaggio nel roster di {sport.name}.</p>}
@@ -173,6 +187,7 @@ export function CallupsTab({ sport }: { sport: Sport }) {
             event={ev}
             roster={roster}
             positions={positions}
+            support={support}
             callups={callups.filter((c) => c.event_id === ev.id)}
             onSaved={load}
           />
@@ -185,12 +200,14 @@ function EventCallups({
   event: ev,
   roster,
   positions,
+  support,
   callups,
   onSaved,
 }: {
   event: EventInfo;
   roster: RosterRow[];
   positions: Record<string, string>;
+  support: Record<string, string>;
   callups: CallupRow[];
   onSaved: () => void;
 }) {
@@ -238,6 +255,7 @@ function EventCallups({
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {(r.position_id && positions[r.position_id]) || "senza ruolo"} · {SQUAD_LABEL[r.squad_status]}
                   {r.injury_events_left > 0 && " · 🩹"}
+                  {support[r.sport_id] && ` · ${support[r.sport_id]} a bordo campo`}
                 </span>
                 {callup && (
                   <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[0.65rem]", callup.roll ? "bg-mint/15 text-mint" : "bg-white/10 text-muted-foreground")}>
