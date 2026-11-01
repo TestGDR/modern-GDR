@@ -648,3 +648,30 @@ export function AssignPanel({ kind, orgs, characters }: { kind: OrgKind; orgs: O
     </section>
   );
 }
+
+/** Schede del pannello (es. Gestione → Gruppi: Ambiti, Gruppi, Assegna ruolo) */
+export function PanelTabs({ tabs, initial = 0 }: { tabs: { label: string; content: React.ReactNode }[]; initial?: number }) {
+  const [tab, setTab] = useState(initial);
+  return (
+    <div className="flex flex-col gap-4">
+      <nav className="flex flex-wrap gap-1 border-b border-white/10" role="tablist">
+        {tabs.map((t, i) => (
+          <button
+            key={t.label}
+            type="button"
+            role="tab"
+            aria-selected={tab === i}
+            onClick={() => setTab(i)}
+            className={cn(
+              "-mb-px border-b-2 px-3 py-2 font-heading text-xl tracking-wide transition-colors",
+              tab === i ? "border-flamingo text-peach" : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+      <div role="tabpanel">{tabs[tab]?.content}</div>
+    </div>
+  );
+}
