@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { BackToPanel } from "@/components/admin/admin-ui";
-import { GroupCategoriesEditor, OrgsManager } from "@/components/admin/orgs-manager";
+import { AssignPanel, GroupCategoriesEditor, OrgsManager } from "@/components/admin/orgs-manager";
 import { LoadingBlocks } from "@/components/game/loading";
 import { PageHeader } from "@/components/game/page-header";
 import { requirePermission } from "@/lib/admin";
@@ -34,6 +34,7 @@ async function Content() {
     <>
       <p className="mb-3 text-sm text-muted-foreground">Le squadre sportive non sono qui: le crea e le gestisce Gestione → Sport, e i giocatori ci entrano dalla pagina Sport.</p>
       <div className="flex flex-col gap-4">
+        <AssignPanel kind="group" orgs={orgs.filter((o) => !o.sport)} characters={characters ?? []} />
         <GroupCategoriesEditor categories={categories} />
         <OrgsManager kind="group" orgs={orgs.filter((o) => !o.sport)} characters={characters ?? []} categories={categories} />
       </div>

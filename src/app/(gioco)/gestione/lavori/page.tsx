@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { BackToPanel } from "@/components/admin/admin-ui";
-import { OrgsManager } from "@/components/admin/orgs-manager";
+import { AssignPanel, OrgsManager } from "@/components/admin/orgs-manager";
 import { LoadingBlocks } from "@/components/game/loading";
 import { PageHeader } from "@/components/game/page-header";
 import { requirePermission } from "@/lib/admin";
@@ -29,5 +29,10 @@ async function Content() {
     loadOrgs("job"),
     supabase.from("characters").select("id, name").eq("status", "approvata").order("name").overrideTypes<{ id: string; name: string }[], { merge: false }>(),
   ]);
-  return <OrgsManager kind="job" orgs={orgs} characters={characters ?? []} />;
+  return (
+    <div className="flex flex-col gap-4">
+      <AssignPanel kind="job" orgs={orgs} characters={characters ?? []} />
+      <OrgsManager kind="job" orgs={orgs} characters={characters ?? []} />
+    </div>
+  );
 }

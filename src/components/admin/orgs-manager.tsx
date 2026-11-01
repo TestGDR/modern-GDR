@@ -485,3 +485,166 @@ function defaultMode(role: OrgRole | undefined, current?: JobKind | null): JobKi
   if (current === "part_time" && role?.salary_part !== null) return "part_time";
   return role?.salary_part !== null ? "part_time" : "full_time";
 }
+
+/**
+ * Assegna ruolo: lo staff sceglie un personaggio e vede tutti i suoi lavori o gruppi;
+ * può dargli un ruolo di qualsiasi lavoro/gruppo, cambiarlo o toglierlo (licenziarlo).
+ */
+export function AssignPanel({ kind, orgs, characters }: { kind: OrgKind; orgs: Org[]; characters: CharacterOption[] }) {
+  const [characterId, setCharacterId] = useState("");
+  const [orgId, setOrgId] = useState("");
+  const [roleId, setRoleId] = useState("");
+  const [mode, setMode] = useState<JobKind>("part_time");
+  const { pending, error, execute } = useAdminAction();
+  const one = ORG_LABELS[kind].one;
+  const character = characters.find((c) => c.id === characterId);
+  const mine = orgs.filter((o) => o.members.some((m) => m.character_id === characterId));
+  const org = orgs.find((o) => o.id === orgId);
+  const role = org?.roles.find((r) => r.id === roleId);
+  const taken = (o: Org, r: OrgRole) => o.members.filter((m) => m.role_id === r.id && m.character_id !== characterId).length;
+  const isFull = (o: Org, r: OrgRole) => r.max_members !== null && taken(o, r) >= r.max_members;
+
+  function pickRole(id: string) {
+    setRoleId(id);
+    setMode(defaultMode(org?.roles.find((r) => r.id === id), mode));
+  }
+
+  return (
+    <section className="glass flex flex-col gap-3 rounded-2xl p-4">
+      <p className="flex items-center gap-2 font-heading text-xl tracking-wide text-peach">
+        <UserPlus className="size-5" /> Assegna ruolo
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Scegli un personaggio: vedi i suoi {kind === "job" ? "lavori" : "gruppi"}, puoi dargli un ruolo di qualsiasi {one}, cambiarlo o toglierlo. I ruoli al completo non si
+        possono assegnare{kind === "job" ? "; restano le regole dei lavori (al massimo due, mai due full time)" : "; resta il massimo dei gruppi per personaggio"}.
+      </p>
+      <select className={inputClass} value={characterId} onChange={(e) => setCharacterId(e.target.value)} aria-label="Personaggio">
+        <option value="">Scegli un personaggio approvato…</option>
+        {characters.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+      <ErrorText error={error} />
+
+      {character && (
+        <>
+          <ul className="flex flex-col gap-1">
+            {mine.length === 0 && <li className="text-sm text-muted-foreground">Nessun {one}.</li>}
+            {mine.map((o) => {
+              const m = o.members.find((x) => x.character_id === characterId)!;
+              const current = o.roles.find((r) => r.id === m.role_id);
+              return (
+                <li key={o.id} className="flex flex-wrap items-center gap-2 rounded-xl bg-white/5 p-2 text-sm">
+                  <span className="min-w-32 flex-1 font-medium">{o.name}</span>
+                  <select
+                    className={cn(inputClass, "h-8 w-auto")}
+                    value={m.role_id}
+                    disabled={pending}
+                    aria-label={`Ruolo in ${o.name}`}
+                    onChange={(e) =>
+                      execute(() =>
+                        assignMember(kind, o.id, characterId, e.target.value, kind === "job" ? defaultMode(o.roles.find((r) => r.id === e.target.value), m.mode) : undefined),
+                      )
+                    }
+                  >
+                    {o.roles.map((r) => (
+                      <option key={r.id} value={r.id} disabled={r.id !== m.role_id && isFull(o, r)}>
+                        {r.name}
+                        {r.id !== m.role_id && isFull(o, r) ? " (al completo)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {kind === "job" && (
+                    <select
+                      className={cn(inputClass, "h-8 w-auto")}
+                      value={m.mode ?? "part_time"}
+                      disabled={pending}
+                      aria-label={`Orario in ${o.name}`}
+                      onChange={(e) => execute(() => assignMember(kind, o.id, characterId, m.role_id, e.target.value as JobKind))}
+                    >
+                      <option value="full_time" disabled={current?.salary_full === null}>
+                        Full time
+                      </option>
+                      <option value="part_time" disabled={current?.salary_part === null}>
+                        Part time
+                      </option>
+                    </select>
+                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={pending}
+                    className="text-destructive"
+                    onClick={() =>
+                      window.confirm(`${kind === "job" ? "Licenziare" : "Togliere"} ${character.name} da ${o.name}?`) && execute(() => removeMember(kind, o.id, characterId))
+                    }
+                  >
+                    <X /> {kind === "job" ? "Licenzia" : "Togli"}
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+
+          <form
+            className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              execute(
+                () => assignMember(kind, orgId, characterId, roleId, kind === "job" ? mode : undefined),
+                () => {
+                  setOrgId("");
+                  setRoleId("");
+                },
+              );
+            }}
+          >
+            <select
+              className={cn(inputClass, "w-auto min-w-40 flex-1")}
+              value={orgId}
+              onChange={(e) => {
+                setOrgId(e.target.value);
+                setRoleId("");
+              }}
+              aria-label={kind === "job" ? "Lavoro" : "Gruppo"}
+            >
+              <option value="">{kind === "job" ? "Lavoro…" : "Gruppo…"}</option>
+              {orgs.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                  {o.active ? "" : " (disattivato)"}
+                </option>
+              ))}
+            </select>
+            <select className={cn(inputClass, "w-auto min-w-40 flex-1")} value={roleId} disabled={!org} onChange={(e) => pickRole(e.target.value)} aria-label="Ruolo">
+              <option value="">Ruolo…</option>
+              {org?.roles.map((r) => (
+                <option key={r.id} value={r.id} disabled={isFull(org, r)}>
+                  {r.name}
+                  {r.max_members !== null ? ` (${taken(org, r)}/${r.max_members})` : ""}
+                  {isFull(org, r) ? " · al completo" : ""}
+                </option>
+              ))}
+            </select>
+            {kind === "job" && (
+              <select className={cn(inputClass, "w-auto")} value={mode} onChange={(e) => setMode(e.target.value as JobKind)} aria-label="Orario">
+                <option value="full_time" disabled={role?.salary_full === null}>
+                  Full time
+                </option>
+                <option value="part_time" disabled={role?.salary_part === null}>
+                  Part time
+                </option>
+              </select>
+            )}
+            <Button type="submit" disabled={pending || !orgId || !roleId} className="rounded-full">
+              <UserPlus /> Assegna
+            </Button>
+          </form>
+        </>
+      )}
+    </section>
+  );
+}
