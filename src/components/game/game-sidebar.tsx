@@ -330,6 +330,9 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
     };
   }, [open]);
 
+  // Icone di lavori e gruppi dei presenti (solo con la finestra aperta)
+  const badges = useOrgBadges(open ? list.map((c) => c.characterId).filter((id): id is string => !!id) : []);
+
   async function toggleInvisible() {
     setInvisibleBusy(true);
     setInvisibleError(null);
@@ -368,8 +371,8 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
   // a destra le icone (livello OFF, poi le altre che verranno) e il messaggio OFF
   function playerRow(c: (typeof list)[number], seeking: boolean) {
     return (
-      <li key={c.userId} className="flex items-center gap-1 rounded-xl transition-colors hover:bg-white/5">
-        <Link href={sheetHref(c)} title={`Apri la scheda di ${c.name}`} className="flex min-w-0 flex-1 items-center gap-3 p-2">
+      <li key={c.userId} className="flex items-center gap-1 transition-colors hover:bg-white/5">
+        <Link href={sheetHref(c)} title={`Apri la scheda di ${c.name}`} className="flex min-w-0 flex-1 items-center gap-3 px-2 py-1.5">
           {c.avatar ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={c.avatar} alt="" className="size-10 shrink-0 rounded-full object-cover ring-2 ring-white/10" />
@@ -379,7 +382,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-2">
               <span className={cn("size-2 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} title={AVAILABILITY[c.availability].label} />
-              <span className={cn("truncate font-medium", seeking && "font-semibold text-peach")}>{c.name}</span>
+              <span className={cn("truncate text-sm font-medium", seeking && "font-semibold text-peach")}>{c.name}</span>
               {c.userId === me && <span className="text-xs text-muted-foreground">(tu)</span>}
               {c.invisible && <EyeOff className="size-3.5 shrink-0 text-muted-foreground" aria-label="Invisibile" />}
               {seeking && <span className="ml-auto shrink-0 truncate text-[0.7rem] text-muted-foreground">{c.placeKey.startsWith("chat:") ? c.place || "In chat" : "Mappa"}</span>}
@@ -387,7 +390,14 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
             {c.note && <span className="block text-xs break-words text-lavender italic">{c.note}</span>}
           </span>
         </Link>
-        <span className="flex shrink-0 items-center gap-1.5 pr-2">
+        <span className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 pr-2">
+          {/* icone di lavori e gruppi, poi il livello */}
+          {(c.characterId ? (badges[c.characterId] ?? []) : []).map((b) => (
+            <HoverTip key={b.key} label={b.label} className="inline-flex">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={b.icon} alt={b.label} className="size-[30px] shrink-0 rounded object-contain" />
+            </HoverTip>
+          ))}
           {c.levelIcon ? (
             <LevelIcon icon={c.levelIcon} name={c.levelName} className="size-5" />
           ) : (
@@ -462,7 +472,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
         )}
       </div>
       {open && (
-        <FloatingWindow label="Presenti online" onClose={() => setOpen(false)} initialWidth={600} header={<h2 className="pb-4 font-heading text-3xl tracking-wide">Presenti online</h2>}>
+        <FloatingWindow label="Presenti online" onClose={() => setOpen(false)} initialWidth={700} header={<h2 className="pb-4 font-heading text-3xl tracking-wide">Presenti online</h2>}>
           <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
             <span className="text-muted-foreground">La tua disponibilità:</span>
             {(Object.keys(AVAILABILITY) as Availability[]).map((a) => (
@@ -536,7 +546,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
                     In cerca di gioco
                     <span className="font-sans text-xs tracking-normal text-muted-foreground normal-case">({seekers.length})</span>
                   </p>
-                  <ul className="flex flex-col gap-1">{seekers.map((c) => playerRow(c, true))}</ul>
+                  <ul className="flex flex-col divide-y divide-white/10">{seekers.map((c) => playerRow(c, true))}</ul>
                 </section>
               )}
               {groups.map((g) => (
@@ -570,7 +580,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
                   <span className="h-px flex-1 bg-gradient-to-l from-transparent to-lavender/50" aria-hidden="true" />
                   </div>
                   {g.members.length > 0 ? (
-                    <ul className="flex flex-col gap-1">{g.members.map((c) => playerRow(c, false))}</ul>
+                    <ul className="flex flex-col divide-y divide-white/10">{g.members.map((c) => playerRow(c, false))}</ul>
                   ) : (
                     <p className="px-1 text-xs text-muted-foreground">Solo chi è in cerca di gioco (in alto).</p>
                   )}
@@ -585,6 +595,46 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
 }
 
 /** Applica le preferenze dell'account, lette dal database */
+type OrgBadge = { key: string; label: string; icon: string };
+
+/** Icone (con nome) dei lavori e dei gruppi attivi dei personaggi indicati */
+function useOrgBadges(characterIds: string[]) {
+  const [badges, setBadges] = useState<Record<string, OrgBadge[]>>({});
+  const signature = [...new Set(characterIds)].sort().join(",");
+  useEffect(() => {
+    if (!signature) return;
+    let alive = true;
+    const ids = signature.split(",");
+    const supabase = createClient();
+    Promise.all([
+      supabase
+        .from("character_jobs")
+        .select("character_id, job:jobs(id, name, icon_url, active), role:job_roles(name)")
+        .in("character_id", ids)
+        .overrideTypes<{ character_id: string; job: { id: string; name: string; icon_url: string | null; active: boolean } | null; role: { name: string } | null }[], { merge: false }>(),
+      supabase
+        .from("character_groups")
+        .select("character_id, grp:game_groups(id, name, icon_url, active), role:group_roles(name)")
+        .in("character_id", ids)
+        .overrideTypes<{ character_id: string; grp: { id: string; name: string; icon_url: string | null; active: boolean } | null; role: { name: string } | null }[], { merge: false }>(),
+    ]).then(([jobs, groups]) => {
+      if (!alive) return;
+      const next: Record<string, OrgBadge[]> = {};
+      const add = (characterId: string, org: { id: string; name: string; icon_url: string | null; active: boolean } | null, role: string | undefined) => {
+        if (!org?.active || !org.icon_url) return;
+        (next[characterId] ??= []).push({ key: org.id, label: role ? `${org.name} · ${role}` : org.name, icon: org.icon_url });
+      };
+      for (const j of jobs.data ?? []) add(j.character_id, j.job, j.role?.name);
+      for (const g of groups.data ?? []) add(g.character_id, g.grp, g.role?.name);
+      setBadges(next);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [signature]);
+  return badges;
+}
+
 function PrefsLoader() {
   useEffect(() => {
     loadPrefs(createClient()).then(applyPrefs);
