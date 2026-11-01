@@ -22,7 +22,7 @@ export type CreationPatch = {
   attributes?: Record<string, number>;
   optionIds?: string[];
   /** livello e scelta delle voci (si mandano insieme a optionIds) */
-  optionDetails?: Record<string, { level: number; choice: string }>;
+  optionDetails?: Record<string, { level: number; choice: string; note?: string }>;
   skills?: Record<string, number>;
   background?: {
     studyTrackId: string | null;
@@ -128,6 +128,7 @@ export async function saveCreation(characterId: string, patch: CreationPatch): P
           option_id,
           level: Math.min(5, Math.max(1, Math.trunc(details[option_id]?.level ?? 1))),
           choice_value: (details[option_id]?.choice ?? "").slice(0, 80),
+          note: (details[option_id]?.note ?? "").slice(0, 1000),
         })),
       );
       if (error) return { ok: false, error: `Scelte non salvate: ${error.message}` };

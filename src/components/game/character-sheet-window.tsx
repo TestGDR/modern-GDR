@@ -760,6 +760,7 @@ function ChosenOptions({ build, rules, characterId }: { build: CharacterBuild; r
                       )}
                     </p>
                     {o.description && <p className="text-xs text-muted-foreground">{o.description}</p>}
+                    {d?.note && <p className="mt-1 text-xs whitespace-pre-line text-foreground/90 italic">«{d.note}»</p>}
                     {o.effects.some((e) => e.type === "linked_npc") && <p className="text-[0.7rem] text-orchid">Ha un PNG collegato: lo trovi in Utility → PNG.</p>}
                   </li>
                 );

@@ -143,7 +143,7 @@ export type Build = {
   nationality: string;
   attributes: Record<string, number>;
   optionIds: string[];
-  optionDetails: Record<string, { level: number; choice: string }>;
+  optionDetails: Record<string, { level: number; choice: string; note?: string }>;
   skills: Record<string, number>;
   studyTrackId: string | null;
   yearId: string | null;

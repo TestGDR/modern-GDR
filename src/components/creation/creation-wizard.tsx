@@ -143,7 +143,7 @@ export function CreationWizard({ character, build, rules, settings, variant }: C
   }
 
   // livello (Contatti 1–3, Fobia lieve/grave…) e scelta (l'oggetto della fobia, il dipartimento…)
-  function setOptionDetail(id: string, change: Partial<{ level: number; choice: string }>) {
+  function setOptionDetail(id: string, change: Partial<{ level: number; choice: string; note: string }>) {
     const details = { ...state.optionDetails, [id]: { ...(state.optionDetails[id] ?? { level: 1, choice: "" }), ...change } };
     setState((s) => ({ ...s, optionDetails: details }));
     queue({ optionIds: state.optionIds, optionDetails: details });
@@ -173,7 +173,15 @@ export function CreationWizard({ character, build, rules, settings, variant }: C
 
   const chosen = rules.options.filter((o) => state.optionIds.includes(o.id));
   const px = pxSummary(chosen, state.skills, settings, state.optionDetails);
-  const anomalies = [...(fullName.trim().includes(" ") ? [] : [{ step: 1, message: "Scrivi il cognome del personaggio." }]), ...findAnomalies(state, rules, settings)];
+  // vantaggi, svantaggi e tratti senza descrizione nel Background
+  const missingNotes = rules.options.filter(
+    (o) => o.kind !== "tenore" && state.optionIds.includes(o.id) && !(state.optionDetails[o.id]?.note ?? "").trim(),
+  );
+  const anomalies = [
+    ...(fullName.trim().includes(" ") ? [] : [{ step: 1, message: "Scrivi il cognome del personaggio." }]),
+    ...findAnomalies(state, rules, settings),
+    ...(missingNotes.length ? [{ step: 5, message: `Descrivi come si vedono nella storia: ${missingNotes.map((o) => o.name).join(", ")}.` }] : []),
+  ];
   const attrValues = rules.attributes.map((a) => state.attributes[a.id] ?? settings.attrMinCreation);
   const pointsUsed = attributePointsUsed(attrValues);
   const attributesOk = pointsUsed === settings.attrPoints && respectsMaxes(attrValues, settings);
@@ -261,7 +269,7 @@ export function CreationWizard({ character, build, rules, settings, variant }: C
         )}
         {step === 3 && <StepOptions state={state} rules={rules} settings={settings} remaining={px.remaining} onToggle={toggleOption} onDetail={setOptionDetail} />}
         {step === 4 && <StepSkills state={state} rules={rules} settings={settings} remaining={px.remaining} onChange={setSkill} />}
-        {step === 5 && <StepBackground state={state} rules={rules} onChange={updateBackground} />}
+        {step === 5 && <StepBackground state={state} rules={rules} onChange={updateBackground} onNote={(id, note) => setOptionDetail(id, { note })} />}
         {step === 6 && (
           <StepSummary
             state={state}
@@ -814,11 +822,18 @@ function StepBackground({
   state,
   rules,
   onChange,
+  onNote,
 }: {
   state: State;
   rules: RulesData;
   onChange: (c: Partial<Pick<State, "studyTrackId" | "yearId" | "clubId" | "appearance" | "traits" | "bio">>) => void;
+  onNote: (optionId: string, note: string) => void;
 }) {
+  const chosen = rules.options.filter((o) => o.kind !== "tenore" && state.optionIds.includes(o.id));
+  const noteGroups = [
+    { title: "Vantaggi e tratti", hint: "Come si vedono nella storia del personaggio: da dove vengono, come li usa.", items: chosen.filter((o) => o.kind !== "svantaggio") },
+    { title: "Svantaggi", hint: "Come pesano nella sua vita: quando sono nati, come li vive.", items: chosen.filter((o) => o.kind === "svantaggio") },
+  ];
   const area = "min-h-28 w-full rounded-lg border border-input bg-night/40 px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
   return (
     <div className="grid max-w-2xl gap-4">
@@ -853,6 +868,36 @@ function StepBackground({
       <Field label="Storia" hint="Da dove viene e cosa l'ha portato al college.">
         <textarea className={cn(area, "min-h-40")} maxLength={5000} value={state.bio} onChange={(e) => onChange({ bio: e.target.value })} />
       </Field>
+      {noteGroups.map(
+        (g) =>
+          g.items.length > 0 && (
+            <section key={g.title} className="flex flex-col gap-2">
+              <h3 className="border-b border-white/10 pb-1 font-heading text-xl tracking-wide text-peach">{g.title}</h3>
+              <p className="-mt-1 text-xs text-muted-foreground">{g.hint} Obbligatorio per inviare la scheda.</p>
+              {g.items.map((o) => {
+                const d = state.optionDetails[o.id];
+                const note = d?.note ?? "";
+                return (
+                  <div key={o.id} className="flex flex-col gap-1 text-sm">
+                    <span className="font-medium">
+                      {o.name}
+                      {o.max_level > 1 && <span className="text-xs text-peach"> livello {d?.level ?? 1}</span>}
+                      {d?.choice && <span className="text-xs text-lavender"> · {d.choice}</span>}
+                    </span>
+                    <textarea
+                      className={cn(area, "min-h-16", !note.trim() && "border-flamingo/60")}
+                      maxLength={1000}
+                      value={note}
+                      aria-label={`Descrizione di ${o.name}`}
+                      placeholder={o.description || "Racconta come si vede nella storia del personaggio."}
+                      onChange={(e) => onNote(o.id, e.target.value)}
+                    />
+                  </div>
+                );
+              })}
+            </section>
+          ),
+      )}
     </div>
   );
 }

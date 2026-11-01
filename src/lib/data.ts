@@ -371,7 +371,8 @@ export async function getRulesData(): Promise<RulesData> {
   };
 }
 
-export type OptionDetail = { level: number; choice: string };
+/** Livello, scelta e descrizione (come si vede nella storia) di una voce */
+export type OptionDetail = { level: number; choice: string; note?: string };
 
 export type CharacterBuild = {
   attributes: Record<string, number>;
@@ -451,14 +452,14 @@ export async function getCharacterBuild(characterId: string): Promise<CharacterB
       .overrideTypes<{ attribute_id: string; value: number }[], { merge: false }>(),
     supabase.from("character_skills").select("skill_id, level").eq("character_id", characterId)
       .overrideTypes<{ skill_id: string; level: number }[], { merge: false }>(),
-    supabase.from("character_options").select("option_id, level, choice_value").eq("character_id", characterId)
-      .overrideTypes<{ option_id: string; level: number; choice_value: string }[], { merge: false }>(),
+    supabase.from("character_options").select("option_id, level, choice_value, note").eq("character_id", characterId)
+      .overrideTypes<{ option_id: string; level: number; choice_value: string; note: string | null }[], { merge: false }>(),
   ]);
   return {
     attributes: Object.fromEntries((attrs.data ?? []).map((r) => [r.attribute_id, r.value])),
     skills: Object.fromEntries((skills.data ?? []).map((r) => [r.skill_id, r.level])),
     optionIds: (options.data ?? []).map((r) => r.option_id),
-    optionDetails: Object.fromEntries((options.data ?? []).map((r) => [r.option_id, { level: r.level, choice: r.choice_value }])),
+    optionDetails: Object.fromEntries((options.data ?? []).map((r) => [r.option_id, { level: r.level, choice: r.choice_value, note: r.note ?? "" }])),
   };
 }
 
