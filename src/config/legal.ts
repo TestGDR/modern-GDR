@@ -9,7 +9,7 @@ export type LegalSection = { heading?: string; text: string[] };
 export const legalVersion = "1 novembre 2026";
 
 /** Email di contatto dello staff per privacy e segnalazioni (vuota = solo ticket) */
-export const contactEmail = "";
+export const contactEmail = "neon.campusgdr@gmail.com";
 
 const contact = contactEmail ? `aprendo un ticket dal gioco oppure scrivendo a ${contactEmail}` : "aprendo un ticket dal gioco (icona Ticket della barra laterale)";
 
