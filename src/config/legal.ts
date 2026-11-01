@@ -120,14 +120,22 @@ export const privacyPolicy: LegalSection[] = [
   {
     heading: "6. Destinatari",
     text: [
-      "I dati non vengono venduti né diffusi. Possono trattarli lo staff autorizzato e i fornitori tecnici che fanno funzionare il sito, come responsabili del trattamento: Supabase (database, accessi ed email di servizio, con i dati conservati nell'Unione Europea, in Irlanda), Vercel (ospitalità del sito, con server in Irlanda) e proxycheck.io (verifica dell'indirizzo IP per individuare le VPN). Possono essere comunicati alle autorità quando la legge lo richiede o per tutelare un diritto.",
-      "Le immagini e i video inseriti dai giocatori con un link (prestavolti, social, forum) vengono caricati direttamente dai siti che li ospitano, che possono vedere il tuo indirizzo IP; lo stesso vale per il meteo del gioco, letto dal servizio Open-Meteo.",
+      "I dati non vengono venduti né diffusi. Possono trattarli lo staff autorizzato e i fornitori tecnici che fanno funzionare il sito, come responsabili del trattamento:",
+      "• Supabase Inc. (Stati Uniti): database, accessi ed email di servizio. Il database e i dati sono conservati nell'Unione Europea, in Irlanda.",
+      "• Vercel Inc. (Stati Uniti): ospita il sito. Il server che elabora le pagine e parla con il database si trova in Irlanda; pagine e file possono però transitare dalla sua rete di distribuzione mondiale, che li consegna dal punto più vicino a chi naviga.",
+      "• proxycheck.io (Regno Unito): quando il controllo è attivo, riceve l'indirizzo IP di chi accede per verificare se usa una VPN o un proxy.",
+      "• Google (Stati Uniti), con il servizio Gmail: solo se scrivi all'email di contatto dello staff, il tuo messaggio e il tuo indirizzo email vengono gestiti da Gmail.",
+      "Le immagini e i video inseriti dai giocatori con un link (prestavolti, social, forum) vengono caricati direttamente dai siti che li ospitano, che possono vedere il tuo indirizzo IP; il meteo del gioco viene chiesto dal tuo browser al servizio Open-Meteo (Svizzera), che riceve il tuo indirizzo IP. Questi siti esterni trattano i dati secondo le proprie informative.",
+      "I dati possono infine essere comunicati alle autorità quando la legge lo richiede o per tutelare un diritto.",
     ],
   },
   {
     heading: "7. Trasferimenti fuori dallo Spazio economico europeo",
     text: [
-      "Alcuni fornitori hanno sede fuori dallo Spazio economico europeo (Stati Uniti, Regno Unito). Gli eventuali trasferimenti avvengono nel rispetto degli articoli 44 e seguenti del GDPR, sulla base di decisioni di adeguatezza, clausole contrattuali standard o altre garanzie valide. Puoi chiedere informazioni sulle garanzie allo staff.",
+      "Il database del gioco si trova nell'Unione Europea. Alcuni fornitori però hanno sede fuori dallo Spazio economico europeo, e i dati possono essere consultati o transitare fuori dall'UE:",
+      "• Stati Uniti (Supabase, Vercel, Google): i trasferimenti si basano sul Data Privacy Framework UE-USA, la decisione di adeguatezza della Commissione europea, per le aziende che vi aderiscono, e sulle clausole contrattuali standard approvate dalla Commissione, contenute negli accordi sul trattamento dei dati (DPA) dei fornitori.",
+      "• Regno Unito (proxycheck.io) e Svizzera (Open-Meteo): paesi riconosciuti dalla Commissione europea con una decisione di adeguatezza, cioè con un livello di protezione dei dati equivalente a quello dell'UE.",
+      `Puoi chiedere allo staff informazioni e copia delle garanzie applicate ${contact}.`,
     ],
   },
   {
