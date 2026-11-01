@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { inputClass, textareaClass } from "@/components/admin/admin-ui";
+import { CallupsTab } from "@/components/sport/callups";
 import { Button } from "@/components/ui/button";
 import { firstName } from "@/lib/format";
 import {
@@ -42,9 +43,10 @@ type Lookup = {
   attrs: { id: string; code: string; name: string }[];
   skills: { id: string; name: string }[];
 };
-type Tab = "eventi" | "roster" | "sport" | "squadre" | "premi";
+type Tab = "eventi" | "convoca" | "roster" | "sport" | "squadre" | "premi";
 const TABS: [Tab, string][] = [
   ["eventi", "Stagioni ed eventi"],
+  ["convoca", "Convoca"],
   ["roster", "Roster"],
   ["sport", "Sport e ruoli"],
   ["squadre", "Università e rating"],
@@ -77,7 +79,7 @@ function useAct(onDone: () => void) {
   return { error, busy, act };
 }
 
-export function SportManager() {
+export function SportManager({ isAdmin = false }: { isAdmin?: boolean }) {
   const supabase = useMemo(() => createClient(), []);
   const [tab, setTab] = useState<Tab>("eventi");
   const [lookup, setLookup] = useState<Lookup | null>(null);
@@ -113,7 +115,7 @@ export function SportManager() {
   return (
     <div className="flex flex-col gap-3">
       <nav className="flex flex-wrap gap-1 rounded-2xl bg-white/5 p-1">
-        {TABS.map(([k, label]) => (
+        {TABS.filter(([k]) => k !== "convoca" || isAdmin).map(([k, label]) => (
           <button
             key={k}
             type="button"
@@ -124,7 +126,7 @@ export function SportManager() {
           </button>
         ))}
       </nav>
-      {(tab === "eventi" || tab === "roster" || tab === "premi") && (
+      {(tab === "eventi" || tab === "convoca" || tab === "roster" || tab === "premi") && (
         <select className={cn(inputClass, "w-64")} value={sportId} onChange={(e) => setSportId(e.target.value)}>
           {lookup.sports.map((s) => (
             <option key={s.id} value={s.id}>
@@ -135,6 +137,7 @@ export function SportManager() {
         </select>
       )}
       {tab === "eventi" && sport && <EventsTab key={sport.id} sport={sport} lookup={lookup} />}
+      {tab === "convoca" && isAdmin && sport && <CallupsTab key={sport.id} sport={sport} />}
       {tab === "roster" && sport && <RosterTab key={sport.id} sport={sport} lookup={lookup} />}
       {tab === "sport" && <SportsTab lookup={lookup} reload={load} />}
       {tab === "squadre" && <TeamsTab lookup={lookup} reload={load} />}

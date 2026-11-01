@@ -21,6 +21,7 @@ export default function Page() {
 }
 
 async function Content() {
-  await requirePermission("sport.gestire");
-  return <SportManager />;
+  const player = await requirePermission("sport.gestire");
+  // la scheda «Convoca» la vede solo l'Amministratore
+  return <SportManager isAdmin={player.level.is_admin} />;
 }

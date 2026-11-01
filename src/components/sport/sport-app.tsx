@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Loader2, LogOut, Medal, Trophy } from "lucide-react";
 import { inputClass } from "@/components/admin/admin-ui";
+import { MyCallups } from "@/components/sport/callups";
 import { Button } from "@/components/ui/button";
 import { firstName } from "@/lib/format";
 import {
@@ -83,6 +84,7 @@ export function SportApp({ characterId }: { characterId: string | null }) {
           Squadre e risultati
         </TabButton>
       </nav>
+      {tab === "mio" && characterId && <MyCallups characterId={characterId} />}
       {tab === "mio" && characterId ? <MySportPanel characterId={characterId} catalog={catalog} mine={mine} onChange={load} /> : <TeamsPanel catalog={catalog} />}
     </div>
   );
