@@ -5,11 +5,12 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CircleCheck, MailCheck } from "lucide-react";
+import { FloatingWindow } from "@/components/floating-window";
+import { cookiePolicy, disclaimer, privacyPolicy, termsOfService } from "@/config/site";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { changePassword, requestPasswordReset, signIn, signUp, updatePassword } from "@/lib/actions/auth";
-import { NAME_MAX, NAME_MIN } from "@/lib/character-name";
 import { createClient } from "@/lib/supabase/client";
 import type { FormState } from "@/lib/types";
 
@@ -101,8 +102,35 @@ function SignUpDone({ text, onOk }: { text: string; onOk: () => void }) {
   );
 }
 
+/* ------------------------- Consensi della registrazione ------------------------- */
+
+type Doc = "disclaimer" | "terms" | "privacy" | "cookie";
+const DOCS: Record<Doc, { title: string; paragraphs: string[] }> = {
+  disclaimer: { title: "Disclaimer", paragraphs: disclaimer },
+  terms: { title: "Termini del servizio", paragraphs: termsOfService },
+  privacy: { title: "Privacy policy", paragraphs: privacyPolicy },
+  cookie: { title: "Cookie policy", paragraphs: cookiePolicy },
+};
+type Consent = "disclaimer" | "terms" | "privacy" | "age";
+/** Documenti da aprire (e richiudere) prima di poter spuntare la casella */
+const CONSENT_DOCS: Record<Consent, Doc[]> = { disclaimer: ["disclaimer"], terms: ["terms"], privacy: ["privacy", "cookie"], age: [] };
+
+function DocLink({ doc, onOpen }: { doc: Doc; onOpen: (d: Doc) => void }) {
+  return (
+    <button type="button" onClick={() => onOpen(doc)} className="font-semibold text-peach uppercase underline decoration-dotted underline-offset-4 hover:text-flamingo">
+      {DOCS[doc].title}
+    </button>
+  );
+}
+
 export function SignUpForm({ inModal, onGoToLogin }: SignUpFormProps = {}) {
   const [state, action, pending] = useActionState(signUp, initial);
+  // documenti aperti e richiusi, caselle spuntate
+  const [read, setRead] = useState<Set<Doc>>(() => new Set());
+  const [openDoc, setOpenDoc] = useState<Doc | null>(null);
+  const [checked, setChecked] = useState<Record<Consent, boolean>>({ disclaimer: false, terms: false, privacy: false, age: false });
+  const unlocked = (c: Consent) => CONSENT_DOCS[c].every((d) => read.has(d));
+  const allChecked = (Object.keys(checked) as Consent[]).every((c) => checked[c]);
   const router = useRouter();
   // Iscrizioni chiuse dallo staff (Gestione → Iscrizioni)
   const [closed, setClosed] = useState<string | null>(null);
@@ -137,20 +165,71 @@ export function SignUpForm({ inModal, onGoToLogin }: SignUpFormProps = {}) {
     <form action={action} className="flex flex-col gap-4">
       {inModal && <input type="hidden" name="in_modal" value="1" />}
       <FormMessage state={state} />
-      <div className="grid grid-cols-2 gap-3">
-        <Field id="first_name" label="Nome del personaggio" autoComplete="username" placeholder="Es. Lena" defaultValue={state.values?.first_name} minLength={2} maxLength={20} />
-        <Field id="last_name" label="Cognome" autoComplete="off" placeholder="Es. Moreno" defaultValue={state.values?.last_name} minLength={1} maxLength={NAME_MAX - NAME_MIN} />
-      </div>
-      <p className="-mt-2 text-xs text-muted-foreground">Il nome è unico nel gioco: è quello con cui ti vedranno tutti e con cui entri. Una parola sola (es. Maria-Luisa).</p>
+      <Field id="first_name" label="Nome del personaggio" autoComplete="username" placeholder="Es. Lena" defaultValue={state.values?.first_name} minLength={2} maxLength={20} />
+      <p className="-mt-2 text-xs text-muted-foreground">
+        Solo il nome: è unico nel gioco, è quello con cui ti vedranno tutti e con cui entri. Una parola sola (es. Maria-Luisa). Il cognome lo scegli dopo, nella creazione
+        del personaggio.
+      </p>
       <Field id="email" label="Email" type="email" autoComplete="email" placeholder="tu@email.com" defaultValue={state.values?.email} />
       <Field id="password" label="Password (almeno 8 caratteri)" type="password" autoComplete="new-password" minLength={8} />
       <p className="text-xs text-muted-foreground">
         Con questo nome entrerai in gioco e accederai al sito. Riceverai un&apos;email per confermare l&apos;account; il resto della
         scheda lo completi poi da Scheda personaggio.
       </p>
-      <Button type="submit" size="lg" disabled={pending} className="mt-2 h-11 rounded-full text-base">
+
+      {/* consensi: le caselle con un documento si attivano dopo averlo aperto e richiuso */}
+      <p className="rounded-xl border border-sand/40 bg-sand/10 px-3 py-2.5 text-sm leading-snug">
+        Per registrarti devi spuntare tutte le caselle. I nomi in maiuscolo si aprono con un clic: leggili e chiudi la finestra, e la casella diventa attiva.
+      </p>
+      <div className="flex flex-col gap-2.5 text-sm">
+        {(
+          [
+            ["disclaimer", <>Dichiaro di aver letto e accettato il <DocLink doc="disclaimer" onOpen={setOpenDoc} /></>],
+            ["terms", <>Dichiaro di aver letto e accettato i <DocLink doc="terms" onOpen={setOpenDoc} /></>],
+            ["privacy", <>Dichiaro di aver letto e accettato la <DocLink doc="privacy" onOpen={setOpenDoc} /> e la <DocLink doc="cookie" onOpen={setOpenDoc} /></>],
+            ["age", <>Dichiaro di avere almeno 18 anni compiuti</>],
+          ] as [Consent, React.ReactNode][]
+        ).map(([key, text]) => {
+          const enabled = unlocked(key);
+          return (
+            <div key={key} className="flex items-start gap-2.5">
+              <input
+                id={`consenso_${key}`}
+                name={`accept_${key}`}
+                type="checkbox"
+                checked={checked[key]}
+                disabled={!enabled}
+                onChange={(e) => setChecked((c) => ({ ...c, [key]: e.target.checked }))}
+                className="mt-0.5 size-4 shrink-0 accent-flamingo disabled:cursor-not-allowed disabled:opacity-40"
+                title={enabled ? undefined : "Apri e chiudi il documento per attivarla"}
+              />
+              {/* niente <label>: il clic sul nome apre il documento */}
+              <span className={enabled ? undefined : "text-muted-foreground"}>{text}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <Button type="submit" size="lg" disabled={pending || !allChecked} className="mt-2 h-11 rounded-full text-base">
         {pending ? "Registrazione in corso…" : "Registrati"}
       </Button>
+      {openDoc && (
+        <FloatingWindow
+          label={DOCS[openDoc].title}
+          initialWidth={560}
+          onClose={() => {
+            setRead((r) => new Set(r).add(openDoc));
+            setOpenDoc(null);
+          }}
+          header={<h2 className="pb-4 font-heading text-3xl tracking-wide">{DOCS[openDoc].title}</h2>}
+        >
+          <div className="flex flex-col gap-3 text-left text-sm leading-relaxed text-foreground/90">
+            {DOCS[openDoc].paragraphs.map((p) => (
+              <p key={p}>{p}</p>
+            ))}
+          </div>
+        </FloatingWindow>
+      )}
     </form>
   );
 }

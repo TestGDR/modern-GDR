@@ -52,6 +52,17 @@ export async function startCharacter(): Promise<SaveResult> {
   return { ok: true };
 }
 
+/** Cognome del personaggio (passaggio 1): il nome resta quello della registrazione */
+export async function setCharacterSurname(characterId: string, last: string): Promise<SaveResult & { name?: string }> {
+  if (!isUuid(characterId)) return { ok: false, error: "Scheda non trovata." };
+  await requirePlayer();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("set_character_surname", { p_character: characterId, p_last: last.trim().replace(/\s+/g, " ").slice(0, 40) });
+  if (error) return { ok: false, error: error.code === "P0001" || error.code === "42501" ? error.message : "Cognome non salvato. Riprova." };
+  refresh();
+  return { ok: true, name: data as string };
+}
+
 /** Salvataggio automatico di un passaggio della creazione */
 export async function saveCreation(characterId: string, patch: CreationPatch): Promise<SaveResult> {
   const { character } = await requirePlayer();

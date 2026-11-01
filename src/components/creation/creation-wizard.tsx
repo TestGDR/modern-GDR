@@ -5,7 +5,7 @@ import { AlertTriangle, Check, ChevronLeft, ChevronRight, CircleAlert, Loader2, 
 import { OptionChoice } from "@/components/creation/option-choice";
 import { SheetFrame, type SheetVariant } from "@/components/game/character-sheet-window";
 import { Button } from "@/components/ui/button";
-import { saveCreation, submitCharacter, type CreationPatch } from "@/lib/actions/creation";
+import { saveCreation, setCharacterSurname, submitCharacter, type CreationPatch } from "@/lib/actions/creation";
 import type { CharacterBuild, RulesData } from "@/lib/data";
 import {
   attributePointsUsed,
@@ -64,6 +64,8 @@ export function CreationWizard({ character, build, rules, settings, variant }: C
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, startSubmit] = useTransition();
+  // nome completo: il cognome si aggiunge nel passaggio 1
+  const [fullName, setFullName] = useState(character.name);
   const pending = useRef<CreationPatch>({});
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -171,7 +173,7 @@ export function CreationWizard({ character, build, rules, settings, variant }: C
 
   const chosen = rules.options.filter((o) => state.optionIds.includes(o.id));
   const px = pxSummary(chosen, state.skills, settings, state.optionDetails);
-  const anomalies = findAnomalies(state, rules, settings);
+  const anomalies = [...(fullName.trim().includes(" ") ? [] : [{ step: 1, message: "Scrivi il cognome del personaggio." }]), ...findAnomalies(state, rules, settings)];
   const attrValues = rules.attributes.map((a) => state.attributes[a.id] ?? settings.attrMinCreation);
   const pointsUsed = attributePointsUsed(attrValues);
   const attributesOk = pointsUsed === settings.attrPoints && respectsMaxes(attrValues, settings);
@@ -191,7 +193,7 @@ export function CreationWizard({ character, build, rules, settings, variant }: C
   /* ------------------------------ Interfaccia ------------------------------ */
 
   return (
-    <SheetFrame title={`Crea il personaggio · ${character.name}`} variant={variant}>
+    <SheetFrame title={`Crea il personaggio · ${fullName}`} variant={variant}>
       {/* Barra di avanzamento */}
       <nav className="shrink-0 border-b border-white/10 px-3 py-2.5" aria-label="Passaggi della creazione">
         <ol className="flex gap-1 overflow-x-auto">
@@ -241,7 +243,19 @@ export function CreationWizard({ character, build, rules, settings, variant }: C
           <StepIssues anomalies={anomalies.filter((a) => a.step === step)} show={step < maxReached || step === 2} />
         )}
 
-        {step === 1 && <StepProfile state={state} settings={settings} name={character.name} onChange={updateProfile} />}
+        {step === 1 && (
+          <StepProfile
+            state={state}
+            settings={settings}
+            name={fullName}
+            onChange={updateProfile}
+            onSurname={async (last) => {
+              const r = await setCharacterSurname(character.id, last);
+              if (r.ok && r.name) setFullName(r.name);
+              return r;
+            }}
+          />
+        )}
         {step === 2 && (
           <StepAttributes state={state} rules={rules} settings={settings} pointsUsed={pointsUsed} onChange={setAttribute} />
         )}
@@ -256,7 +270,7 @@ export function CreationWizard({ character, build, rules, settings, variant }: C
             px={px}
             anomalies={anomalies}
             onEdit={goTo}
-            name={character.name}
+            name={fullName}
           />
         )}
       </div>
@@ -365,21 +379,49 @@ function StepProfile({
   settings,
   name,
   onChange,
+  onSurname,
 }: {
   state: State;
   settings: InterlockSettings;
   name: string;
   onChange: (c: Partial<Pick<State, "sex" | "age" | "birthDay" | "birthMonth" | "nationality">>) => void;
+  onSurname: (last: string) => Promise<{ ok: boolean; error?: string }>;
 }) {
+  const first = name.trim().split(" ")[0] ?? "";
+  const savedLast = name.trim().split(" ").slice(1).join(" ");
+  const [last, setLast] = useState(savedLast);
+  const [surname, setSurname] = useState<{ saving: boolean; error: string | null }>({ saving: false, error: null });
+  async function saveSurname() {
+    const clean = last.trim().replace(/\s+/g, " ");
+    if (!clean || clean === savedLast) return;
+    setSurname({ saving: true, error: null });
+    const r = await onSurname(clean);
+    setSurname({ saving: false, error: r.ok ? null : (r.error ?? "Cognome non salvato.") });
+  }
   const ages = Array.from({ length: settings.ageMax - settings.ageMin + 1 }, (_, i) => settings.ageMin + i);
   const birth = state.age && state.birthDay && state.birthMonth ? birthDateFor(state.age, state.birthDay, state.birthMonth, settings) : null;
   const birthYear = state.age ? settings.gameYear - state.age : null;
 
   return (
     <div className="grid max-w-xl gap-4">
-      <div className="rounded-xl bg-white/5 px-4 py-3">
-        <p className="text-xs text-muted-foreground">Nome e cognome (scelti alla registrazione)</p>
-        <p className="font-heading text-2xl tracking-wide">{name}</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl bg-white/5 px-4 py-3">
+          <p className="text-xs text-muted-foreground">Nome (scelto alla registrazione)</p>
+          <p className="font-heading text-2xl tracking-wide">{first}</p>
+        </div>
+        <Field label="Cognome" hint="Si salva da solo quando esci dal campo. Dopo l'invio della scheda si cambia solo da Utility → Cambio nome.">
+          <input
+            className={selectClass}
+            value={last}
+            maxLength={38}
+            placeholder="Es. Moreno"
+            onChange={(e) => setLast(e.target.value)}
+            onBlur={saveSurname}
+            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), saveSurname())}
+          />
+          {surname.saving && <span className="text-xs text-muted-foreground">Salvataggio…</span>}
+          {surname.error && <span className="text-xs text-destructive">{surname.error}</span>}
+        </Field>
       </div>
 
       <div className="flex flex-col gap-1.5 text-sm">
