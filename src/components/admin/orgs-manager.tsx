@@ -412,7 +412,8 @@ export function GroupCategoriesEditor({ categories }: { categories: GroupCategor
       <p className="font-heading text-xl tracking-wide text-peach">Ambiti</p>
       <p className="text-xs text-muted-foreground">
         Ogni ambito è una scheda in Utility → Gruppi. Trascina la maniglia ⋮⋮ per cambiare l&apos;ordine; la coppa indica l&apos;ambito dove finiscono da sole le squadre
-        sportive (Gestione → Sport). Eliminando un ambito i suoi gruppi restano, «senza ambito».
+        sportive (Gestione → Sport). «Max» è quanti gruppi di quell&apos;ambito può avere un personaggio (vuoto = senza limite). Eliminando un ambito i suoi gruppi restano,
+        «senza ambito».
       </p>
       <ErrorText error={error} />
       <SortableList
@@ -441,6 +442,15 @@ export function GroupCategoriesEditor({ categories }: { categories: GroupCategor
 function CategoryRow({ category, handle }: { category: GroupCategory; handle: React.ReactNode }) {
   const { pending, error, execute } = useAdminAction();
   const [name, setName] = useState(category.name);
+  const save = (patch: { name?: string; forSport?: boolean; maxPerCharacter?: number | null }) =>
+    execute(() =>
+      saveGroupCategory({
+        id: category.id,
+        name: patch.name ?? category.name,
+        forSport: patch.forSport ?? category.for_sport,
+        maxPerCharacter: patch.maxPerCharacter === undefined ? category.max_per_character : patch.maxPerCharacter,
+      }),
+    );
   return (
     <div className="flex flex-col gap-1 rounded-xl bg-white/5 p-1.5">
       <div className="flex items-center gap-2">
@@ -451,12 +461,12 @@ function CategoryRow({ category, handle }: { category: GroupCategory; handle: Re
           maxLength={40}
           aria-label="Nome dell'ambito"
           onChange={(e) => setName(e.target.value)}
-          onBlur={() => name.trim() !== category.name && name.trim().length >= 2 && execute(() => saveGroupCategory({ id: category.id, name, forSport: category.for_sport }))}
+          onBlur={() => name.trim() !== category.name && name.trim().length >= 2 && save({ name })}
         />
         <button
           type="button"
           disabled={pending}
-          onClick={() => execute(() => saveGroupCategory({ id: category.id, name: category.name, forSport: !category.for_sport }))}
+          onClick={() => save({ forSport: !category.for_sport })}
           className={cn("grid size-8 shrink-0 place-items-center rounded-lg hover:bg-white/10", category.for_sport ? "text-sand" : "text-white/25")}
           aria-pressed={category.for_sport}
           aria-label={category.for_sport ? "Qui finiscono le squadre sportive" : "Metti qui le squadre sportive"}
@@ -464,6 +474,24 @@ function CategoryRow({ category, handle }: { category: GroupCategory; handle: Re
         >
           <Trophy className="size-4" />
         </button>
+        {!category.for_sport && (
+          <label className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground" title="Quanti gruppi di questo ambito può avere un personaggio (vuoto = senza limite)">
+            Max
+            <input
+              type="number"
+              min={1}
+              max={20}
+              defaultValue={category.max_per_character ?? ""}
+              placeholder="∞"
+              aria-label={`Massimo di gruppi «${category.name}» per personaggio`}
+              className={cn(inputClass, "h-8 w-14 px-1.5")}
+              onBlur={(e) => {
+                const v = e.target.value.trim() === "" ? null : Math.round(Number(e.target.value));
+                if (v !== category.max_per_character) save({ maxPerCharacter: v });
+              }}
+            />
+          </label>
+        )}
         <DeleteButton what={`l'ambito «${category.name}»`} disabled={pending} onConfirm={() => execute(() => deleteGroupCategory(category.id))} />
       </div>
       <ErrorText error={error} />

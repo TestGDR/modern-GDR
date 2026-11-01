@@ -30,6 +30,7 @@ import {
 import { FormMessage } from "@/components/auth/auth-forms";
 import { AffectionsSection } from "@/components/game/affections";
 import { ErrorBoundary } from "@/components/game/error-boundary";
+import { HoverTip } from "@/components/game/hover-tip";
 import { AlterationSection } from "@/components/game/alteration-section";
 import { BackpackSection } from "@/components/game/backpack-section";
 import { HealthSection } from "@/components/game/health-section";
@@ -426,14 +427,30 @@ function DataList({ character, rules, affiliations }: { character: SheetCharacte
   // sotto il nome: età, quartiere di residenza, patrimonio
   const subtitle = [character.age ? `${character.age} anni` : null, character.district?.name ?? null, wealth].filter(Boolean);
   const born = character.birth_date ? `${formatBirthDate(character.birth_date)}${character.age ? ` (${character.age} anni)` : ""}` : "—";
-  const jobs = affiliations.jobs.map((j) => ({ icon: j.icon, text: `${j.role ? `${j.role} · ` : ""}${j.name} (${j.kind === "full_time" ? "FT" : "PT"})` }));
-  const groups = affiliations.groups.map((g) => ({ icon: g.icon, text: g.role ? `${g.name} · ${g.role}` : g.name }));
-  // squadre sportive (dal roster) e, sotto, il club scelto in creazione
+  // icone: nome al passaggio del mouse, clic = pagina del lavoro, gruppo o squadra
+  const jobs: OrgBadge[] = affiliations.jobs.map((j) => ({
+    key: j.id,
+    icon: j.icon,
+    fallback: j.name,
+    label: `${j.name}${j.role ? ` · ${j.role}` : ""} (${j.kind === "full_time" ? "full time" : "part time"})`,
+    href: `/utility/lavori?apri=${j.id}`,
+  }));
+  const groups: OrgBadge[] = affiliations.groups.map((g) => ({
+    key: g.id,
+    icon: g.icon,
+    fallback: g.name,
+    label: g.role ? `${g.name} · ${g.role}` : g.name,
+    href: `/utility/gruppi?apri=${g.id}`,
+  }));
   const squad = { starter: "titolare", reserve: "riserva", captain: "capitano", redshirt: "redshirt" } as const;
-  const teams = [
-    ...affiliations.teams.map((t) => ({ icon: null, text: `${t.icon} ${t.sport}${t.position ? ` · ${t.position}` : ""} (${squad[t.status]})` })),
-    ...(character.club_id ? [{ icon: null, text: option(character.club_id) }] : []),
-  ];
+  const teams: OrgBadge[] = affiliations.teams.map((t) => ({
+    key: t.groupId ?? t.sport,
+    icon: t.groupIcon,
+    fallback: t.icon,
+    emoji: !t.groupIcon,
+    label: `${t.sport}${t.position ? ` · ${t.position}` : ""} (${squad[t.status]})`,
+    href: t.groupId ? `/utility/gruppi?apri=${t.groupId}` : "/sport",
+  }));
   return (
     <div className="flex flex-col">
       <DataBanner name={character.name} subtitle={subtitle as string[]} />
@@ -454,9 +471,9 @@ function DataList({ character, rules, affiliations }: { character: SheetCharacte
           <DataCard label="Anno di corso" value={option(character.year_id)} />
         </DataBlock>
         <DataBlock icon={<BriefcaseBusiness />} title="Gruppi e lavoro" cols={3}>
-          <DataCard label={jobs.length > 1 ? "Lavori" : "Lavoro"} value="—" lines={jobs} />
-          <DataCard label="Gruppi di gioco" value="—" lines={groups} />
-          <DataCard label="Squadra o club" value="—" lines={teams} />
+          <BadgeCard label={jobs.length > 1 ? "Lavori" : "Lavoro"} badges={jobs} />
+          <BadgeCard label="Gruppi di gioco" badges={groups} />
+          <BadgeCard label="Squadra sportiva" badges={teams} />
         </DataBlock>
         {/* in piccolo, fuori dalle categorie */}
         <p className="flex flex-wrap gap-x-4 gap-y-0.5 px-1 text-[0.7rem] text-muted-foreground">
@@ -509,6 +526,35 @@ function DataBlock({ icon, title, cols, children }: { icon: React.ReactNode; tit
       </h3>
       <dl className={cn("grid grid-cols-2 gap-2", cols === 3 && "@3xl:grid-cols-3", cols === 4 && "@3xl:grid-cols-4")}>{children}</dl>
     </section>
+  );
+}
+
+/** Icona di un lavoro, gruppo o squadra nella scheda */
+type OrgBadge = { key: string; icon: string | null; fallback: string; emoji?: boolean; label: string; href: string };
+
+/** Riquadro dei Dati con le sole icone: nome al passaggio del mouse, clic = pagina in finestra */
+function BadgeCard({ label, badges }: { label: string; badges: OrgBadge[] }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-1.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.04)]">
+      <dt className="text-[0.6rem] font-medium tracking-wider text-lavender uppercase">{label}</dt>
+      <dd className="flex min-h-[30px] flex-wrap items-center gap-2 py-0.5 text-[0.8rem] font-medium text-white">
+        {badges.length === 0 && "—"}
+        {badges.map((b) => (
+          <HoverTip key={b.key} label={b.label} className="inline-flex">
+            <Link href={b.href} aria-label={b.label} className="rounded-md transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-flamingo">
+              {b.icon ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={b.icon} alt="" className="size-[30px] rounded object-contain" />
+              ) : (
+                <span className={cn("grid size-[30px] place-items-center rounded-md bg-white/10", b.emoji ? "text-lg" : "font-heading text-sm")}>
+                  {b.emoji ? b.fallback : initials(b.fallback)}
+                </span>
+              )}
+            </Link>
+          </HoverTip>
+        ))}
+      </dd>
+    </div>
   );
 }
 

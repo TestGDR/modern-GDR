@@ -10,20 +10,22 @@ import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Lavori" };
 
-export default function Page() {
+type Params = Promise<{ apri?: string }>;
+
+export default function Page({ searchParams }: { searchParams?: Params }) {
   return (
     <>
       <BackToUtility />
       <PageHeader title="Lavori" subtitle="Full time e part time: descrizioni, ruoli e stipendi. Scegli qui il tuo." />
       <Suspense fallback={<LoadingBlocks />}>
-        <Content />
+        <Content searchParams={searchParams} />
       </Suspense>
     </>
   );
 }
 
-async function Content() {
-  const player = await requirePlayer();
+async function Content({ searchParams }: { searchParams?: Params }) {
+  const [player, params] = await Promise.all([requirePlayer(), searchParams ?? Promise.resolve({ apri: undefined })]);
   const supabase = await createClient();
   const [orgs, { data: settings }] = await Promise.all([
     loadOrgs("job"),
@@ -32,6 +34,8 @@ async function Content() {
   const setting = (key: string, fallback: number) => Number(settings?.find((s) => s.key === key)?.value ?? fallback);
   return (
     <OrgsView
+      key={params.apri ?? "elenco"}
+      initialOpenId={params.apri ?? null}
       kind="job"
       orgs={orgs}
       characterId={activeCharacter(player)?.id ?? null}

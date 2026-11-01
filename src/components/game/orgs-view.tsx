@@ -20,6 +20,8 @@ type Props = {
   characterId: string | null;
   periodDays: number;
   maxGroups: number;
+  /** Apre subito la pagina di questo lavoro o gruppo (dalla scheda: ?apri=<id>) */
+  initialOpenId?: string | null;
 };
 
 /**
@@ -27,11 +29,11 @@ type Props = {
  * cliccando un nome si apre la sua pagina con descrizione, ruoli e membri.
  * I lavori si scelgono da qui (ruolo e orario); i ruoli pieni sono grigi.
  */
-export function OrgsView({ kind, orgs, categories = [], characterId, periodDays, maxGroups }: Props) {
+export function OrgsView({ kind, orgs, categories = [], characterId, periodDays, maxGroups, initialOpenId = null }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [tab, setTab] = useState(0);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(initialOpenId);
   const visible = orgs.filter((o) => o.active);
   const mine = characterId ? visible.filter((o) => o.members.some((m) => m.character_id === characterId)) : [];
   const open = visible.find((o) => o.id === openId) ?? null;

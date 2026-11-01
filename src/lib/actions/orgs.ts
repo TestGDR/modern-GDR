@@ -105,9 +105,11 @@ export async function moveOrgItem(kind: OrgKind, id: string, direction: -1 | 1, 
 /* ------------------------------ Ambiti dei gruppi ------------------------------ */
 
 /** Crea o rinomina un ambito; "forSport" = ci vanno le squadre sportive (uno solo) */
-export async function saveGroupCategory(input: { id?: string; name: string; forSport: boolean }): Promise<ActionResult> {
+export async function saveGroupCategory(input: { id?: string; name: string; forSport: boolean; maxPerCharacter?: number | null }): Promise<ActionResult> {
   const name = clean(input.name, 40);
   if (name.length < 2) return { ok: false, error: "Scrivi il nome dell'ambito." };
+  const max = input.maxPerCharacter ?? null;
+  if (max !== null && (!Number.isInteger(max) || max < 1 || max > 20)) return { ok: false, error: "Il massimo va da 1 a 20 (vuoto = senza limite)." };
   await requirePlayer();
   const supabase = await createClient();
   // un solo ambito per le squadre: si toglie agli altri
@@ -115,7 +117,7 @@ export async function saveGroupCategory(input: { id?: string; name: string; forS
     const { error } = await supabase.from("group_categories").update({ for_sport: false }).eq("for_sport", true).neq("id", input.id ?? "00000000-0000-0000-0000-000000000000");
     if (error) return result(error);
   }
-  const row = { name, for_sport: input.forSport };
+  const row = { name, for_sport: input.forSport, max_per_character: max };
   if (input.id) {
     if (!isUuid(input.id)) return { ok: false, error: "Voce non valida." };
     return checked(supabase.from("group_categories").update(row).eq("id", input.id).select("id"));

@@ -843,16 +843,6 @@ function StepBackground({
             ))}
           </select>
         </Field>
-        <Field label="Squadra o club (facoltativo)">
-          <select className={selectClass} value={state.clubId ?? ""} onChange={(e) => onChange({ clubId: e.target.value || null })}>
-            <option value="">— Nessuno —</option>
-            {sheetOptions(rules, "club").map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </select>
-        </Field>
       </div>
       <Field label="Aspetto" hint="Com'è fisicamente, come si veste, segni particolari.">
         <textarea className={area} maxLength={3000} value={state.appearance} onChange={(e) => onChange({ appearance: e.target.value })} />
@@ -974,7 +964,7 @@ function StepSummary({
 
       <SummaryBlock title="Background" step={5} onEdit={onEdit}>
         <p>
-          {optionName(state.studyTrackId)} · {optionName(state.yearId)} · {state.clubId ? optionName(state.clubId) : "nessun club"}
+          {optionName(state.studyTrackId)} · {optionName(state.yearId)}
         </p>
         {state.bio && <p className="mt-1 line-clamp-3 text-muted-foreground">{state.bio}</p>}
       </SummaryBlock>

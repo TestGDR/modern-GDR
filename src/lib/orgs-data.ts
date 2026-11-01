@@ -21,7 +21,7 @@ type MemberRow = {
 /** Ambiti dei gruppi, in ordine */
 export async function loadGroupCategories(): Promise<GroupCategory[]> {
   const supabase = await createClient();
-  const { data } = await supabase.from("group_categories").select("id, name, for_sport, sort_order").order("sort_order").order("name").overrideTypes<GroupCategory[], { merge: false }>();
+  const { data } = await supabase.from("group_categories").select("id, name, for_sport, max_per_character, sort_order").order("sort_order").order("name").overrideTypes<GroupCategory[], { merge: false }>();
   return data ?? [];
 }
 

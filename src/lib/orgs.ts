@@ -52,6 +52,8 @@ export type GroupCategory = {
   name: string;
   /** qui finiscono le squadre sportive */
   for_sport: boolean;
+  /** gruppi di questo ambito per personaggio (null = senza limite) */
+  max_per_character: number | null;
   sort_order: number;
 };
 

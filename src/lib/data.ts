@@ -383,10 +383,10 @@ export type CharacterBuild = {
 
 /** Lavori e gruppi di un personaggio, per la scheda */
 export type CharacterAffiliations = {
-  jobs: { name: string; role: string; kind: "full_time" | "part_time"; icon: string | null }[];
-  groups: { name: string; role: string; icon: string | null }[];
-  /** Squadre sportive (roster attivo): sport, ruolo e stato in squadra */
-  teams: { sport: string; icon: string; position: string; status: "starter" | "reserve" | "captain" | "redshirt" }[];
+  jobs: { id: string; name: string; role: string; kind: "full_time" | "part_time"; icon: string | null }[];
+  groups: { id: string; name: string; role: string; icon: string | null }[];
+  /** Squadre sportive (roster attivo): sport, ruolo e stato in squadra; groupId = gruppo della squadra */
+  teams: { sport: string; icon: string; groupId: string | null; groupIcon: string | null; position: string; status: "starter" | "reserve" | "captain" | "redshirt" }[];
   /** Patrimonio (fascia di ricchezza), visibile a tutti */
   wealth: string | null;
   /** Account del giocatore: iscrizione e ultimo accesso (date ISO) */
@@ -400,29 +400,43 @@ export async function getCharacterAffiliations(characterId: string): Promise<Cha
   const [jobs, groups, profile, wealth, teams] = await Promise.all([
     supabase
       .from("character_jobs")
-      .select("mode, job:jobs(name, active, icon_url), role:job_roles(name)")
+      .select("mode, job:jobs(id, name, active, icon_url), role:job_roles(name)")
       .eq("character_id", characterId)
-      .overrideTypes<{ mode: "full_time" | "part_time"; job: { name: string; active: boolean; icon_url: string | null } | null; role: { name: string } | null }[], { merge: false }>(),
+      .overrideTypes<{ mode: "full_time" | "part_time"; job: { id: string; name: string; active: boolean; icon_url: string | null } | null; role: { name: string } | null }[], { merge: false }>(),
     supabase
       .from("character_groups")
-      .select("grp:game_groups(name, active, icon_url, kind), role:group_roles(name)")
+      .select("grp:game_groups(id, name, active, icon_url, kind), role:group_roles(name)")
       .eq("character_id", characterId)
-      .overrideTypes<{ grp: { name: string; active: boolean; icon_url: string | null; kind: string } | null; role: { name: string } | null }[], { merge: false }>(),
+      .overrideTypes<{ grp: { id: string; name: string; active: boolean; icon_url: string | null; kind: string } | null; role: { name: string } | null }[], { merge: false }>(),
     owner
       ? supabase.from("profiles").select("created_at, last_login_at").eq("id", owner.owner_id).maybeSingle<{ created_at: string; last_login_at: string | null }>()
       : Promise.resolve({ data: null }),
     supabase.rpc("character_wealth", { p_character: characterId }),
     supabase
       .from("sport_roster")
-      .select("squad_status, sport:sports!sport_roster_sport_id_fkey(name, icon), position:sport_positions!sport_roster_position_id_fkey(name)")
+      .select("squad_status, sport:sports!sport_roster_sport_id_fkey(name, icon, grp:game_groups(id, icon_url)), position:sport_positions!sport_roster_position_id_fkey(name)")
       .eq("character_id", characterId)
       .is("left_at", null)
-      .overrideTypes<{ squad_status: CharacterAffiliations["teams"][number]["status"]; sport: { name: string; icon: string } | null; position: { name: string } | null }[], { merge: false }>(),
+      .overrideTypes<
+        {
+          squad_status: CharacterAffiliations["teams"][number]["status"];
+          sport: { name: string; icon: string; grp: { id: string; icon_url: string | null } | null } | null;
+          position: { name: string } | null;
+        }[],
+        { merge: false }
+      >(),
   ]);
   return {
-    jobs: (jobs.data ?? []).filter((j) => j.job?.active).map((j) => ({ name: j.job!.name, role: j.role?.name ?? "", kind: j.mode, icon: j.job!.icon_url ?? null })),
-    groups: (groups.data ?? []).filter((g) => g.grp?.active && g.grp.kind !== "sport").map((g) => ({ name: g.grp!.name, role: g.role?.name ?? "", icon: g.grp!.icon_url ?? null })),
-    teams: (teams.data ?? []).filter((t) => t.sport).map((t) => ({ sport: t.sport!.name, icon: t.sport!.icon, position: t.position?.name ?? "", status: t.squad_status })),
+    jobs: (jobs.data ?? []).filter((j) => j.job?.active).map((j) => ({ id: j.job!.id, name: j.job!.name, role: j.role?.name ?? "", kind: j.mode, icon: j.job!.icon_url ?? null })),
+    groups: (groups.data ?? []).filter((g) => g.grp?.active && g.grp.kind !== "sport").map((g) => ({ id: g.grp!.id, name: g.grp!.name, role: g.role?.name ?? "", icon: g.grp!.icon_url ?? null })),
+    teams: (teams.data ?? []).filter((t) => t.sport).map((t) => ({
+        sport: t.sport!.name,
+        icon: t.sport!.icon,
+        groupId: t.sport!.grp?.id ?? null,
+        groupIcon: t.sport!.grp?.icon_url ?? null,
+        position: t.position?.name ?? "",
+        status: t.squad_status,
+      })),
     wealth: (wealth.data as string | null) ?? null,
     joinedAt: profile.data?.created_at ?? null,
     lastLoginAt: profile.data?.last_login_at ?? null,
