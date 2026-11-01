@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CircleCheck, MailCheck } from "lucide-react";
 import { FloatingWindow } from "@/components/floating-window";
-import { cookiePolicy, disclaimer, privacyPolicy, termsOfService } from "@/config/site";
+import { cookiePolicy, legalVersion, privacyPolicy, signupIntro, termsOfService, type LegalSection } from "@/config/legal";
+import { disclaimer } from "@/config/site";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -105,11 +106,11 @@ function SignUpDone({ text, onOk }: { text: string; onOk: () => void }) {
 /* ------------------------- Consensi della registrazione ------------------------- */
 
 type Doc = "disclaimer" | "terms" | "privacy" | "cookie";
-const DOCS: Record<Doc, { title: string; paragraphs: string[] }> = {
-  disclaimer: { title: "Disclaimer", paragraphs: disclaimer },
-  terms: { title: "Termini del servizio", paragraphs: termsOfService },
-  privacy: { title: "Privacy policy", paragraphs: privacyPolicy },
-  cookie: { title: "Cookie policy", paragraphs: cookiePolicy },
+const DOCS: Record<Doc, { title: string; sections: LegalSection[] }> = {
+  disclaimer: { title: "Disclaimer", sections: [{ text: disclaimer }] },
+  terms: { title: "Termini del servizio", sections: termsOfService },
+  privacy: { title: "Privacy policy", sections: privacyPolicy },
+  cookie: { title: "Cookie policy", sections: cookiePolicy },
 };
 type Consent = "disclaimer" | "terms" | "privacy" | "age";
 /** Documenti da aprire (e richiudere) prima di poter spuntare la casella */
@@ -178,6 +179,11 @@ export function SignUpForm({ inModal, onGoToLogin }: SignUpFormProps = {}) {
       </p>
 
       {/* consensi: le caselle con un documento si attivano dopo averlo aperto e richiuso */}
+      <div className="flex flex-col gap-1 border-t border-white/10 pt-4">
+        <p className="font-heading text-xl tracking-wide text-peach">Prima di iscriverti</p>
+        <p className="text-sm leading-snug">{signupIntro}</p>
+        <p className="text-xs text-muted-foreground">Versione dei documenti: {legalVersion}.</p>
+      </div>
       <p className="rounded-xl border border-sand/40 bg-sand/10 px-3 py-2.5 text-sm leading-snug">
         Per registrarti devi spuntare tutte le caselle. I nomi in maiuscolo si aprono con un clic: leggili e chiudi la finestra, e la casella diventa attiva.
       </p>
@@ -216,16 +222,23 @@ export function SignUpForm({ inModal, onGoToLogin }: SignUpFormProps = {}) {
       {openDoc && (
         <FloatingWindow
           label={DOCS[openDoc].title}
-          initialWidth={560}
+          initialWidth={620}
+          initialHeight={640}
           onClose={() => {
             setRead((r) => new Set(r).add(openDoc));
             setOpenDoc(null);
           }}
           header={<h2 className="pb-4 font-heading text-3xl tracking-wide">{DOCS[openDoc].title}</h2>}
         >
-          <div className="flex flex-col gap-3 text-left text-sm leading-relaxed text-foreground/90">
-            {DOCS[openDoc].paragraphs.map((p) => (
-              <p key={p}>{p}</p>
+          <div className="flex flex-col gap-4 text-left text-sm leading-relaxed text-foreground/90">
+            {openDoc !== "disclaimer" && <p className="text-xs text-muted-foreground">Versione: {legalVersion}</p>}
+            {DOCS[openDoc].sections.map((s, i) => (
+              <section key={s.heading ?? i} className="flex flex-col gap-1.5">
+                {s.heading && <h3 className="font-heading text-lg tracking-wide text-peach">{s.heading}</h3>}
+                {s.text.map((p) => (
+                  <p key={p}>{p}</p>
+                ))}
+              </section>
             ))}
           </div>
         </FloatingWindow>
