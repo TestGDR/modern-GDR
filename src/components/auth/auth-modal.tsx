@@ -28,6 +28,9 @@ export function AuthModalProvider({ children }: { children: React.ReactNode }) {
         <FloatingWindow
           label={t.label}
           onClose={close}
+          // registrazione: più larga e alta 700 px (sugli schermi bassi si adatta), con lo scroll dentro
+          initialWidth={mode === "signup" ? 560 : 400}
+          initialHeight={mode === "signup" ? 700 : undefined}
           header={
             <div className="pt-2 pb-5 text-center">
               <Logo href={null} size="sm" className="items-center" />
