@@ -21,7 +21,7 @@ const TEXT_FIELDS = {
   eye_color: 30,
   hair_color: 30,
 } as const;
-const URL_FIELDS = ["avatar_url", "cover_url", "cover_mobile_url"] as const;
+const URL_FIELDS = ["avatar_url", "cover_url", "cover_mobile_url", "music_url"] as const;
 
 type Details = Record<string, string | number | null>;
 
@@ -44,7 +44,7 @@ function readDetails(formData: FormData): { details: Details; error?: string } {
     if (!formData.has(key)) continue;
     const url = clean(formData.get(key), 500);
     if (url && !/^https:\/\/\S+$/.test(url)) {
-      return { details, error: "I link delle immagini devono iniziare con https://" };
+      return { details, error: "I link (immagini e musica) devono iniziare con https://" };
     }
     details[key] = url;
   }

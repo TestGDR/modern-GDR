@@ -102,10 +102,8 @@ export function SheetStatus({ characterId }: { characterId: string }) {
   return (
     <span className="flex flex-col items-center gap-2">
       {level?.icon_url && (
-        <span className="flex flex-col items-center gap-1">
-          <LevelIcon icon={level.icon_url} name={level.name} className="size-7" />
-          <span className="text-[0.65rem] font-semibold tracking-wide text-muted-foreground uppercase">{level.name}</span>
-        </span>
+        // solo il simbolo del ruolo: il nome si legge passandoci sopra
+        <LevelIcon icon={level.icon_url} name={level.name} className="size-7" />
       )}
       {status && (
         <span className="flex gap-1.5">

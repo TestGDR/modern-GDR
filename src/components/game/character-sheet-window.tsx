@@ -34,6 +34,7 @@ import { HoverTip } from "@/components/game/hover-tip";
 import { AlterationSection } from "@/components/game/alteration-section";
 import { BackpackSection } from "@/components/game/backpack-section";
 import { HealthSection } from "@/components/game/health-section";
+import { SheetMusic } from "@/components/game/sheet-music";
 import { SheetStatus } from "@/components/game/status-icons";
 import { OptionRequestPanel } from "@/components/game/option-request";
 import { AdminSheetPanel } from "@/components/game/admin-sheet";
@@ -145,8 +146,11 @@ export function CharacterSheetWindow({
         <aside className="flex flex-col border-white/10 @2xl:min-h-0 @2xl:border-r">
           <div className="flex items-center gap-3 p-4 @2xl:justify-center @2xl:pb-3">
             <Portrait character={character} />
-            {/* ruolo staff e stati del personaggio (alcol, droghe, insonnia) */}
-            <SheetStatus characterId={character.id} />
+            {/* ruolo staff e stati del personaggio (alcol, droghe, insonnia), sotto la musica */}
+            <span className="flex flex-col items-center gap-2">
+              <SheetStatus characterId={character.id} />
+              {character.music_url && <SheetMusic key={character.music_url} url={character.music_url} />}
+            </span>
           </div>
 
           <nav className="flex gap-1 overflow-x-auto px-3 pb-3 @2xl:flex-1 @2xl:flex-col @2xl:overflow-y-auto @2xl:px-0 @2xl:pb-0" aria-label="Sezioni della scheda">
@@ -883,6 +887,12 @@ function SectionEditor({
                 Verticale: su un telefono si vede a circa 360 × 640 pixel (proporzioni 9:16, come lo schermo). Se manca, sul telefono si vede quella del computer, tagliata.
               </p>
               <Input id="cover_mobile_url" name="cover_mobile_url" type="url" defaultValue={character.cover_mobile_url ?? ""} placeholder="https://…" className="h-10 bg-night/40" />
+            </EditField>
+            <EditField id="music_url" label="Musica (link a un file mp3)">
+              <p className="-mt-1 text-xs text-muted-foreground">
+                Link diretto al file audio (deve iniziare con https:// e finire di solito con .mp3). Si ascolta da un piccolo lettore sotto gli stati, solo se chi apre la scheda preme play.
+              </p>
+              <Input id="music_url" name="music_url" type="url" defaultValue={character.music_url ?? ""} placeholder="https://…/canzone.mp3" className="h-10 bg-night/40" />
             </EditField>
             <EditField id="quote" label="Frase che lo descrive">
               <Input id="quote" name="quote" maxLength={140} defaultValue={character.quote ?? ""} className="h-10 bg-night/40" />

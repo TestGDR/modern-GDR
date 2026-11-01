@@ -296,6 +296,8 @@ export type Character = {
   cover_url: string | null;
   /** Immagine verticale della sezione Principale sul cellulare (9:16, circa 360x640) */
   cover_mobile_url: string | null;
+  /** Musica della scheda (link https a un mp3) */
+  music_url?: string | null;
   appearance: string | null;
   traits: string | null;
   skills: string | null;
