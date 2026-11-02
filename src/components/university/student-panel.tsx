@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Award, BookOpen, Check, ChevronDown, ClipboardCopy, GraduationCap, NotebookPen, Plus, Search, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
-import type { AcademicOverview, Course, CoursePrerequisite, Effort, EnrollmentView, Homework } from "@/lib/types";
+import type { AcademicExtras, AcademicOverview, Course, CoursePrerequisite, Effort, EnrollmentView, Homework } from "@/lib/types";
 import {
   CLASS_LABEL,
   EFFORT_LABEL,
@@ -39,14 +39,17 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
   const [lastHomework, setLastHomework] = useState<string | null>(null);
   // ora dell'ultimo caricamento, per sapere se il prossimo compito si può già fare
   const [now, setNow] = useState(0);
+  const [extras, setExtras] = useState<AcademicExtras | null>(null);
 
   const load = useCallback(async () => {
-    const [{ data: o, error: e }, { data: h }] = await Promise.all([
+    const [{ data: o, error: e }, { data: h }, { data: x }] = await Promise.all([
       supabase.rpc("academic_overview", { p_character: characterId }),
       supabase.rpc("academic_homework_list", { p_character: characterId }),
+      supabase.rpc("academic_extras", { p_character: characterId }),
     ]);
     if (e) return setData("vietato");
     setData(o as AcademicOverview);
+    setExtras((x ?? null) as AcademicExtras | null);
     setHomework((h ?? []) as Homework[]);
     setNow(Date.now());
   }, [supabase, characterId]);
@@ -112,6 +115,7 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
   return (
     <div className="flex flex-col gap-6">
       <StatusCard data={data} required={num(catalog?.settings.uni_crediti_laurea, 120)} />
+      {extras && <MajorMinorCard extras={extras} />}
       {error && <p className="rounded-xl bg-destructive/15 px-3 py-2 text-sm text-destructive">{error}</p>}
 
       {data.character.graduate ? (
@@ -124,7 +128,7 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
           </h3>
           {status === "suspended" && <p className="text-sm text-destructive">Sei in sospensione accademica: salti questo semestre.</p>}
           {term.status === "registration_open" && canAct && catalog ? (
-            <Registration data={data} catalog={catalog} busy={busy} run={run} />
+            <Registration data={data} catalog={catalog} extras={extras} busy={busy} run={run} />
           ) : (
             <>
               {lastHomework && <p className="rounded-xl bg-mint/15 px-3 py-2 text-sm text-mint">{lastHomework}</p>}
@@ -190,6 +194,47 @@ function StatusCard({ data, required }: { data: AcademicOverview; required: numb
   );
 }
 
+/** Bonus del Major e progressi del Minor */
+function MajorMinorCard({ extras }: { extras: AcademicExtras }) {
+  const { minor } = extras;
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm">
+      {extras.major_departments.length > 0 && extras.major_bonus > 0 && (
+        <p className="text-xs text-muted-foreground">
+          <strong className="text-mint">Major:</strong> +{extras.major_bonus} a esami e compiti nei corsi di {extras.major_departments.join(", ")}.
+        </p>
+      )}
+      {minor ? (
+        <div className="flex flex-col gap-1.5">
+          <p className="flex flex-wrap items-center gap-2">
+            <strong className="text-lavender">Minor in {minor.minor}</strong>
+            <span className={cn("rounded-full px-2 py-0.5 text-xs", minor.complete ? "bg-mint/20 text-mint" : "bg-white/10 text-muted-foreground")}>
+              {minor.complete ? "Completato" : `${minor.done} corsi superati su ${minor.needed}`}
+            </span>
+          </p>
+          {minor.courses.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Questo indirizzo non ha ancora corsi nell&apos;elenco: lo staff li sceglie in Gestione → Università.</p>
+          ) : (
+            <ul className="flex flex-wrap gap-1.5">
+              {minor.courses.map((c) => (
+                <li key={c.id} className={cn("flex items-center gap-1 rounded-full px-2 py-0.5 text-xs", c.passed ? "bg-mint/15 text-mint" : "bg-night/40 text-muted-foreground")}>
+                  {c.passed && <Check className="size-3" />}
+                  <span className="font-mono">{c.code}</span> {c.name}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-[0.7rem] text-muted-foreground">
+            Supera con almeno C− {minor.needed} di questi corsi: alla laurea il Minor compare nella pagella. Il Minor si sceglie da Scheda → Dati.
+          </p>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">Nessun Minor: si sceglie (facoltativo) da Scheda → Dati.</p>
+      )}
+    </div>
+  );
+}
+
 /* ------------------------------ Iscrizione ------------------------------ */
 
 const num = (v: number | number[] | undefined, d: number) => (typeof v === "number" ? v : d);
@@ -198,11 +243,13 @@ const list = (v: number | number[] | undefined) => (Array.isArray(v) ? v : []);
 function Registration({
   data,
   catalog,
+  extras,
   busy,
   run,
 }: {
   data: AcademicOverview;
   catalog: Catalog;
+  extras: AcademicExtras | null;
   busy: boolean;
   run: (fn: string, args: Record<string, unknown>) => Promise<void>;
 }) {
@@ -222,6 +269,8 @@ function Registration({
   const codeOf = new Map(catalog.courses.map((c) => [c.id, c.code]));
   const minPoints: Record<string, number> = { A: 4, "A-": 3.7, "B+": 3.3, B: 3, "B-": 2.7, "C+": 2.3, C: 2, "C-": 1.7, "D+": 1.3, D: 1, "D-": 0.7 };
   const effortMods = list(s.uni_impegno);
+  const majorDepts = new Set(extras?.major_departments ?? []);
+  const minorCourses = new Set((extras?.minor?.courses ?? []).map((c) => c.id));
 
   // perché non ci si può iscrivere (null = si può)
   function blocked(c: Course): string | null {
@@ -258,7 +307,7 @@ function Registration({
               className="h-8 rounded-lg border border-input bg-night/40 px-2 outline-none"
             >
               {(["minimal", "normal", "intense"] as Effort[]).map((x, i) => (
-                <option key={x} value={x}>
+                <option key={x} value={x} disabled={x === "intense" && extras?.full_time_job}>
                   {EFFORT_LABEL[x]} ({(effortMods[i] ?? 0) > 0 ? "+" : ""}
                   {effortMods[i] ?? 0})
                 </option>
@@ -292,6 +341,11 @@ function Registration({
         <p className="mt-2 text-xs text-muted-foreground">
           Oltre i {num(s.uni_carico_pesante_oltre, 15)} crediti il carico pesante toglie {num(s.uni_carico_pesante_malus, 1)} a tutti i tiri; con l&apos;impegno intenso si arriva al massimo a {num(s.uni_crediti_max_intenso, 15)}. A iscrizioni chiuse si potrà solo ritirare un corso (W).
         </p>
+        {extras?.full_time_job && (
+          <p className="mt-1 text-xs text-peach">
+            Lavori full time: −{extras.job_malus} a esami e compiti e niente impegno intenso. Con un part time non ci sono limiti.
+          </p>
+        )}
       </div>
 
       {/* Catalogo */}
@@ -320,6 +374,10 @@ function Registration({
                   <span className="block truncate">
                     {c.name}
                     {required.has(c.id) && <span className="ml-1.5 rounded bg-flamingo/25 px-1 text-[0.65rem] text-flamingo uppercase">obbligatorio</span>}
+                    {majorDepts.has(c.department) && extras && extras.major_bonus > 0 && (
+                      <span className="ml-1.5 rounded bg-mint/20 px-1 text-[0.65rem] text-mint uppercase">Major +{extras.major_bonus}</span>
+                    )}
+                    {minorCourses.has(c.id) && <span className="ml-1.5 rounded bg-lavender/20 px-1 text-[0.65rem] text-lavender uppercase">Minor</span>}
                   </span>
                   <span className="block truncate text-xs text-muted-foreground">
                     {c.credits} cr · {c.level} · {catalog.attrs[c.attribute_id]}

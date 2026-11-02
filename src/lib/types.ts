@@ -605,6 +605,22 @@ export type TermReport = {
   report_text: string;
 };
 /** academic_overview: la carriera di un personaggio */
+/** Minor, dipartimenti del Major e lavoro full time (academic_extras) */
+export type AcademicExtras = {
+  minor: {
+    minor_id: string;
+    minor: string;
+    needed: number;
+    done: number;
+    complete: boolean;
+    courses: { id: string; code: string; name: string; credits: number; grade_points: number | null; passed: boolean | null }[];
+  } | null;
+  major_departments: string[];
+  major_bonus: number;
+  full_time_job: boolean;
+  job_malus: number;
+};
+
 export type AcademicOverview = {
   character: { id: string; name: string; status: string; major_id: string | null; major: string | null; year: string | null; graduate: boolean };
   staff: boolean;
