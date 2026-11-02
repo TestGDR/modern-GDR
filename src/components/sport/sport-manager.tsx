@@ -29,6 +29,7 @@ import type {
   SportSeasonKind,
   SportTeam,
   SportTeamRating,
+  SportTraining,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -43,11 +44,12 @@ type Lookup = {
   attrs: { id: string; code: string; name: string }[];
   skills: { id: string; name: string }[];
 };
-type Tab = "eventi" | "convoca" | "roster" | "sport" | "squadre" | "premi";
+type Tab = "eventi" | "convoca" | "roster" | "allenamenti" | "sport" | "squadre" | "premi";
 const TABS: [Tab, string][] = [
   ["eventi", "Stagioni ed eventi"],
   ["convoca", "Convoca"],
   ["roster", "Roster"],
+  ["allenamenti", "Allenamenti"],
   ["sport", "Sport e ruoli"],
   ["squadre", "Università e rating"],
   ["premi", "Premi"],
@@ -126,7 +128,7 @@ export function SportManager({ isAdmin = false }: { isAdmin?: boolean }) {
           </button>
         ))}
       </nav>
-      {(tab === "eventi" || tab === "convoca" || tab === "roster" || tab === "premi") && (
+      {(tab === "eventi" || tab === "convoca" || tab === "roster" || tab === "allenamenti" || tab === "premi") && (
         <select className={cn(inputClass, "w-64")} value={sportId} onChange={(e) => setSportId(e.target.value)}>
           {lookup.sports.map((s) => (
             <option key={s.id} value={s.id}>
@@ -139,6 +141,7 @@ export function SportManager({ isAdmin = false }: { isAdmin?: boolean }) {
       {tab === "eventi" && sport && <EventsTab key={sport.id} sport={sport} lookup={lookup} />}
       {tab === "convoca" && isAdmin && sport && <CallupsTab key={sport.id} sport={sport} />}
       {tab === "roster" && sport && <RosterTab key={sport.id} sport={sport} lookup={lookup} />}
+      {tab === "allenamenti" && sport && <TrainingsTab key={sport.id} sport={sport} />}
       {tab === "sport" && <SportsTab lookup={lookup} reload={load} />}
       {tab === "squadre" && <TeamsTab lookup={lookup} reload={load} />}
       {tab === "premi" && sport && <AwardsTab key={sport.id} sport={sport} />}
@@ -626,6 +629,53 @@ function RosterTab({ sport, lookup }: { sport: Sport; lookup: Lookup }) {
         </div>
       ))}
       <p className="text-[0.7rem] text-muted-foreground">999 eventi = fuori fino a fine stagione. Un solo capitano per squadra.</p>
+    </div>
+  );
+}
+
+/* ------------------------------ Allenamenti ------------------------------ */
+
+type TrainingRow = SportTraining & { characters: { name: string } | null };
+
+/** Allenamenti settimanali degli atleti (ultimi 30 giorni) con la forma di ciascuno */
+function TrainingsTab({ sport }: { sport: Sport }) {
+  const supabase = useMemo(() => createClient(), []);
+  const [rows, setRows] = useState<TrainingRow[] | null>(null);
+  const [since] = useState(() => new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString());
+  useEffect(() => {
+    let alive = true;
+    supabase
+      .from("sport_trainings")
+      .select("*, characters(name)")
+      .eq("sport_id", sport.id)
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => alive && setRows((data ?? []) as TrainingRow[]));
+    return () => {
+      alive = false;
+    };
+  }, [supabase, sport.id, since]);
+
+  if (!rows) return <Loader2 className="mx-auto animate-spin text-muted-foreground" />;
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-xs text-muted-foreground">
+        Ogni atleta si allena dalla pagina Sport una volta a settimana. Un allenamento riuscito vale +1 ai tiri sportivi per due settimane; insieme agli
+        «Allenamenti in chat» del Roster non supera il massimo delle impostazioni. Giorni, durata e massimo si cambiano in Impostazioni del sistema.
+      </p>
+      {rows.length === 0 && <p className="text-sm text-muted-foreground">Nessun allenamento negli ultimi 30 giorni.</p>}
+      <ul className="flex flex-col gap-1">
+        {rows.map((t) => (
+          <li key={t.id} className="flex flex-wrap items-baseline gap-x-2 rounded-lg bg-white/5 px-2.5 py-1 text-sm">
+            <span className="text-xs text-muted-foreground">{eventDate(t.created_at)}</span>
+            <span className="font-medium">{t.characters?.name}</span>
+            <span className={cn("text-xs", t.success ? "text-mint" : "text-destructive")}>
+              {t.success ? "riuscito" : "non riuscito"} · {t.total} contro {t.cd} (d10 {t.d10}
+              {t.extra !== null && ` ${t.crit === "success" ? "+" : "−"} ${t.extra}`})
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

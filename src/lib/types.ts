@@ -757,4 +757,30 @@ export type MySport = {
   avg_grade: number | null;
   highlights: number;
   season_started: boolean;
+  /** stagione in corso (o l'ultima giocata) */
+  season_label: string | null;
+  season_events: number;
+  season_avg: number | null;
+  athletic_scholarship: boolean;
+  scholarship_min: number;
+  /** allenamenti riusciti ancora validi (forma) */
+  form: number;
+  training_max: number;
+  last_training: { at: string; success: boolean; total: number; cd: number; d10: number; crit: "none" | "success" | "failure" } | null;
+  next_training_at: string | null;
+};
+
+/** Allenamento settimanale (sport_trainings) */
+export type SportTraining = {
+  id: number;
+  character_id: string;
+  sport_id: string;
+  d10: number;
+  crit: "none" | "success" | "failure";
+  extra: number | null;
+  total: number;
+  cd: number;
+  success: boolean;
+  modifiers: Record<string, unknown>;
+  created_at: string;
 };

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Loader2, LogOut, Medal, Trophy } from "lucide-react";
+import { Dumbbell, Loader2, LogOut, Medal, Trophy } from "lucide-react";
 import { inputClass } from "@/components/admin/admin-ui";
 import { MyCallups } from "@/components/sport/callups";
 import { Button } from "@/components/ui/button";
@@ -120,6 +120,22 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
     onChange();
   }
 
+  async function train(m: MySport) {
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    const { data, error: e } = await supabase.rpc("sport_train", { p_character: characterId, p_sport: m.sport_id });
+    setBusy(false);
+    if (e) return setError(e.message);
+    const r = data as { success: boolean; crit: string; total: number; cd: number; form: number };
+    setInfo(
+      r.success
+        ? `Allenamento riuscito (${r.total} contro ${r.cd})${r.crit === "success" ? ", giornata perfetta" : ""}: forma +1 per due settimane. Bonus ai tiri sportivi ora +${r.form}.`
+        : `Allenamento andato male (${r.total} contro ${r.cd})${r.crit === "failure" ? ", proprio una giornata no" : ""}. Riprova la settimana prossima.`,
+    );
+    onChange();
+  }
+
   const positions = catalog.positions.filter((p) => p.sport_id === sportId);
   return (
     <div className="flex flex-col gap-3">
@@ -155,13 +171,14 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
             </ul>
           )}
           {!m.eligibility.eligible && <p className="text-xs text-muted-foreground">Resti nel roster e nel gruppo, ti alleni, ma non gareggi finché non torni in regola.</p>}
+          <SeasonStats m={m} />
           <p className="text-xs text-muted-foreground">
-            Eventi giocati: {m.events}
+            In carriera: {m.events} eventi
             {m.avg_grade !== null && ` · media voto ${m.avg_grade}`}
             {m.highlights > 0 && ` · ${m.highlights} highlight`} · stagioni di eleggibilità usate: {m.seasons_used} su 4
             {m.redshirt_years > 0 && ` · Redshirt: ${m.redshirt_years}`}
-            {m.training_bonus > 0 && ` · bonus allenamenti +${m.training_bonus}`}
           </p>
+          <TrainingBox m={m} busy={busy} onTrain={() => train(m)} />
           {(m.pending_sport || m.pending_position) && (
             <p className="flex flex-wrap items-center gap-2 text-xs text-peach">
               Cambio in attesa del Master: {m.pending_sport ?? m.sport} · {m.pending_position}
@@ -256,9 +273,64 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
           Entra in squadra
         </Button>
         <p className="text-[0.7rem] text-muted-foreground">
-          Uno sport per volta (con Doppio sport due, di stagioni diverse). Cambiare sport o ruolo a stagione in corso va approvato dal Master.
+          Uno sport per volta. Cambiare sport o ruolo a stagione in corso va approvato dal Master.
         </p>
       </section>
+    </div>
+  );
+}
+
+/** Stagione in corso: eventi, media voto e soglia della borsa sportiva */
+function SeasonStats({ m }: { m: MySport }) {
+  if (!m.season_label) return null;
+  const below = m.season_avg !== null && m.season_avg < m.scholarship_min;
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-white/5 px-3 py-2 text-xs">
+      <span className="font-medium text-peach">Stagione {m.season_label}</span>
+      <span>
+        Eventi: <strong>{m.season_events}</strong>
+      </span>
+      <span>
+        Media voto: <strong className={cn(below && "text-destructive")}>{m.season_avg ?? "—"}</strong>
+      </span>
+      {m.athletic_scholarship && (
+        <span className={cn(below ? "text-destructive" : "text-muted-foreground")}>
+          Borsa sportiva: serve una media di almeno {m.scholarship_min} a fine stagione{below ? ", ora sei sotto" : ""}.
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Allenamento settimanale: un tiro ogni 7 giorni, se riesce +1 di forma per due settimane */
+function TrainingBox({ m, busy, onTrain }: { m: MySport; busy: boolean; onTrain: () => void }) {
+  const [now] = useState(() => Date.now());
+  const waiting = m.next_training_at !== null && new Date(m.next_training_at).getTime() > now;
+  const bonus = Math.min(m.form + m.training_bonus, m.training_max);
+  const injured = m.injury_events_left > 0;
+  return (
+    <div className="flex flex-col gap-1.5 rounded-xl border border-white/10 bg-night/30 px-3 py-2 text-xs">
+      <div className="flex flex-wrap items-center gap-2">
+        <Dumbbell className="size-4 text-mint" />
+        <span className="font-medium">Allenamento della settimana</span>
+        <span className="text-muted-foreground">
+          Bonus ai tiri sportivi: <strong className="text-mint">+{bonus}</strong> su {m.training_max}
+          {m.training_bonus > 0 && ` (di cui +${m.training_bonus} dal Master)`}
+        </span>
+        <Button type="button" size="xs" className="ml-auto rounded-full" disabled={busy || waiting || injured || !m.position_id} onClick={onTrain}>
+          Allenati
+        </Button>
+      </div>
+      {m.last_training && (
+        <p className="text-muted-foreground">
+          Ultimo allenamento: {eventDate(m.last_training.at)} · {m.last_training.success ? "riuscito" : "non riuscito"} ({m.last_training.total} contro {m.last_training.cd})
+          {waiting && m.next_training_at && ` · il prossimo dal ${eventDate(m.next_training_at)}`}
+        </p>
+      )}
+      {injured && <p className="text-destructive">Sei infortunato: niente allenamenti finché non rientri.</p>}
+      <p className="text-[0.7rem] text-muted-foreground">
+        Caratteristica + abilità del tuo ruolo + d10 contro la CD della prestazione. Ogni allenamento riuscito vale +1 per due settimane: allenandoti ogni settimana arrivi al massimo.
+      </p>
     </div>
   );
 }
