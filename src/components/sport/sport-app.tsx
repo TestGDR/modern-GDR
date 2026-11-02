@@ -160,6 +160,19 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
             {m.injury_events_left > 0 && (
               <Pill className="bg-destructive/20">🩹 Infortunato: {m.injury_events_left >= 999 ? "fino a fine stagione" : `${m.injury_events_left} eventi`}</Pill>
             )}
+            {m.injury_events_left >= 2 && m.injury_events_left < 999 && (
+              <button
+                type="button"
+                disabled={busy}
+                className="rounded-full bg-mint/20 px-2 py-0.5 text-mint hover:bg-mint/30"
+                onClick={() =>
+                  window.confirm(`Fisioterapia privata: ${m.physio_price} $ e l'infortunio dura una gara in meno. Procedere?`) &&
+                  call("service_physio", { p_character: characterId, p_sport: m.sport_id }, "Fisioterapia fatta: una gara in meno di stop.")
+                }
+              >
+                Fisioterapia ({m.physio_price} $)
+              </button>
+            )}
             {m.returning && <Pill>Rientro da infortunio (−1)</Pill>}
             {m.suspended_events > 0 && <Pill className="bg-destructive/20">Squalificato: {m.suspended_events} evento</Pill>}
           </p>
@@ -178,7 +191,15 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
             {m.highlights > 0 && ` · ${m.highlights} highlight`} · stagioni di eleggibilità usate: {m.seasons_used} su 4
             {m.redshirt_years > 0 && ` · Redshirt: ${m.redshirt_years}`}
           </p>
-          <TrainingBox m={m} busy={busy} onTrain={() => train(m)} />
+          <TrainingBox
+            m={m}
+            busy={busy}
+            onTrain={() => train(m)}
+            onTrainer={() =>
+              window.confirm(`Prendere un personal trainer per 30 giorni? Costa ${m.trainer_price} $: l'allenamento settimanale diventa più facile.`) &&
+              call("service_trainer", { p_character: characterId, p_sport: m.sport_id }, "Personal trainer preso per 30 giorni.")
+            }
+          />
           {(m.pending_sport || m.pending_position) && (
             <p className="flex flex-wrap items-center gap-2 text-xs text-peach">
               Cambio in attesa del Master: {m.pending_sport ?? m.sport} · {m.pending_position}
@@ -303,8 +324,9 @@ function SeasonStats({ m }: { m: MySport }) {
 }
 
 /** Allenamento settimanale: un tiro ogni 7 giorni, se riesce +1 di forma per due settimane */
-function TrainingBox({ m, busy, onTrain }: { m: MySport; busy: boolean; onTrain: () => void }) {
+function TrainingBox({ m, busy, onTrain, onTrainer }: { m: MySport; busy: boolean; onTrain: () => void; onTrainer: () => void }) {
   const [now] = useState(() => Date.now());
+  const trainer = m.trainer_until !== null && new Date(m.trainer_until).getTime() > now;
   const waiting = m.next_training_at !== null && new Date(m.next_training_at).getTime() > now;
   const bonus = Math.min(m.form + m.training_bonus, m.training_max);
   const injured = m.injury_events_left > 0;
@@ -328,6 +350,16 @@ function TrainingBox({ m, busy, onTrain }: { m: MySport; busy: boolean; onTrain:
         </p>
       )}
       {injured && <p className="text-destructive">Sei infortunato: niente allenamenti finché non rientri.</p>}
+      <p className="flex flex-wrap items-center gap-2">
+        {trainer ? (
+          <span className="text-mint">Personal trainer fino al {eventDate(m.trainer_until!)}: allenamento più facile.</span>
+        ) : (
+          <span className="text-muted-foreground">Un personal trainer rende l&apos;allenamento più facile per 30 giorni.</span>
+        )}
+        <Button type="button" size="xs" variant="ghost" className="rounded-full" disabled={busy} onClick={onTrainer}>
+          {trainer ? "Rinnova" : "Prendi"} ({m.trainer_price} $)
+        </Button>
+      </p>
       <p className="text-[0.7rem] text-muted-foreground">
         Caratteristica + abilità del tuo ruolo + d10 contro la CD della prestazione. Ogni allenamento riuscito vale +1 per due settimane: allenandoti ogni settimana arrivi al massimo.
       </p>

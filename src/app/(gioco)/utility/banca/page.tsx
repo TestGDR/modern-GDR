@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { InvestmentsPanel } from "@/components/game/investments-panel";
 import { LoadingBlocks } from "@/components/game/loading";
 import { PageHeader } from "@/components/game/page-header";
 import { BackToUtility, BankApp, type UtilityPerson } from "@/components/game/utility";
@@ -13,7 +14,7 @@ export default function Page() {
   return (
     <>
       <BackToUtility />
-      <PageHeader title="Servizi bancari" subtitle="Il conto del tuo personaggio, lo stipendio e i soldi agli altri." />
+      <PageHeader title="Servizi bancari" subtitle="Il conto del tuo personaggio, lo stipendio, i soldi agli altri e gli investimenti." />
       <Suspense fallback={<LoadingBlocks />}>
         <Content />
       </Suspense>
@@ -47,11 +48,14 @@ async function Content() {
       .overrideTypes<Pick<UtilityPerson, "id" | "name" | "avatar_url">[], { merge: false }>(),
   ]);
   return (
-    <BankApp
-      character={{ id: character.id, name: character.name }}
-      overview={(overview as BankOverview | null) ?? null}
-      transactions={transactions ?? []}
-      recipients={recipients ?? []}
-    />
+    <div className="flex flex-col gap-4">
+      <BankApp
+        character={{ id: character.id, name: character.name }}
+        overview={(overview as BankOverview | null) ?? null}
+        transactions={transactions ?? []}
+        recipients={recipients ?? []}
+      />
+      <InvestmentsPanel characterId={character.id} />
+    </div>
   );
 }

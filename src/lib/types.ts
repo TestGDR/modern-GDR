@@ -487,7 +487,7 @@ export type BankTransaction = {
   id: number;
   character_id: string;
   amount: number;
-  kind: "stipendio" | "bonifico" | "staff" | "mantenimento" | "iniziale" | "acquisto" | "affitto" | "casa" | "retta" | "college";
+  kind: "stipendio" | "bonifico" | "staff" | "mantenimento" | "iniziale" | "acquisto" | "affitto" | "casa" | "retta" | "college" | "oggetti" | "attivita" | "investimento" | "servizio";
   description: string;
   counterpart_id: string | null;
   balance_after: number;
@@ -619,6 +619,10 @@ export type AcademicExtras = {
   major_bonus: number;
   full_time_job: boolean;
   job_malus: number;
+  tutor_price: number;
+  tutor_max: number;
+  /** iscrizioni del semestre aperto con il tutor privato */
+  tutored: number[];
 };
 
 export type AcademicOverview = {
@@ -782,6 +786,9 @@ export type MySport = {
   /** allenamenti riusciti ancora validi (forma) */
   form: number;
   training_max: number;
+  trainer_until: string | null;
+  trainer_price: number;
+  physio_price: number;
   last_training: { at: string; success: boolean; total: number; cd: number; d10: number; crit: "none" | "success" | "failure" } | null;
   next_training_at: string | null;
 };

@@ -51,7 +51,7 @@ export function MarketApp({ characterId }: { characterId: string | null }) {
     load();
   }
   async function discard(it: CharacterItem) {
-    if (!window.confirm(`Buttare ${it.name}?`)) return;
+    if (!window.confirm(`Buttare ${it.name}?${it.upkeep > 0 ? " La spesa mensile si ferma, ma non riprendi i soldi spesi." : ""}`)) return;
     const { error: e } = await supabase.from("character_items").delete().eq("id", it.id);
     if (e) setError(e.message);
     load();
@@ -88,7 +88,7 @@ export function MarketApp({ characterId }: { characterId: string | null }) {
       {tab === "miei" ? (
         <section className="flex flex-col gap-2">
           {mine.length === 0 && <p className="text-sm text-muted-foreground">Non hai ancora niente.</p>}
-          <p className="text-xs text-muted-foreground">Gli oggetti con le cariche si usano in chat, mentre sei in giocata, dal pulsante «Oggetti».</p>
+          <p className="text-xs text-muted-foreground">Gli oggetti con le cariche (anche le esperienze) si usano in chat, mentre sei in giocata, dal pulsante «Oggetti». Veicoli e animali hanno una spesa mensile: buttandoli si ferma.</p>
           <ul className="grid gap-2 sm:grid-cols-2">
             {mine.map((it) => (
               <li key={it.id} className="glass flex items-center gap-3 rounded-xl p-2.5">
@@ -98,6 +98,7 @@ export function MarketApp({ characterId }: { characterId: string | null }) {
                   <span className="block text-xs text-muted-foreground">
                     {CATEGORY_LABEL[it.category]}
                     {it.charges_left !== null && ` · ${it.charges_left} ${it.charges_left === 1 ? "carica" : "cariche"}`}
+                    {it.upkeep > 0 && ` · ${formatDollars(it.upkeep)} al mese`}
                   </span>
                 </span>
                 <Button type="button" size="icon-xs" variant="ghost" aria-label={`Butta ${it.name}`} onClick={() => discard(it)}>
@@ -151,6 +152,7 @@ function ShopCard({ item, canBuy, busy, onBuy }: { item: MarketItem; canBuy: boo
           <span className="mt-1 block text-[0.7rem] text-lavender">
             {CATEGORY_LABEL[item.category]}
             {item.charges !== null ? ` · ${item.charges} ${item.charges === 1 ? "carica" : "cariche"}` : " · non si consuma"}
+            {item.upkeep > 0 && ` · spesa mensile ${formatDollars(item.upkeep)}`}
             {item.effect && ` · altera (resistenza CD ${item.effect.cd})`}
           </span>
           {item.effect && (

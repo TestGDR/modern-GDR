@@ -1,7 +1,7 @@
 // Mercato, inventario e alterazioni: tipi e testi condivisi.
 // Prezzi, cariche e effetti stanno nel database (market_items): qui solo la presentazione.
 
-export type MarketCategory = "animali" | "veicoli" | "gioielli" | "elettronica" | "abbigliamento" | "casa" | "alcolici" | "sigarette" | "droghe" | "altro";
+export type MarketCategory = "animali" | "veicoli" | "gioielli" | "elettronica" | "abbigliamento" | "casa" | "esperienze" | "alcolici" | "sigarette" | "droghe" | "altro";
 
 export const CATEGORY_LABEL: Record<MarketCategory, string> = {
   animali: "Animali",
@@ -10,6 +10,7 @@ export const CATEGORY_LABEL: Record<MarketCategory, string> = {
   elettronica: "Elettronica",
   abbigliamento: "Abbigliamento",
   casa: "Casa",
+  esperienze: "Esperienze",
   alcolici: "Alcolici",
   sigarette: "Sigarette",
   droghe: "Droghe",
@@ -32,6 +33,8 @@ export type MarketItem = {
   charges: number | null;
   use_text: string;
   effect: ItemEffect | null;
+  /** spesa mensile (assicurazione, benzina, veterinario…), 0 = nessuna */
+  upkeep: number;
   active: boolean;
   sort_order: number;
 };
@@ -47,6 +50,8 @@ export type CharacterItem = {
   use_text: string;
   effect: ItemEffect | null;
   black_market: boolean;
+  /** spesa mensile copiata all'acquisto */
+  upkeep: number;
   /** "con sé": portato dietro, visibile a tutti in scheda */
   carried?: boolean;
   acquired_at: string;

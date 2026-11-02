@@ -61,6 +61,7 @@ export function MarketManager() {
             </button>
             <span className="text-xs text-muted-foreground">
               {CATEGORY_LABEL[it.category]} · {formatDollars(it.price)}
+              {it.upkeep > 0 && ` + ${formatDollars(it.upkeep)} al mese`}
               {it.charges !== null ? ` · ${it.charges} cariche` : ""}
               {it.effect ? ` · ${it.effect.type} CD ${it.effect.cd}` : ""}
               {it.black_market && " · mercato nero"}
@@ -81,6 +82,7 @@ function ItemForm({ item, onDone, onError }: { item: MarketItem | null; onDone: 
     description: item?.description ?? "",
     category: item?.category ?? ("altro" as MarketCategory),
     price: item?.price ?? 0,
+    upkeep: item?.upkeep ?? 0,
     image_url: item?.image_url ?? "",
     black_market: item?.black_market ?? false,
     consumable: item ? item.charges !== null : false,
@@ -100,6 +102,7 @@ function ItemForm({ item, onDone, onError }: { item: MarketItem | null; onDone: 
       description: f.description.trim(),
       category: f.category,
       price: Math.max(0, Math.round(f.price)),
+      upkeep: Math.max(0, Math.round(f.upkeep)),
       image_url: f.image_url.trim() || null,
       black_market: f.black_market,
       charges: f.consumable ? Math.max(1, Math.min(100, Math.round(f.charges))) : null,
@@ -134,6 +137,11 @@ function ItemForm({ item, onDone, onError }: { item: MarketItem | null; onDone: 
           <input className={inputClass} type="number" min={0} value={f.price} onChange={(e) => setF({ ...f, price: Number(e.target.value) })} />
         </label>
       </div>
+      <label className="flex items-center gap-1.5 self-start text-xs">
+        Spesa mensile $
+        <input className={cn(inputClass, "h-8 w-24")} type="number" min={0} value={f.upkeep} onChange={(e) => setF({ ...f, upkeep: Number(e.target.value) })} />
+        <span className="text-muted-foreground">assicurazione, benzina, veterinario… (0 = nessuna; vale per i nuovi acquisti)</span>
+      </label>
       <textarea className={textareaClass} value={f.description} maxLength={1000} placeholder="Descrizione" onChange={(e) => setF({ ...f, description: e.target.value })} />
       <input className={inputClass} value={f.image_url} maxLength={500} placeholder="Immagine (link https, facoltativa)" onChange={(e) => setF({ ...f, image_url: e.target.value })} />
       <div className="flex flex-wrap items-center gap-4 text-xs">

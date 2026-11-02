@@ -137,6 +137,7 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
                 canWithdraw={isOwner && term.status === "in_progress" && term.withdraw_open}
                 homework={term.status === "in_progress" ? homework : []}
                 homeworkRules={catalog?.settings}
+                extras={isOwner ? extras : null}
                 now={now}
                 onHomework={isOwner && term.status === "in_progress" ? doHomework : null}
                 busy={busy}
@@ -191,6 +192,38 @@ function StatusCard({ data, required }: { data: AcademicOverview; required: numb
         <div className="h-full rounded-full bg-gradient-to-r from-flamingo to-peach" style={{ width: `${Math.min(100, (record.credits_earned / required) * 100)}%` }} />
       </div>
     </div>
+  );
+}
+
+/** Tutor privato: +1 a esami e compiti di un corso, a pagamento (pochi corsi per semestre) */
+function TutorButton({
+  enrollment,
+  extras,
+  busy,
+  run,
+}: {
+  enrollment: EnrollmentView;
+  extras: AcademicExtras | null;
+  busy: boolean;
+  run: (fn: string, args: Record<string, unknown>) => Promise<void>;
+}) {
+  if (!extras) return null;
+  if (extras.tutored.includes(enrollment.id)) return <span className="rounded bg-mint/20 px-1.5 text-[0.65rem] text-mint uppercase">Tutor +1</span>;
+  if (extras.tutored.length >= extras.tutor_max) return null;
+  return (
+    <Button
+      type="button"
+      size="xs"
+      variant="ghost"
+      disabled={busy}
+      className="rounded-full text-xs"
+      onClick={() =>
+        window.confirm(`Prendere un tutor privato per ${enrollment.code}? Costa ${extras.tutor_price} $ e dà +1 a esami e compiti del corso per questo semestre (al massimo ${extras.tutor_max} corsi).`) &&
+        run("service_tutor", { p_enrollment: enrollment.id })
+      }
+    >
+      Tutor ({extras.tutor_price} $)
+    </Button>
   );
 }
 
@@ -324,6 +357,7 @@ function Registration({
                 <span className="w-20 shrink-0 font-mono text-xs text-lavender">{e.code}</span>
                 <span className="min-w-0 flex-1 truncate">{e.name}</span>
                 {e.is_retake && <span className="text-xs text-peach">ripetizione</span>}
+                <TutorButton enrollment={e} extras={extras} busy={busy} run={run} />
                 <span className="text-xs text-muted-foreground">{e.credits} cr</span>
                 <button
                   type="button"
@@ -406,6 +440,7 @@ function CurrentCourses({
   canWithdraw,
   homework,
   homeworkRules,
+  extras,
   now,
   onHomework,
   busy,
@@ -415,6 +450,7 @@ function CurrentCourses({
   canWithdraw: boolean;
   homework: Homework[];
   homeworkRules: Catalog["settings"] | undefined;
+  extras: AcademicExtras | null;
   now: number;
   onHomework: ((e: EnrollmentView) => void) | null;
   busy: boolean;
@@ -442,6 +478,7 @@ function CurrentCourses({
           <span className="w-20 shrink-0 font-mono text-xs text-lavender">{e.code}</span>
           <span className={cn("min-w-0 flex-1 truncate", e.status === "withdrawn" && "text-muted-foreground line-through")}>{e.name}</span>
           <span className="text-xs text-muted-foreground">{e.credits} cr</span>
+          {e.status === "enrolled" && data.term?.status === "in_progress" && <TutorButton enrollment={e} extras={extras} busy={busy} run={run} />}
           {e.status === "withdrawn" ? (
             <span className="text-xs font-semibold text-muted-foreground">W</span>
           ) : (

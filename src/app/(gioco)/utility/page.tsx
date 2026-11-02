@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BedDouble, BookUser, BriefcaseBusiness, Drama, KeyRound, Landmark, PenLine, Shield, ShoppingBag, Sparkles, VenetianMask } from "lucide-react";
+import { BedDouble, BookUser, BriefcaseBusiness, Drama, KeyRound, Landmark, PenLine, Shield, ShoppingBag, Sparkles, Store, VenetianMask } from "lucide-react";
 import { PageHeader } from "@/components/game/page-header";
 
 export const metadata: Metadata = { title: "Utility" };
@@ -27,7 +27,8 @@ const GROUPS = [
     title: "Soldi e acquisti",
     boxes: [
       { href: "/utility/banca", label: "Servizi bancari", hint: "Stipendio, conto e soldi agli altri", icon: Landmark, color: "text-sand" },
-      { href: "/utility/mercato", label: "Mercato", hint: "Oggetti, alcolici e sigarette con il tuo conto", icon: ShoppingBag, color: "text-flamingo" },
+      { href: "/utility/mercato", label: "Mercato", hint: "Oggetti, esperienze, alcolici con il tuo conto", icon: ShoppingBag, color: "text-flamingo" },
+      { href: "/utility/attivita", label: "Attività", hint: "Compra un locale e gestiscilo ogni mese", icon: Store, color: "text-peach" },
     ],
   },
   {
@@ -49,7 +50,7 @@ const GROUPS = [
 export default function UtilityPage() {
   return (
     <>
-      <PageHeader title="Utility" subtitle="Anagrafe, PNG, lavori e gruppi, banca e mercato, dormitori, il tuo account." />
+      <PageHeader title="Utility" subtitle="Anagrafe, PNG, lavori e gruppi, banca, investimenti, mercato e attività, dormitori, il tuo account." />
       <div className="flex flex-col gap-5">
         {GROUPS.map((g) => (
           <section key={g.title}>

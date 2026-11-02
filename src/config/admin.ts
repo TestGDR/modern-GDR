@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Shield,
   ShoppingBag,
+  Store,
   Sparkles,
   Trophy,
   UserPlus,
@@ -69,6 +70,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   // Lavori, gruppi ed economia
   { href: "/gestione/alloggi", category: "economia", title: "Alloggi", description: "Dormitori del college: camere singole e doppie, chi ci dorme.", icon: House, permissions: ["alloggi.gestire"] },
   { href: "/gestione/mercato", category: "economia", title: "Mercato", description: "Oggetti in vendita (anche mercato nero), cariche, effetti di alcol e droghe; regalare oggetti ai personaggi.", icon: ShoppingBag, permissions: ["mercato.gestire"] },
+  { href: "/gestione/attivita", category: "economia", title: "Attività", description: "Le attività in vendita (prezzo, rendita, abilità di gestione) e quelle dei personaggi.", icon: Store, permissions: ["attivita.gestire"] },
   { href: "/gestione/lavori", category: "economia", title: "Lavori", description: "Lavori full time e part time: ruoli, stipendi e personaggi assegnati.", icon: BriefcaseBusiness, permissions: ["lavori.gestire"] },
   { href: "/gestione/gruppi", category: "economia", title: "Gruppi", description: "I gruppi della land: ruoli, stipendi e membri (li assegna solo lo staff).", icon: Shield, permissions: ["gruppi.gestire"] },
   { href: "/gestione/banca", category: "economia", title: "Banca", description: "I conti dei personaggi: dare o togliere soldi e vedere tutti i movimenti.", icon: Landmark, permissions: ["banca.gestire"] },
