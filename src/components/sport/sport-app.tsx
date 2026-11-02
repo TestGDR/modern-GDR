@@ -16,6 +16,7 @@ import {
   SQUAD_LABEL,
   VENUE_LABEL,
   eventDate,
+  trainingFormula,
 } from "@/lib/sport";
 import { createClient } from "@/lib/supabase/client";
 import type {
@@ -127,11 +128,16 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
     const { data, error: e } = await supabase.rpc("sport_train", { p_character: characterId, p_sport: m.sport_id });
     setBusy(false);
     if (e) return setError(e.message);
-    const r = data as { success: boolean; crit: string; total: number; cd: number; form: number };
+    const r = data as {
+      success: boolean; crit: string; total: number; cd: number; form: number; d10: number; extra: number | null;
+      attr?: number; code?: string; skill?: number; skill_name?: string; mods?: number;
+    };
+    const conto = trainingFormula({ code: r.code, attr: r.attr, skillName: r.skill_name, skill: r.skill, d10: r.d10, crit: r.crit, extra: r.extra, mods: r.mods });
     setInfo(
-      r.success
-        ? `Allenamento riuscito (${r.total} contro ${r.cd})${r.crit === "success" ? ", giornata perfetta" : ""}: forma +1 per due settimane. Bonus ai tiri sportivi ora +${r.form}.`
-        : `Allenamento andato male (${r.total} contro ${r.cd})${r.crit === "failure" ? ", proprio una giornata no" : ""}. Riprova la settimana prossima.`,
+      (r.success
+        ? `Allenamento riuscito${r.crit === "success" ? ", giornata perfetta" : ""}: forma +1 per due settimane. Bonus ai tiri sportivi ora +${r.form}.`
+        : `Allenamento andato male${r.crit === "failure" ? ", proprio una giornata no" : ""}. Riprova la settimana prossima.`) +
+        ` Tiro: ${conto} contro CD ${r.cd}.`,
     );
     onChange();
   }

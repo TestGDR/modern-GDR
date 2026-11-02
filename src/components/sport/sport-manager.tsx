@@ -14,7 +14,9 @@ import {
   SEASON_LABEL,
   SQUAD_LABEL,
   VENUE_LABEL,
+  dieValue,
   eventDate,
+  trainingFormula,
 } from "@/lib/sport";
 import { createClient } from "@/lib/supabase/client";
 import type {
@@ -141,7 +143,7 @@ export function SportManager({ isAdmin = false }: { isAdmin?: boolean }) {
       {tab === "eventi" && sport && <EventsTab key={sport.id} sport={sport} lookup={lookup} />}
       {tab === "convoca" && isAdmin && sport && <CallupsTab key={sport.id} sport={sport} />}
       {tab === "roster" && sport && <RosterTab key={sport.id} sport={sport} lookup={lookup} />}
-      {tab === "allenamenti" && sport && <TrainingsTab key={sport.id} sport={sport} />}
+      {tab === "allenamenti" && sport && <TrainingsTab key={sport.id} sport={sport} lookup={lookup} />}
       {tab === "sport" && <SportsTab lookup={lookup} reload={load} />}
       {tab === "squadre" && <TeamsTab lookup={lookup} reload={load} />}
       {tab === "premi" && sport && <AwardsTab key={sport.id} sport={sport} />}
@@ -635,46 +637,124 @@ function RosterTab({ sport, lookup }: { sport: Sport; lookup: Lookup }) {
 
 /* ------------------------------ Allenamenti ------------------------------ */
 
-type TrainingRow = SportTraining & { characters: { name: string } | null };
+type TrainingRow = SportTraining & { characters: { name: string } | null; sports: { name: string } | null };
+type TrainingMods = {
+  caratteristica?: number;
+  codice?: string;
+  abilita?: number;
+  abilita_nome?: string;
+  ruolo?: string;
+  voci?: { name: string; value: number }[] | null;
+  voci_totale?: number;
+  intensita?: "light" | "normal" | "intense";
+  intensita_valore?: number;
+  totale?: number;
+  cd_base?: number;
+  trainer?: number;
+};
 
-/** Allenamenti settimanali degli atleti (ultimi 30 giorni) con la forma di ciascuno */
-function TrainingsTab({ sport }: { sport: Sport }) {
+/** Allenamenti di tutti gli atleti con il conto per intero e il controllo che torni */
+function TrainingsTab({ sport, lookup }: { sport: Sport; lookup: Lookup }) {
   const supabase = useMemo(() => createClient(), []);
   const [rows, setRows] = useState<TrainingRow[] | null>(null);
-  const [since] = useState(() => new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString());
+  const [onlySport, setOnlySport] = useState(false);
+  const [days, setDays] = useState(30);
+  const [now] = useState(() => Date.now());
   useEffect(() => {
     let alive = true;
-    supabase
+    let q = supabase
       .from("sport_trainings")
-      .select("*, characters(name)")
-      .eq("sport_id", sport.id)
-      .gte("created_at", since)
+      .select("*, characters(name), sports(name)")
+      .gte("created_at", new Date(now - days * 24 * 3600 * 1000).toISOString())
       .order("created_at", { ascending: false })
-      .then(({ data }) => alive && setRows((data ?? []) as TrainingRow[]));
+      .limit(500);
+    if (onlySport) q = q.eq("sport_id", sport.id);
+    q.then(({ data }) => alive && setRows((data ?? []) as TrainingRow[]));
     return () => {
       alive = false;
     };
-  }, [supabase, sport.id, since]);
+  }, [supabase, sport.id, onlySport, days, now]);
+
+  // per gli allenamenti vecchi (salvati senza codice e nome dell'abilità) si risale dal ruolo
+  function partsOf(t: TrainingRow) {
+    const m = t.modifiers as TrainingMods;
+    const pos = lookup.positions.find((p) => p.sport_id === t.sport_id && p.name === m.ruolo);
+    return {
+      code: m.codice ?? lookup.attrs.find((a) => a.id === pos?.attribute_id)?.code ?? null,
+      attr: m.caratteristica ?? null,
+      skillName: m.abilita_nome ?? lookup.skills.find((s) => s.id === pos?.skill_id)?.name ?? null,
+      skill: m.abilita ?? null,
+      d10: t.d10,
+      crit: t.crit,
+      extra: t.extra,
+      mods: m.totale ?? 0,
+    };
+  }
 
   if (!rows) return <Loader2 className="mx-auto animate-spin text-muted-foreground" />;
+  const wrong = rows.filter((t) => {
+    const p = partsOf(t);
+    return (p.attr ?? 0) + (p.skill ?? 0) + dieValue(p) + (p.mods ?? 0) !== t.total;
+  }).length;
   return (
     <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-3 text-xs">
+        <label className="flex items-center gap-1.5">
+          <input type="checkbox" checked={onlySport} onChange={(e) => setOnlySport(e.target.checked)} /> Solo {sport.name}
+        </label>
+        <label className="flex items-center gap-1.5">
+          Ultimi
+          <select className={cn(inputClass, "h-7 w-24")} value={days} onChange={(e) => setDays(Number(e.target.value))}>
+            {[7, 30, 90, 365].map((d) => (
+              <option key={d} value={d}>
+                {d} giorni
+              </option>
+            ))}
+          </select>
+        </label>
+        <span className={cn("ml-auto rounded-full px-2 py-0.5", wrong ? "bg-destructive/20 text-destructive" : "bg-mint/15 text-mint")}>
+          {rows.length} allenamenti · {wrong ? `${wrong} con il conto che non torna` : "tutti i conti tornano"}
+        </span>
+      </div>
       <p className="text-xs text-muted-foreground">
-        Ogni atleta si allena dalla pagina Sport una volta a settimana. Un allenamento riuscito vale +1 ai tiri sportivi per due settimane; insieme agli
-        «Allenamenti in chat» del Roster non supera il massimo delle impostazioni. Giorni, durata e massimo si cambiano in Impostazioni del sistema.
+        Caratteristica + abilità del ruolo + d10 (10 → si aggiunge un secondo d10, 1 → lo si toglie) + modificatori (intensità, voci, malus) contro la CD (14, −2 con il personal trainer).
+        Riuscito = +1 ai tiri sportivi per due settimane.
       </p>
-      {rows.length === 0 && <p className="text-sm text-muted-foreground">Nessun allenamento negli ultimi 30 giorni.</p>}
-      <ul className="flex flex-col gap-1">
-        {rows.map((t) => (
-          <li key={t.id} className="flex flex-wrap items-baseline gap-x-2 rounded-lg bg-white/5 px-2.5 py-1 text-sm">
-            <span className="text-xs text-muted-foreground">{eventDate(t.created_at)}</span>
-            <span className="font-medium">{t.characters?.name}</span>
-            <span className={cn("text-xs", t.success ? "text-mint" : "text-destructive")}>
-              {t.success ? "riuscito" : "non riuscito"} · {t.total} contro {t.cd} (d10 {t.d10}
-              {t.extra !== null && ` ${t.crit === "success" ? "+" : "−"} ${t.extra}`})
-            </span>
-          </li>
-        ))}
+      {rows.length === 0 && <p className="text-sm text-muted-foreground">Nessun allenamento nel periodo.</p>}
+      <ul className="flex flex-col gap-1.5">
+        {rows.map((t) => {
+          const m = t.modifiers as TrainingMods;
+          const p = partsOf(t);
+          const computed = (p.attr ?? 0) + (p.skill ?? 0) + dieValue(p) + (p.mods ?? 0);
+          const voci = (m.voci ?? []).filter((v) => v.value !== 0);
+          const intensity = m.intensita_valore ?? (m.totale ?? 0) - (m.voci_totale ?? voci.reduce((s, v) => s + v.value, 0));
+          return (
+            <li key={t.id} className={cn("glass flex flex-col gap-1 rounded-xl px-3 py-2 text-sm", computed !== t.total && "border border-destructive/50")}>
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-xs text-muted-foreground">{eventDate(t.created_at)}</span>
+                <span className="font-medium">{t.characters?.name}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t.sports?.name} · {m.ruolo ?? "—"}
+                </span>
+                <span className={cn("ml-auto text-xs font-semibold", t.success ? "text-mint" : "text-destructive")}>
+                  {t.success ? "riuscito" : "non riuscito"} · {t.total} contro {t.cd}
+                </span>
+              </div>
+              <p className="font-mono text-xs">
+                {trainingFormula(p)} contro CD {t.cd}
+                {m.trainer ? ` (${m.cd_base ?? t.cd + m.trainer} − ${m.trainer} personal trainer)` : ""}
+              </p>
+              <p className="text-[0.7rem] text-muted-foreground">
+                Modificatori: intensità {m.intensita === "light" ? "leggera" : m.intensita === "intense" ? "intensa" : "normale"} ({intensity > 0 ? "+" : ""}
+                {intensity})
+                {voci.length > 0 && ` · ${voci.map((v) => `${v.name} ${v.value > 0 ? "+" : ""}${v.value}`).join(" · ")}`}
+                {t.crit === "failure" && " · fallimento critico (1 sul d10)"}
+                {t.crit === "success" && " · successo critico (10 sul d10)"}
+              </p>
+              {computed !== t.total && <p className="text-xs text-destructive">⚠ Il conto non torna: i pezzi fanno {computed}, il tiro salvato è {t.total}.</p>}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
