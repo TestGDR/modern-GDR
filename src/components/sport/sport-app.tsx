@@ -18,6 +18,7 @@ import {
   eventDate,
   trainingFormula,
 } from "@/lib/sport";
+import { SportIcon } from "@/components/sport/sport-icon";
 import { createClient } from "@/lib/supabase/client";
 import type {
   MySport,
@@ -152,7 +153,7 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
         <section key={m.roster_id} className="glass flex flex-col gap-2 rounded-2xl p-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-heading text-2xl tracking-wide">
-              {m.icon} {m.sport}
+              <SportIcon sport={{ icon: m.icon, icon_url: m.icon_url }} /> {m.sport}
             </h2>
             <span className="text-xs text-muted-foreground">
               {SEASON_LABEL[m.season]} · {FORMAT_LABEL[m.format]}
@@ -391,7 +392,7 @@ function TeamsPanel({ catalog }: { catalog: Catalog }) {
             onClick={() => setSportId(s.id)}
             className={cn("rounded-full border px-2.5 py-1 text-xs", sportId === s.id ? "border-flamingo bg-flamingo/20" : "border-white/10 hover:bg-white/5")}
           >
-            {s.icon} {s.name}
+            <SportIcon sport={s} /> {s.name}
           </button>
         ))}
       </div>

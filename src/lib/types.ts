@@ -695,6 +695,8 @@ export type Sport = {
   allows_draw: boolean;
   score_profile: Record<string, unknown>;
   icon: string;
+  /** immagine (link https, 30×30): nella pagina Sport e come icona del gruppo */
+  icon_url: string | null;
   color: string;
   group_id: string | null;
   status: "active" | "archived";
@@ -756,6 +758,7 @@ export type MySport = {
   sport_id: string;
   sport: string;
   icon: string;
+  icon_url: string | null;
   season: SportSeasonKind;
   format: SportFormat;
   position_id: string | null;

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { inputClass, textareaClass } from "@/components/admin/admin-ui";
 import { CallupsTab } from "@/components/sport/callups";
+import { SportIcon } from "@/components/sport/sport-icon";
 import { Button } from "@/components/ui/button";
 import { firstName } from "@/lib/format";
 import {
@@ -134,7 +135,7 @@ export function SportManager({ isAdmin = false }: { isAdmin?: boolean }) {
         <select className={cn(inputClass, "w-64")} value={sportId} onChange={(e) => setSportId(e.target.value)}>
           {lookup.sports.map((s) => (
             <option key={s.id} value={s.id}>
-              {s.icon} {s.name}
+              <SportIcon sport={s} /> {s.name}
               {s.status === "archived" ? " (archiviato)" : ""}
             </option>
           ))}
@@ -774,7 +775,7 @@ function SportsTab({ lookup, reload }: { lookup: Lookup; reload: () => void }) {
         {lookup.sports.map((s) => (
           <li key={s.id} className="flex flex-wrap items-baseline gap-2 rounded-lg bg-white/5 px-2.5 py-1.5 text-sm">
             <button type="button" className="font-medium hover:underline" onClick={() => setEditing(s)}>
-              {s.icon} {s.name}
+              <SportIcon sport={s} /> {s.name}
             </button>
             <span className="text-xs text-muted-foreground">
               {SEASON_LABEL[s.season]} · {FORMAT_LABEL[s.format]} · {lookup.positions.filter((p) => p.sport_id === s.id).length} ruoli
@@ -796,6 +797,7 @@ function SportForm({ sport, lookup, onDone }: { sport: Sport | null; lookup: Loo
     format: sport?.format ?? ("team_match" as SportFormat),
     allows_draw: sport?.allows_draw ?? false,
     icon: sport?.icon ?? "🏅",
+    icon_url: sport?.icon_url ?? "",
     color: sport?.color ?? "",
     profile: JSON.stringify(sport?.score_profile ?? { kind: "points", base: 10, per: 1, jitter: 2 }),
     status: sport?.status ?? "active",
@@ -812,7 +814,9 @@ function SportForm({ sport, lookup, onDone }: { sport: Sport | null; lookup: Loo
     } catch {
       return setError("Il profilo del punteggio non è un JSON valido.");
     }
-    const row = { name: f.name.trim(), description: f.description.trim(), season: f.season, format: f.format, allows_draw: f.allows_draw, icon: f.icon, color: f.color, score_profile: profile, status: f.status };
+    const iconUrl = f.icon_url.trim();
+    if (iconUrl && !iconUrl.startsWith("https://")) return setError("Il link dell'icona deve iniziare con https://");
+    const row = { name: f.name.trim(), description: f.description.trim(), season: f.season, format: f.format, allows_draw: f.allows_draw, icon: f.icon, icon_url: iconUrl || null, color: f.color, score_profile: profile, status: f.status };
     const { error: e } = sport ? await supabase.from("sports").update(row).eq("id", sport.id) : await supabase.from("sports").insert(row);
     if (e) return setError(e.message);
     onDone();
@@ -828,7 +832,7 @@ function SportForm({ sport, lookup, onDone }: { sport: Sport | null; lookup: Loo
     <div className="glass flex flex-col gap-2 rounded-2xl p-3 text-sm">
       <div className="grid gap-2 sm:grid-cols-4">
         <input className={inputClass} value={f.name} maxLength={60} placeholder="Nome" onChange={(e) => setF({ ...f, name: e.target.value })} />
-        <input className={inputClass} value={f.icon} maxLength={8} placeholder="Icona" onChange={(e) => setF({ ...f, icon: e.target.value })} />
+        <input className={inputClass} value={f.icon} maxLength={8} placeholder="Emoji (es. 🏈)" title="Emoji per menu a tendina e resoconti" onChange={(e) => setF({ ...f, icon: e.target.value })} />
         <select className={inputClass} value={f.season} onChange={(e) => setF({ ...f, season: e.target.value as SportSeasonKind })}>
           {(Object.keys(SEASON_LABEL) as SportSeasonKind[]).map((k) => (
             <option key={k} value={k}>
@@ -844,6 +848,12 @@ function SportForm({ sport, lookup, onDone }: { sport: Sport | null; lookup: Loo
           ))}
         </select>
       </div>
+      <label className="flex flex-wrap items-center gap-2 text-xs">
+        Link icona (immagine https, 30×30)
+        <input className={cn(inputClass, "min-w-0 flex-1")} type="url" value={f.icon_url} maxLength={500} placeholder="https://…" onChange={(e) => setF({ ...f, icon_url: e.target.value })} />
+        <SportIcon sport={{ icon: f.icon, icon_url: f.icon_url.trim() || null }} />
+        <span className="w-full text-muted-foreground">Si vede nella pagina Sport e diventa l&apos;icona del gruppo della squadra. L&apos;emoji resta per i menu a tendina e i resoconti.</span>
+      </label>
       <textarea className={textareaClass} value={f.description} maxLength={1000} placeholder="Descrizione" onChange={(e) => setF({ ...f, description: e.target.value })} />
       <label className="flex flex-col gap-1 text-xs">
         Profilo del punteggio (JSON)
