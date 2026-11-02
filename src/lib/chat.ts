@@ -5,7 +5,7 @@
 import type { ChatSettings, MessageKind } from "@/lib/types";
 
 /** Valori predefiniti, se le impostazioni non si leggono */
-export const DEFAULT_CHAT_SETTINGS: ChatSettings = { max_length: 1200, ttl_minutes: 60, idle_minutes: 120, session_hours: 8 };
+export const DEFAULT_CHAT_SETTINGS: ChatSettings = { max_length: 1500, ttl_minutes: 60, idle_minutes: 120, session_hours: 8 };
 
 /** Limiti consentiti nel pannello (uguali ai controlli del database) */
 export const CHAT_LIMITS = {
