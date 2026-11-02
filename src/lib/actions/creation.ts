@@ -26,10 +26,11 @@ export type CreationPatch = {
   skills?: Record<string, number>;
   background?: {
     studyTrackId: string | null;
+    minorId: string | null;
     yearId: string | null;
     clubId: string | null;
     appearance: string;
-    traits: string;
+    residence: string;
     bio: string;
   };
 };
@@ -93,10 +94,11 @@ export async function saveCreation(characterId: string, patch: CreationPatch): P
   if (patch.background) {
     const b = patch.background;
     fields.study_track_id = idOrNull(b.studyTrackId);
+    fields.minor_id = b.minorId && b.minorId !== b.studyTrackId ? idOrNull(b.minorId) : null;
     fields.year_id = idOrNull(b.yearId);
     fields.club_id = idOrNull(b.clubId);
     fields.appearance = text(b.appearance, 3000);
-    fields.traits = text(b.traits, 3000);
+    fields.residence = text(b.residence, 2000);
     fields.bio = text(b.bio, 5000);
   }
 

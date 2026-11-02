@@ -61,13 +61,13 @@ export type AdminSheetInput = {
   avatarUrl: string;
   coverUrl: string;
   coverMobileUrl: string;
-  texts: { bio: string; appearance: string; traits: string; known_facts: string; relationships: string; equipment: string };
+  texts: { bio: string; appearance: string; residence: string; traits: string; known_facts: string; relationships: string; equipment: string };
   attributes: Record<string, number>;
   skills: Record<string, number>;
   optionIds: string[];
 };
 
-const LIMITS = { bio: 5000, appearance: 3000, traits: 3000, known_facts: 3000, relationships: 3000, equipment: 3000 } as const;
+const LIMITS = { bio: 5000, appearance: 3000, residence: 2000, traits: 3000, known_facts: 3000, relationships: 3000, equipment: 3000 } as const;
 const txt = (v: string, max: number) => (v.trim() ? v.trim().slice(0, max) : null);
 const idOrNull = (v: string | null) => (v && isUuid(v) ? v : null);
 

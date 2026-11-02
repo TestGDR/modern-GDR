@@ -19,6 +19,7 @@ const areaCls =
 const TEXTS: { key: keyof AdminSheetInput["texts"]; label: string; max: number }[] = [
   { key: "bio", label: "Storia", max: 5000 },
   { key: "appearance", label: "Aspetto", max: 3000 },
+  { key: "residence", label: "Dove vive", max: 2000 },
   { key: "traits", label: "Carattere", max: 3000 },
   { key: "known_facts", label: "Si sa che", max: 3000 },
   { key: "relationships", label: "Affetti", max: 3000 },
@@ -68,6 +69,7 @@ export function AdminSheetPanel({ character, build, rules, districts, onClose }:
     texts: {
       bio: character.bio ?? "",
       appearance: character.appearance ?? "",
+      residence: character.residence ?? "",
       traits: character.traits ?? "",
       known_facts: character.known_facts ?? "",
       relationships: character.relationships ?? "",

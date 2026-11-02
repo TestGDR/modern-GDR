@@ -64,19 +64,6 @@ export function ChatSettingsEditor({ settings }: { settings: ChatSettings }) {
           onChange={(e) => setForm({ ...form, idleMinutes: Number(e.target.value) })}
         />
       </FieldLabel>
-      <FieldLabel
-        label="Durata massima della sessione"
-        hint={`In ore, da ${CHAT_LIMITS.session_hours.min} a ${CHAT_LIMITS.session_hours.max} (0 = nessun limite). Passato questo tempo dall'accesso con nome e password si viene disconnessi anche se si sta giocando, con un avviso 5 minuti prima: basta rientrare.`}
-      >
-        <input
-          type="number"
-          className={inputClass}
-          min={CHAT_LIMITS.session_hours.min}
-          max={CHAT_LIMITS.session_hours.max}
-          value={form.sessionHours}
-          onChange={(e) => setForm({ ...form, sessionHours: Number(e.target.value) })}
-        />
-      </FieldLabel>
       <div className="flex items-center justify-end gap-3">
         {saved && !changed && <span className="text-sm text-mint">Salvato.</span>}
         <Button type="submit" disabled={pending || !changed} className="rounded-full">

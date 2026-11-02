@@ -1,23 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Building2, Gift, Home, Loader2, Plus, Trash2, UserMinus } from "lucide-react";
+import { Loader2, Plus, Trash2, UserMinus } from "lucide-react";
 import { inputClass, textareaClass } from "@/components/admin/admin-ui";
 import { Button } from "@/components/ui/button";
-import { formatDollars } from "@/lib/bank";
-import { ROOM_BEDS, ROOM_KIND_LABEL, bySortThenName, type CharacterHome, type Dorm, type DormResident, type DormRoom, type DormRoomKind, type HomeMode, type HouseType } from "@/lib/housing";
+import { ROOM_BEDS, ROOM_KIND_LABEL, bySortThenName, type Dorm, type DormResident, type DormRoom, type DormRoomKind } from "@/lib/housing";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 // Gestione → Alloggi (permesso alloggi.gestire): dormitori del college con le
-// camere e chi ci dorme; catalogo delle case e case dei personaggi.
+// camere e chi ci dorme.
 // Quali camere spettano a ogni patrimonio si sceglie in Gestione → Patrimonio.
 
-type Tab = "dormitori" | "case";
 type Pg = { id: string; name: string };
 
 export function HousingManager() {
-  const [tab, setTab] = useState<Tab>("dormitori");
   const supabase = useMemo(() => createClient(), []);
   const [characters, setCharacters] = useState<Pg[]>([]);
   useEffect(() => {
@@ -33,28 +30,7 @@ export function HousingManager() {
     };
   }, [supabase]);
 
-  return (
-    <div className="flex flex-col gap-3">
-      <nav className="flex w-fit gap-1 rounded-full bg-white/5 p-1">
-        {(
-          [
-            ["dormitori", "Dormitori", Building2],
-            ["case", "Case", Home],
-          ] as const
-        ).map(([key, label, Icon]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTab(key)}
-            className={cn("flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs", tab === key ? "bg-flamingo/30 text-white" : "text-muted-foreground hover:bg-white/5")}
-          >
-            <Icon className="size-3.5" /> {label}
-          </button>
-        ))}
-      </nav>
-      {tab === "dormitori" ? <DormsAdmin characters={characters} /> : <HousesAdmin characters={characters} />}
-    </div>
-  );
+  return <DormsAdmin characters={characters} />;
 }
 
 /* ------------------------------ Dormitori ------------------------------ */
@@ -289,212 +265,5 @@ function RoomAdmin({ room, residents, characters, call }: { room: DormRoom; resi
         </div>
       )}
     </li>
-  );
-}
-
-/* ------------------------------ Case ------------------------------ */
-
-type HomeWithPg = CharacterHome & { character: { name: string } | null };
-
-function HousesAdmin({ characters }: { characters: Pg[] }) {
-  const supabase = useMemo(() => createClient(), []);
-  const [types, setTypes] = useState<HouseType[] | null>(null);
-  const [homes, setHomes] = useState<HomeWithPg[]>([]);
-  const [editing, setEditing] = useState<HouseType | "new" | null>(null);
-  const [gift, setGift] = useState({ character: "", type: "", mode: "proprieta" as HomeMode });
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    const [t, h] = await Promise.all([
-      supabase.from("house_types").select("*"),
-      supabase.from("character_homes").select("*, character:characters(name)").order("created_at", { ascending: false }),
-    ]);
-    setTypes(((t.data ?? []) as HouseType[]).sort(bySortThenName));
-    setHomes((h.data ?? []) as HomeWithPg[]);
-  }, [supabase]);
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- lettura all'apertura
-    load();
-  }, [load]);
-
-  async function call(p: PromiseLike<{ error: { message: string } | null }>) {
-    setError(null);
-    setDone(null);
-    const { error: e } = await p;
-    if (e) setError(e.message);
-    load();
-    return !e;
-  }
-
-  if (!types) return <Loader2 className="mx-auto animate-spin text-muted-foreground" />;
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-xs text-muted-foreground">
-        Tipi di casa (monolocale, appartamento, villa…): lo stesso tipo lo possono prendere più personaggi. Lascia vuoto il prezzo d&apos;acquisto o l&apos;affitto se quella casa non si
-        compra o non si affitta. Quante case per personaggio e quanto torna vendendo si cambiano in Impostazioni del sistema.
-      </p>
-      <Button type="button" size="sm" className="w-fit rounded-full" onClick={() => setEditing("new")}>
-        <Plus /> Nuovo tipo di casa
-      </Button>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      {editing && (
-        <HouseForm
-          key={editing === "new" ? "new" : editing.id}
-          house={editing === "new" ? null : editing}
-          onCancel={() => setEditing(null)}
-          onSave={async (row) => {
-            const ok = await call(editing === "new" ? supabase.from("house_types").insert({ ...row, sort_order: types.length + 1 }) : supabase.from("house_types").update(row).eq("id", editing.id));
-            if (ok) setEditing(null);
-          }}
-          onDelete={
-            editing === "new"
-              ? undefined
-              : async () => {
-                  if (!window.confirm(`Eliminare ${editing.name} dal catalogo? Chi l'ha già presa la tiene.`)) return;
-                  if (await call(supabase.from("house_types").delete().eq("id", editing.id))) setEditing(null);
-                }
-          }
-        />
-      )}
-      <ul className="flex flex-col gap-1">
-        {types.map((t) => (
-          <li key={t.id} className={cn("flex flex-wrap items-baseline gap-2 rounded-lg bg-white/5 px-2.5 py-1.5 text-sm", !t.active && "opacity-50")}>
-            <button type="button" className="font-medium hover:underline" onClick={() => setEditing(t)}>
-              {t.name}
-            </button>
-            <span className="text-xs text-muted-foreground">
-              {t.buy_price !== null ? `compra ${formatDollars(t.buy_price)}${t.owner_upkeep > 0 ? ` (+${formatDollars(t.owner_upkeep)}/mese)` : ""}` : "non in vendita"} · {t.rent_price !== null ? `affitto ${formatDollars(t.rent_price)}/mese` : "non in affitto"}
-              {!t.active && " · nascosta"}
-            </span>
-          </li>
-        ))}
-      </ul>
-
-      <section className="glass flex flex-col gap-2 rounded-2xl p-3 text-sm">
-        <h3 className="flex items-center gap-1.5 font-heading text-lg tracking-wide text-peach">
-          <Gift className="size-4" /> Dai una casa
-        </h3>
-        <div className="flex flex-wrap items-center gap-2">
-          <select className={cn(inputClass, "w-52")} value={gift.character} onChange={(e) => setGift({ ...gift, character: e.target.value })}>
-            <option value="">Personaggio…</option>
-            {characters.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <select className={cn(inputClass, "w-52")} value={gift.type} onChange={(e) => setGift({ ...gift, type: e.target.value })}>
-            <option value="">Casa…</option>
-            {types.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-          <select className={cn(inputClass, "w-40")} value={gift.mode} onChange={(e) => setGift({ ...gift, mode: e.target.value as HomeMode })}>
-            <option value="proprieta">Di proprietà</option>
-            <option value="affitto">In affitto</option>
-          </select>
-          <Button
-            type="button"
-            size="sm"
-            disabled={!gift.character || !gift.type}
-            onClick={async () => {
-              if (await call(supabase.rpc("home_give", { p_character: gift.character, p_type: gift.type, p_mode: gift.mode }))) setDone("Fatto.");
-            }}
-          >
-            Dai
-          </Button>
-          {done && <span className="text-xs text-mint">{done}</span>}
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-1">
-        <h3 className="font-heading text-lg tracking-wide text-peach">Case dei personaggi ({homes.length})</h3>
-        {homes.length === 0 && <p className="text-sm text-muted-foreground">Nessuno ha ancora una casa.</p>}
-        <ul className="flex flex-col gap-1">
-          {homes.map((h) => (
-            <li key={h.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-white/5 px-2.5 py-1.5 text-sm">
-              <span className="font-medium">{h.character?.name ?? "?"}</span>
-              <span className="min-w-0 flex-1 text-xs text-muted-foreground">
-                {h.name} · {h.mode === "affitto" ? `affitto ${formatDollars(h.rent)}/mese` : "proprietà"}
-                {h.address && ` · ${h.address}`}
-              </span>
-              <Button
-                type="button"
-                size="icon-xs"
-                variant="ghost"
-                aria-label={`Togli la casa a ${h.character?.name ?? ""}`}
-                onClick={() => window.confirm(`Togliere ${h.name} a ${h.character?.name ?? ""}? Non riceve rimborsi.`) && call(supabase.rpc("home_remove", { p_home: h.id }))}
-              >
-                <Trash2 />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </div>
-  );
-}
-
-type HouseRow = Pick<HouseType, "name" | "description" | "image_url" | "buy_price" | "rent_price" | "owner_upkeep" | "active">;
-
-function HouseForm({ house, onCancel, onSave, onDelete }: { house: HouseType | null; onCancel: () => void; onSave: (row: HouseRow) => void; onDelete?: () => void }) {
-  const [f, setF] = useState({
-    name: house?.name ?? "",
-    description: house?.description ?? "",
-    image_url: house?.image_url ?? "",
-    buy: house?.buy_price?.toString() ?? "",
-    rent: house?.rent_price?.toString() ?? "",
-    upkeep: house?.owner_upkeep ?? 0,
-    active: house?.active ?? true,
-  });
-  const price = (s: string) => (s.trim() === "" ? null : Math.max(0, Math.round(Number(s) || 0)));
-  const valid = f.name.trim().length >= 2 && (price(f.buy) !== null || price(f.rent) !== null);
-  return (
-    <div className="glass flex flex-col gap-2 rounded-2xl p-3 text-sm">
-      <div className="grid gap-2 sm:grid-cols-[1fr_9rem_9rem_10rem]">
-        <input className={inputClass} value={f.name} maxLength={60} placeholder="Nome (es. Monolocale a Wynwood)" onChange={(e) => setF({ ...f, name: e.target.value })} />
-        <label className="flex items-center gap-1.5 text-xs">
-          Compra $
-          <input className={inputClass} type="number" min={0} value={f.buy} placeholder="—" onChange={(e) => setF({ ...f, buy: e.target.value })} />
-        </label>
-        <label className="flex items-center gap-1.5 text-xs">
-          Affitto $
-          <input className={inputClass} type="number" min={0} value={f.rent} placeholder="—" onChange={(e) => setF({ ...f, rent: e.target.value })} />
-        </label>
-        <label className="flex items-center gap-1.5 text-xs" title="Tasse, condominio e manutenzione per chi la compra (circa lo 0,2% del prezzo)">
-          Spese/mese $
-          <input className={inputClass} type="number" min={0} value={f.upkeep} onChange={(e) => setF({ ...f, upkeep: Number(e.target.value) })} />
-        </label>
-      </div>
-      <textarea className={textareaClass} value={f.description} maxLength={1000} placeholder="Descrizione" onChange={(e) => setF({ ...f, description: e.target.value })} />
-      <input className={inputClass} value={f.image_url} maxLength={500} placeholder="Immagine (link https, facoltativa)" onChange={(e) => setF({ ...f, image_url: e.target.value })} />
-      <label className="flex items-center gap-1.5 text-xs">
-        <input type="checkbox" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /> Disponibile in agenzia
-      </label>
-      {!valid && f.name.trim().length >= 2 && <p className="text-xs text-flamingo">Indica almeno il prezzo d&apos;acquisto o l&apos;affitto.</p>}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          size="sm"
-          disabled={!valid}
-          onClick={() =>
-            onSave({ name: f.name.trim(), description: f.description.trim(), image_url: f.image_url.trim() || null, buy_price: price(f.buy), rent_price: price(f.rent), owner_upkeep: Math.max(0, Math.round(f.upkeep || 0)), active: f.active })
-          }
-        >
-          Salva
-        </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
-          Chiudi
-        </Button>
-        {onDelete && (
-          <Button type="button" size="sm" variant="ghost" className="ml-auto text-destructive" onClick={onDelete}>
-            <Trash2 /> Elimina
-          </Button>
-        )}
-      </div>
-    </div>
   );
 }

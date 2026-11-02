@@ -12,7 +12,7 @@ export default function Page() {
   return (
     <>
       <BackToPanel />
-      <PageHeader title="Alloggi" subtitle="Dormitori del college con camere e residenti; catalogo delle case e case dei personaggi." />
+      <PageHeader title="Alloggi" subtitle="Dormitori del college con camere e residenti." />
       <Suspense fallback={<LoadingBlocks />}>
         <Content />
       </Suspense>

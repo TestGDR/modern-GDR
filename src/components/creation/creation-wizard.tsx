@@ -41,8 +41,9 @@ const SUBGROUP_LABEL: Record<string, string> = { legami: "Legami", risorse: "Ris
 
 type State = Build & {
   clubId: string | null;
+  minorId: string | null;
   appearance: string;
-  traits: string;
+  residence: string;
   bio: string;
 };
 
@@ -154,16 +155,17 @@ export function CreationWizard({ character, build, rules, settings, variant }: C
     queue({ skills: { [id]: level } });
   }
 
-  function updateBackground(changes: Partial<Pick<State, "studyTrackId" | "yearId" | "clubId" | "appearance" | "traits" | "bio">>) {
+  function updateBackground(changes: Partial<Pick<State, "studyTrackId" | "minorId" | "yearId" | "clubId" | "appearance" | "residence" | "bio">>) {
     const next = { ...state, ...changes };
     setState(next);
     queue({
       background: {
         studyTrackId: next.studyTrackId,
+        minorId: next.minorId,
         yearId: next.yearId,
         clubId: next.clubId,
         appearance: next.appearance,
-        traits: next.traits,
+        residence: next.residence,
         bio: next.bio,
       },
     });
@@ -180,6 +182,7 @@ export function CreationWizard({ character, build, rules, settings, variant }: C
   const anomalies = [
     ...(fullName.trim().includes(" ") ? [] : [{ step: 1, message: "Scrivi il cognome del personaggio." }]),
     ...findAnomalies(state, rules, settings),
+    ...(state.residence.trim() ? [] : [{ step: 5, message: "Scrivi dove vive il personaggio." }]),
     ...(missingNotes.length ? [{ step: 5, message: `Descrivi come si vedono nella storia: ${missingNotes.map((o) => o.name).join(", ")}.` }] : []),
   ];
   const attrValues = rules.attributes.map((a) => state.attributes[a.id] ?? settings.attrMinCreation);
@@ -329,8 +332,9 @@ function initialState(character: Character, build: CharacterBuild, rules: RulesD
     studyTrackId: character.study_track_id,
     yearId: character.year_id,
     clubId: character.club_id,
+    minorId: character.minor_id,
     appearance: character.appearance ?? "",
-    traits: character.traits ?? "",
+    residence: character.residence ?? "",
     bio: character.bio ?? "",
   };
 }
@@ -826,7 +830,7 @@ function StepBackground({
 }: {
   state: State;
   rules: RulesData;
-  onChange: (c: Partial<Pick<State, "studyTrackId" | "yearId" | "clubId" | "appearance" | "traits" | "bio">>) => void;
+  onChange: (c: Partial<Pick<State, "studyTrackId" | "minorId" | "yearId" | "clubId" | "appearance" | "residence" | "bio">>) => void;
   onNote: (optionId: string, note: string) => void;
 }) {
   const chosen = rules.options.filter((o) => o.kind !== "tenore" && state.optionIds.includes(o.id));
@@ -838,7 +842,7 @@ function StepBackground({
   return (
     <div className="grid max-w-2xl gap-4">
       <div className="grid gap-4 @lg:grid-cols-3">
-        <Field label="Indirizzo di studio">
+        <Field label="Major (indirizzo di studio)">
           <select className={selectClass} value={state.studyTrackId ?? ""} onChange={(e) => onChange({ studyTrackId: e.target.value || null })}>
             <option value="">— Scegli —</option>
             {sheetOptions(rules, "indirizzo").map((o) => (
@@ -846,6 +850,18 @@ function StepBackground({
                 {o.name}
               </option>
             ))}
+          </select>
+        </Field>
+        <Field label="Minor" hint="Facoltativo.">
+          <select className={selectClass} value={state.minorId ?? ""} onChange={(e) => onChange({ minorId: e.target.value || null })}>
+            <option value="">— Nessuno —</option>
+            {sheetOptions(rules, "indirizzo")
+              .filter((o) => o.id !== state.studyTrackId)
+              .map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
           </select>
         </Field>
         <Field label="Anno di corso">
@@ -862,10 +878,10 @@ function StepBackground({
       <Field label="Aspetto" hint="Com'è fisicamente, come si veste, segni particolari.">
         <textarea className={area} maxLength={3000} value={state.appearance} onChange={(e) => onChange({ appearance: e.target.value })} />
       </Field>
-      <Field label="Carattere" hint="Personalità, abitudini, pregi e difetti.">
-        <textarea className={area} maxLength={3000} value={state.traits} onChange={(e) => onChange({ traits: e.target.value })} />
+      <Field label="Dove vive?" hint="Al college (in dormitorio) o con i genitori? Com'è la casa, in che zona della città, con chi la divide. Obbligatorio.">
+        <textarea className={cn(area, !state.residence.trim() && "border-flamingo/60")} maxLength={2000} value={state.residence} onChange={(e) => onChange({ residence: e.target.value })} />
       </Field>
-      <Field label="Storia" hint="Da dove viene e cosa l'ha portato al college.">
+      <Field label="Storia" hint="Scrivila per punti salienti: i momenti che l'hanno segnato, da dove viene, cosa l'ha portato al college.">
         <textarea className={cn(area, "min-h-40")} maxLength={5000} value={state.bio} onChange={(e) => onChange({ bio: e.target.value })} />
       </Field>
       {noteGroups.map(
@@ -1009,8 +1025,10 @@ function StepSummary({
 
       <SummaryBlock title="Background" step={5} onEdit={onEdit}>
         <p>
-          {optionName(state.studyTrackId)} · {optionName(state.yearId)}
+          {optionName(state.studyTrackId)}
+          {state.minorId && <> · Minor {optionName(state.minorId)}</>} · {optionName(state.yearId)}
         </p>
+        {state.residence && <p className="mt-1 line-clamp-2 text-muted-foreground">Vive: {state.residence}</p>}
         {state.bio && <p className="mt-1 line-clamp-3 text-muted-foreground">{state.bio}</p>}
       </SummaryBlock>
     </div>

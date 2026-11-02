@@ -67,7 +67,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { href: "/gestione/forum", category: "mondo", title: "Forum", description: "Categorie e sezioni del forum, con chi può leggerle (tutti, livelli o gruppi).", icon: MessageSquareText, permissions: ["forum.sezioni"] },
   { href: "/gestione/ticket", category: "mondo", title: "Sezioni dei ticket", description: "Le categorie dei ticket di assistenza e le istruzioni mostrate a chi ne apre uno.", icon: LifeBuoy, permissions: ["ticket.categorie"] },
   // Lavori, gruppi ed economia
-  { href: "/gestione/alloggi", category: "economia", title: "Alloggi", description: "Dormitori del college (camere singole e doppie, chi ci dorme) e case da comprare o affittare.", icon: House, permissions: ["alloggi.gestire"] },
+  { href: "/gestione/alloggi", category: "economia", title: "Alloggi", description: "Dormitori del college: camere singole e doppie, chi ci dorme.", icon: House, permissions: ["alloggi.gestire"] },
   { href: "/gestione/mercato", category: "economia", title: "Mercato", description: "Oggetti in vendita (anche mercato nero), cariche, effetti di alcol e droghe; regalare oggetti ai personaggi.", icon: ShoppingBag, permissions: ["mercato.gestire"] },
   { href: "/gestione/lavori", category: "economia", title: "Lavori", description: "Lavori full time e part time: ruoli, stipendi e personaggi assegnati.", icon: BriefcaseBusiness, permissions: ["lavori.gestire"] },
   { href: "/gestione/gruppi", category: "economia", title: "Gruppi", description: "I gruppi della land: ruoli, stipendi e membri (li assegna solo lo staff).", icon: Shield, permissions: ["gruppi.gestire"] },

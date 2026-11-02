@@ -10,6 +10,7 @@ import {
   Fingerprint,
   Gauge,
   GraduationCap,
+  House,
   BriefcaseBusiness,
   Heart,
   HeartPulse,
@@ -474,6 +475,11 @@ function DataList({ character, rules, affiliations }: { character: SheetCharacte
           <DataCard label="Minor" value={option(character.minor_id)} />
           <DataCard label="Anno di corso" value={option(character.year_id)} />
         </DataBlock>
+        {character.residence && (
+          <DataBlock icon={<House />} title="Dove vive" cols={1}>
+            <dd className="whitespace-pre-line rounded-xl border border-white/10 bg-night/30 px-3 py-2 text-sm">{character.residence}</dd>
+          </DataBlock>
+        )}
         <DataBlock icon={<BriefcaseBusiness />} title="Gruppi e lavoro" cols={3}>
           <BadgeCard label={jobs.length > 1 ? "Lavori" : "Lavoro"} badges={jobs} />
           <BadgeCard label="Gruppi di gioco" badges={groups} />
@@ -520,7 +526,7 @@ function DataBanner({ name, subtitle }: { name: string; subtitle: string[] }) {
 }
 
 /** Blocco di dati con titolo spaziato e linea, come nella scheda grafica */
-function DataBlock({ icon, title, cols, children }: { icon: React.ReactNode; title: string; cols: 2 | 3 | 4; children: React.ReactNode }) {
+function DataBlock({ icon, title, cols, children }: { icon: React.ReactNode; title: string; cols: 1 | 2 | 3 | 4; children: React.ReactNode }) {
   return (
     <section>
       <h3 className="mb-1.5 flex items-center gap-2">
@@ -528,7 +534,7 @@ function DataBlock({ icon, title, cols, children }: { icon: React.ReactNode; tit
         <span className="font-heading text-sm tracking-[0.18em] text-flamingo uppercase @3xl:text-base @3xl:tracking-[0.26em]">{title}</span>
         <span className="h-px flex-1 bg-gradient-to-r from-flamingo/60 to-flamingo/10" />
       </h3>
-      <dl className={cn("grid grid-cols-2 gap-2", cols === 3 && "@3xl:grid-cols-3", cols === 4 && "@3xl:grid-cols-4")}>{children}</dl>
+      <dl className={cn("grid gap-2", cols === 1 ? "grid-cols-1" : "grid-cols-2", cols === 3 && "@3xl:grid-cols-3", cols === 4 && "@3xl:grid-cols-4")}>{children}</dl>
     </section>
   );
 }
@@ -927,6 +933,10 @@ function SectionEditor({
                     </option>
                   ))}
               </select>
+            </EditField>
+            <EditField id="residence" label="Dove vive?">
+              <p className="-mt-1 text-xs text-muted-foreground">Al college o con i genitori, com&apos;è la casa, in che zona, con chi la divide.</p>
+              <Textarea id="residence" name="residence" rows={4} maxLength={2000} defaultValue={character.residence ?? ""} className="bg-night/40" />
             </EditField>
             <EditField id="district_id" label="Quartiere">
               <select id="district_id" name="district_id" defaultValue={character.district_id ?? ""} className={selectClass}>

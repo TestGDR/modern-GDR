@@ -13,6 +13,7 @@ const TEXT_FIELDS = {
   bio: 5000,
   appearance: 3000,
   traits: 3000,
+  residence: 2000,
   known_facts: 3000,
   relationships: 3000,
   equipment: 3000,

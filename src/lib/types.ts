@@ -300,6 +300,7 @@ export type Character = {
   music_url?: string | null;
   appearance: string | null;
   traits: string | null;
+  residence: string | null;
   skills: string | null;
   /** "Si sa che": ciò che in città si sa del personaggio */
   known_facts: string | null;

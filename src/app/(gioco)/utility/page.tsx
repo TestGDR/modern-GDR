@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BedDouble, BookUser, BriefcaseBusiness, Drama, House, KeyRound, Landmark, PenLine, Shield, ShoppingBag, Sparkles, VenetianMask } from "lucide-react";
+import { BedDouble, BookUser, BriefcaseBusiness, Drama, KeyRound, Landmark, PenLine, Shield, ShoppingBag, Sparkles, VenetianMask } from "lucide-react";
 import { PageHeader } from "@/components/game/page-header";
 
 export const metadata: Metadata = { title: "Utility" };
@@ -33,7 +33,6 @@ const GROUPS = [
   {
     title: "Dove vivi",
     boxes: [
-      { href: "/utility/case", label: "Case", hint: "Compra o prendi in affitto una casa", icon: House, color: "text-peach" },
       { href: "/utility/dormitori", label: "Dormitori", hint: "Prenota una camera al college", icon: BedDouble, color: "text-mint" },
     ],
   },
@@ -50,7 +49,7 @@ const GROUPS = [
 export default function UtilityPage() {
   return (
     <>
-      <PageHeader title="Utility" subtitle="Anagrafe, PNG, lavori e gruppi, banca e mercato, case e dormitori, il tuo account." />
+      <PageHeader title="Utility" subtitle="Anagrafe, PNG, lavori e gruppi, banca e mercato, dormitori, il tuo account." />
       <div className="flex flex-col gap-5">
         {GROUPS.map((g) => (
           <section key={g.title}>
