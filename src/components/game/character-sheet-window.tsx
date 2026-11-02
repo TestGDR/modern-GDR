@@ -289,7 +289,7 @@ export function CharacterSheetWindow({
             </SectionFrame>
           ) : section.key === "abilita" ? (
             <SectionFrame title="Abilità">
-              <SkillList character={character} build={build} rules={rules} />
+              <SkillList character={character} build={build} rules={rules} canGrow={isOwner && character.status === "approvata"} />
             </SectionFrame>
           ) : section.key === "tratti" ? (
             <SectionFrame title="Tratti">
@@ -639,7 +639,19 @@ function rankOf(score: number, thresholds: number[]) {
   return RANKS[i];
 }
 
-function SkillList({ character, build, rules }: { character: SheetCharacter; build: CharacterBuild; rules: RulesData }) {
+function SkillList({ character, build, rules, canGrow }: { character: SheetCharacter; build: CharacterBuild; rules: RulesData; canGrow: boolean }) {
+  const router = useRouter();
+  const [growing, startGrow] = useTransition();
+  const [growMsg, setGrowMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  // +1 livello pagando i PX (10 × il nuovo livello), mai oltre la caratteristica
+  function grow(skillId: string, name: string, next: number, cost: number) {
+    if (!window.confirm(`Portare ${name} a ${next} per ${cost} PX?`)) return;
+    startGrow(async () => {
+      const { error } = await createClient().rpc("skill_upgrade", { p_character: character.id, p_skill: skillId });
+      setGrowMsg(error ? { ok: false, text: error.message } : { ok: true, text: `${name} ora è a ${next} (−${cost} PX).` });
+      router.refresh();
+    });
+  }
   // Tutte le abilità, anche a 0: i PX si spendono anche lì e i dadi si tirano anche lì
   const groups = rules.attributes
     .map((a) => ({ attr: a, skills: rules.skills.filter((s) => s.attribute_id === a.id) }))
@@ -663,6 +675,12 @@ function SkillList({ character, build, rules }: { character: SheetCharacter; bui
           <p className="font-heading text-3xl tracking-wide text-white">{total}</p>
         </div>
       </div>
+      {canGrow && (
+        <p className="text-xs text-muted-foreground">
+          Con i PX da spendere alzi un&apos;abilità di un livello con il pulsante <strong className="text-peach">+</strong>: costa 10 × il nuovo livello e non supera mai la caratteristica.
+        </p>
+      )}
+      {growMsg && <p className={cn("rounded-lg px-3 py-1.5 text-sm", growMsg.ok ? "bg-mint/15 text-mint" : "bg-destructive/15 text-destructive")}>{growMsg.text}</p>}
       <ul className="flex flex-col gap-0.5 rounded-xl bg-white/[0.04] px-3 py-2 text-[0.7rem] text-muted-foreground">
         {RANKS.map((r, i) => (
           <li key={r.name} className="flex flex-wrap items-center gap-1.5">
@@ -709,6 +727,24 @@ function SkillList({ character, build, rules }: { character: SheetCharacter; bui
                           </span>
                         );
                       })()}
+                      {canGrow &&
+                        (() => {
+                          const next = level + 1;
+                          const cost = settings.pxPerLevel * next;
+                          const blocked = next > attrValue || next > settings.skillMax;
+                          return (
+                            <button
+                              type="button"
+                              disabled={growing || blocked || character.px < cost}
+                              onClick={() => grow(s.id, s.name, next, cost)}
+                              title={blocked ? "Non può superare la caratteristica" : `Porta a ${next}: ${cost} PX`}
+                              aria-label={`Alza ${s.name} a ${next} (${cost} PX)`}
+                              className="grid h-6 min-w-12 place-items-center rounded-full bg-flamingo/20 px-1.5 text-[0.65rem] font-semibold text-peach hover:bg-flamingo/35 disabled:opacity-30"
+                            >
+                              {blocked ? "max" : `+ ${cost}`}
+                            </button>
+                          );
+                        })()}
                     </span>
                   </li>
                 );

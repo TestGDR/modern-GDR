@@ -115,7 +115,7 @@ export function OptionRequestPanel({ character, rules, build }: { character: Cha
       ) : (
         <div className="flex flex-col gap-2">
           <p className="text-sm text-muted-foreground">
-            Puoi aggiungere <strong>una volta</strong> voci del catalogo nuovo, pagandole con i PX che ti restano ({character.px} PX). Gli svantaggi ne danno. Le approva lo staff.
+            Puoi aggiungere <strong>una volta</strong> voci del catalogo nuovo, pagandole con i PX che ti restano ({character.px} PX). Gli svantaggi ne danno, ma in tutto (con quelli della creazione) al massimo il tetto delle impostazioni. Le approva lo staff.
           </p>
           {rejected && (
             <p className="text-xs text-destructive">

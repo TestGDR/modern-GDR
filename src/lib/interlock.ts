@@ -18,6 +18,8 @@ export type InterlockSettings = {
   pxStart: number;
   skillMax: number;
   pxPerLevel: number;
+  /** PX che gli svantaggi possono restituire al massimo, in tutto */
+  disPxMax: number;
   modifierCap: number;
   /** Massimi delle voci del catalogo */
   traitLimits: { adv: number; advAcademic: number; advSport: number; dis: number; traits: number; ambAdv: number; ambInterp: number; ambDis: number };
@@ -43,6 +45,7 @@ export function parseSettings(rows: GameSetting[]): InterlockSettings {
     pxStart: num("px_iniziali", 0),
     skillMax: num("abilita_max", 10),
     pxPerLevel: num("costo_px_livello", 10),
+    disPxMax: num("voci_svantaggi_px_max", 160),
     modifierCap: num("tetto_modificatori", 4),
     traitLimits: {
       adv: num("voci_max_vantaggi", 5),
@@ -99,7 +102,10 @@ export function pxSummary(
   settings: InterlockSettings,
   details: Record<string, { level: number }> = {},
 ): PxSummary {
-  const options = chosenOptions.reduce((sum, o) => sum + o.cost_px * (details[o.id]?.level ?? 1), 0);
+  const cost = (o: CreationOption) => o.cost_px * (details[o.id]?.level ?? 1);
+  // gli svantaggi danno PX solo fino al tetto
+  const gains = chosenOptions.filter((o) => o.cost_px < 0).reduce((sum, o) => sum + cost(o), 0);
+  const options = chosenOptions.filter((o) => o.cost_px > 0).reduce((sum, o) => sum + cost(o), 0) + Math.max(gains, -settings.disPxMax);
   const skills = Object.values(skillLevels).reduce((sum, l) => sum + skillCost(l, settings), 0);
   return { start: settings.pxStart, options, skills, remaining: settings.pxStart - options - skills };
 }
