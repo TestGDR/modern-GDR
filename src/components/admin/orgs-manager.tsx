@@ -77,6 +77,7 @@ export function OrgsManager({ kind, orgs, characters, categories = [] }: Props) 
                         </span>
                       )}
                       <StatusPill active={o.active} />
+                      {o.hidden && <span className="rounded-full bg-night/60 px-2 py-0.5 text-[0.7rem] text-orchid">Nascosto</span>}
                     </span>
                     <span className="block text-xs text-muted-foreground">
                       {o.roles.length} ruoli · {o.members.length} membri
@@ -108,6 +109,7 @@ function OrgForm({ kind, org, categories, onDone }: { kind: OrgKind; org?: Org; 
     active: org?.active ?? true,
     tags: org?.tags ?? [],
     categoryId: org ? org.category_id : (categories.find((c) => !c.for_sport)?.id ?? null),
+    hidden: org?.hidden ?? false,
   });
   const { pending, error, execute } = useAdminAction();
   const label = ORG_LABELS[kind];
@@ -161,6 +163,15 @@ function OrgForm({ kind, org, categories, onDone }: { kind: OrgKind; org?: Org; 
             onChange={(e) => setForm({ ...form, tags: e.target.checked ? ["malavita"] : [] })}
           />
           Malavita: i membri vedono il mercato nero (Utility → Mercato)
+        </label>
+      )}
+      {kind === "group" && !org?.sport && (
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" className="mt-1" checked={!!form.hidden} onChange={(e) => setForm({ ...form, hidden: e.target.checked })} />
+          <span>
+            Nascosto: niente icona nella scheda né negli online, niente pagina in Utility → Gruppi.
+            <span className="block text-xs text-muted-foreground">Lo vedono solo i suoi membri e lo staff (qui, con tutti i membri). Mercato nero, forum riservati e stipendi funzionano lo stesso.</span>
+          </span>
         </label>
       )}
       <ActiveToggle checked={form.active} onChange={(active) => setForm({ ...form, active })} label={form.active ? "Attivo (visibile e con stipendio)" : "Disattivato (nascosto, niente stipendio)"} />

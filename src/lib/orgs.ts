@@ -40,6 +40,8 @@ export type Org = {
   tags: string[];
   /** Solo i gruppi: ambito (una scheda in Utility → Gruppi) */
   category_id: string | null;
+  /** Solo i gruppi: nascosto (lo vedono solo i membri e lo staff) */
+  hidden: boolean;
   sort_order: number;
   active: boolean;
   roles: OrgRole[];

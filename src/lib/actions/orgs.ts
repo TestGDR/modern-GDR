@@ -48,6 +48,8 @@ export type OrgInput = {
   tags?: string[];
   /** gruppi: ambito */
   categoryId?: string | null;
+  /** gruppi: nascosto (niente icona in scheda e online, lo vedono solo membri e staff) */
+  hidden?: boolean;
 };
 
 export async function saveOrg(kind: OrgKind, input: OrgInput): Promise<ActionResult> {
@@ -61,6 +63,7 @@ export async function saveOrg(kind: OrgKind, input: OrgInput): Promise<ActionRes
   // gruppi: solo tag conosciuti ("malavita" apre il mercato nero)
   if (kind === "group" && input.tags) row.tags = input.tags.filter((t) => t === "malavita");
   if (kind === "group") row.category_id = input.categoryId && isUuid(input.categoryId) ? input.categoryId : null;
+  if (kind === "group" && typeof input.hidden === "boolean") row.hidden = input.hidden;
   await requirePlayer();
   const supabase = await createClient();
   if (input.id) {

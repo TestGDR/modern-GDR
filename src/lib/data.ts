@@ -398,6 +398,9 @@ export type CharacterAffiliations = {
 export async function getCharacterAffiliations(characterId: string): Promise<CharacterAffiliations> {
   const supabase = await createClient();
   const { data: owner } = await supabase.from("characters").select("owner_id").eq("id", characterId).maybeSingle<{ owner_id: string }>();
+  // i gruppi nascosti si vedono in scheda solo dal proprietario (lo staff li vede in Gestione)
+  const { data: claims } = await supabase.auth.getClaims();
+  const isOwner = !!owner && claims?.claims.sub === owner.owner_id;
   const [jobs, groups, profile, wealth, teams] = await Promise.all([
     supabase
       .from("character_jobs")
@@ -406,9 +409,9 @@ export async function getCharacterAffiliations(characterId: string): Promise<Cha
       .overrideTypes<{ mode: "full_time" | "part_time"; job: { id: string; name: string; active: boolean; icon_url: string | null } | null; role: { name: string } | null }[], { merge: false }>(),
     supabase
       .from("character_groups")
-      .select("grp:game_groups(id, name, active, icon_url, kind), role:group_roles(name)")
+      .select("grp:game_groups(id, name, active, icon_url, kind, hidden), role:group_roles(name)")
       .eq("character_id", characterId)
-      .overrideTypes<{ grp: { id: string; name: string; active: boolean; icon_url: string | null; kind: string } | null; role: { name: string } | null }[], { merge: false }>(),
+      .overrideTypes<{ grp: { id: string; name: string; active: boolean; icon_url: string | null; kind: string; hidden: boolean } | null; role: { name: string } | null }[], { merge: false }>(),
     owner
       ? supabase.from("profiles").select("created_at, last_login_at").eq("id", owner.owner_id).maybeSingle<{ created_at: string; last_login_at: string | null }>()
       : Promise.resolve({ data: null }),
@@ -429,7 +432,7 @@ export async function getCharacterAffiliations(characterId: string): Promise<Cha
   ]);
   return {
     jobs: (jobs.data ?? []).filter((j) => j.job?.active).map((j) => ({ id: j.job!.id, name: j.job!.name, role: j.role?.name ?? "", kind: j.mode, icon: j.job!.icon_url ?? null })),
-    groups: (groups.data ?? []).filter((g) => g.grp?.active && g.grp.kind !== "sport").map((g) => ({ id: g.grp!.id, name: g.grp!.name, role: g.role?.name ?? "", icon: g.grp!.icon_url ?? null })),
+    groups: (groups.data ?? []).filter((g) => g.grp?.active && g.grp.kind !== "sport" && (!g.grp.hidden || isOwner)).map((g) => ({ id: g.grp!.id, name: g.grp!.name, role: g.role?.name ?? "", icon: g.grp!.icon_url ?? null })),
     teams: (teams.data ?? []).filter((t) => t.sport).map((t) => ({
         sport: t.sport!.name,
         icon: t.sport!.icon,

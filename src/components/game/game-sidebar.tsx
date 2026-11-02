@@ -614,9 +614,9 @@ function useOrgBadges(characterIds: string[]) {
         .overrideTypes<{ character_id: string; job: { id: string; name: string; icon_url: string | null; active: boolean } | null; role: { name: string } | null }[], { merge: false }>(),
       supabase
         .from("character_groups")
-        .select("character_id, grp:game_groups(id, name, icon_url, active), role:group_roles(name)")
+        .select("character_id, grp:game_groups(id, name, icon_url, active, hidden), role:group_roles(name)")
         .in("character_id", ids)
-        .overrideTypes<{ character_id: string; grp: { id: string; name: string; icon_url: string | null; active: boolean } | null; role: { name: string } | null }[], { merge: false }>(),
+        .overrideTypes<{ character_id: string; grp: { id: string; name: string; icon_url: string | null; active: boolean; hidden: boolean } | null; role: { name: string } | null }[], { merge: false }>(),
     ]).then(([jobs, groups]) => {
       if (!alive) return;
       const next: Record<string, OrgBadge[]> = {};
@@ -625,7 +625,8 @@ function useOrgBadges(characterIds: string[]) {
         (next[characterId] ??= []).push({ key: org.id, label: role ? `${org.name} · ${role}` : org.name, icon: org.icon_url });
       };
       for (const j of jobs.data ?? []) add(j.character_id, j.job, j.role?.name);
-      for (const g of groups.data ?? []) add(g.character_id, g.grp, g.role?.name);
+      // i gruppi nascosti non compaiono mai negli online
+      for (const g of groups.data ?? []) if (!g.grp?.hidden) add(g.character_id, g.grp, g.role?.name);
       setBadges(next);
     });
     return () => {
