@@ -31,14 +31,27 @@ async function Room({ params }: { params: PageProps<"/chat/[id]">["params"] }) {
 
   // Proprietario della chat su invito (il suo nome si mostra nella barra degli ospiti)
   let ownerName: string | null = null;
+  let isOwner = !!character && data.room.owner_character_id === character.id;
+  const supabase = await createClient();
   if (data.room.owner_character_id) {
-    const supabase = await createClient();
     const { data: owner } = await supabase
       .from("characters")
       .select("name")
       .eq("id", data.room.owner_character_id)
       .maybeSingle<{ name: string }>();
     ownerName = owner?.name ?? null;
+  } else if (data.room.access === "su_invito") {
+    // camera del dormitorio: comandano i residenti
+    const { data: dorm } = await supabase
+      .from("dorm_rooms")
+      .select("dorm_residents(character_id, characters(name))")
+      .eq("chat_room_id", data.room.id)
+      .maybeSingle<{ dorm_residents: { character_id: string; characters: { name: string } | null }[] }>();
+    const residents = dorm?.dorm_residents ?? [];
+    if (residents.length) {
+      ownerName = residents.map((r) => r.characters?.name ?? "").filter(Boolean).join(" e ");
+      isOwner = !!character && residents.some((r) => r.character_id === character.id);
+    }
   }
 
   return (
@@ -52,7 +65,7 @@ async function Room({ params }: { params: PageProps<"/chat/[id]">["params"] }) {
       canInvisible={can(player, "staff.invisibile")}
       canDice={can(player, "dadi.tirare")}
       canCombat={can(player, "combattimento.gestire")}
-      isOwner={!!character && data.room.owner_character_id === character.id}
+      isOwner={isOwner}
       ownerName={ownerName}
       attributes={rules.attributes.map((a) => ({ id: a.id, code: a.code, name: a.name }))}
       skills={rules.skills.map((s) => ({ id: s.id, name: s.name, attribute_id: s.attribute_id }))}
