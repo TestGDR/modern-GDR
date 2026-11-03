@@ -115,7 +115,7 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
   return (
     <div className="flex flex-col gap-6">
       <StatusCard data={data} required={num(catalog?.settings.uni_crediti_laurea, 120)} />
-      {extras && <MajorMinorCard extras={extras} />}
+      {extras && <MajorMinorCard extras={extras} characterId={characterId} canAct={canAct} busy={busy} run={run} />}
       {error && <p className="rounded-xl bg-destructive/15 px-3 py-2 text-sm text-destructive">{error}</p>}
 
       {data.character.graduate ? (
@@ -227,9 +227,21 @@ function TutorButton({
   );
 }
 
-/** Bonus del Major e progressi del Minor */
-function MajorMinorCard({ extras }: { extras: AcademicExtras }) {
-  const { minor } = extras;
+/** Bonus del Major, progressi del Minor e percorso Pre-Med */
+function MajorMinorCard({
+  extras,
+  characterId,
+  canAct,
+  busy,
+  run,
+}: {
+  extras: AcademicExtras;
+  characterId: string;
+  canAct: boolean;
+  busy: boolean;
+  run: (fn: string, args: Record<string, unknown>) => Promise<void>;
+}) {
+  const { minor, premed } = extras;
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm">
       {extras.major_departments.length > 0 && extras.major_bonus > 0 && (
@@ -263,6 +275,47 @@ function MajorMinorCard({ extras }: { extras: AcademicExtras }) {
         </div>
       ) : (
         <p className="text-xs text-muted-foreground">Nessun Minor: si sceglie (facoltativo) da Scheda → Dati.</p>
+      )}
+      {premed && premed.total > 0 && (
+        <div className="flex flex-col gap-1.5 border-t border-white/10 pt-2">
+          <p className="flex flex-wrap items-center gap-2">
+            <strong className="text-peach">Percorso Pre-Med</strong>
+            <span className={cn("rounded-full px-2 py-0.5 text-xs", premed.complete ? "bg-mint/20 text-mint" : "bg-white/10 text-muted-foreground")}>
+              {premed.complete ? "Completato" : `${premed.done} corsi superati su ${premed.total}`}
+            </span>
+            {canAct && (
+              <Button
+                type="button"
+                size="xs"
+                variant={premed.enrolled ? "ghost" : "default"}
+                className="ml-auto rounded-full"
+                disabled={busy}
+                onClick={() =>
+                  (premed.enrolled
+                    ? window.confirm("Lasci il percorso Pre-Med? Perdi il +1 nei corsi di Scienze biomediche; i corsi già superati restano.")
+                    : true) && run("academic_set_premed", { p_character: characterId, p_on: !premed.enrolled })
+                }
+              >
+                {premed.enrolled ? "Lascia il Pre-Med" : "Segui il Pre-Med"}
+              </Button>
+            )}
+          </p>
+          <ul className="flex flex-wrap gap-1.5">
+            {premed.courses.map((c) => (
+              <li key={c.id} className={cn("flex items-center gap-1 rounded-full px-2 py-0.5 text-xs", c.passed ? "bg-mint/15 text-mint" : "bg-night/40 text-muted-foreground")}>
+                {c.passed && <Check className="size-3" />}
+                <span className="font-mono">{c.code}</span> {c.name}
+              </li>
+            ))}
+          </ul>
+          <p className="text-[0.7rem] text-muted-foreground">
+            Medicina negli Stati Uniti si studia dopo il college: chi vuole entrarci segue il Pre-Med con qualsiasi Major e supera questi corsi con almeno C−.
+            {premed.enrolled
+              ? ` Lo segui: +${extras.major_bonus} a esami e compiti nei corsi di Scienze biomediche (non si somma al bonus del Major).`
+              : ` Chi lo segue ha +${extras.major_bonus} a esami e compiti nei corsi di Scienze biomediche.`}{" "}
+            Completato, compare nella pagella della laurea.
+          </p>
+        </div>
       )}
     </div>
   );
@@ -304,6 +357,7 @@ function Registration({
   const effortMods = list(s.uni_impegno);
   const majorDepts = new Set(extras?.major_departments ?? []);
   const minorCourses = new Set((extras?.minor?.courses ?? []).map((c) => c.id));
+  const premedCourses = new Set((extras?.premed?.courses ?? []).map((c) => c.id));
 
   // perché non ci si può iscrivere (null = si può)
   function blocked(c: Course): string | null {
@@ -412,6 +466,7 @@ function Registration({
                       <span className="ml-1.5 rounded bg-mint/20 px-1 text-[0.65rem] text-mint uppercase">Major +{extras.major_bonus}</span>
                     )}
                     {minorCourses.has(c.id) && <span className="ml-1.5 rounded bg-lavender/20 px-1 text-[0.65rem] text-lavender uppercase">Minor</span>}
+                    {premedCourses.has(c.id) && <span className="ml-1.5 rounded bg-peach/20 px-1 text-[0.65rem] text-peach uppercase">Pre-Med</span>}
                   </span>
                   <span className="block truncate text-xs text-muted-foreground">
                     {c.credits} cr · {c.level} · {catalog.attrs[c.attribute_id]}

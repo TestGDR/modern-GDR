@@ -615,6 +615,14 @@ export type AcademicExtras = {
     complete: boolean;
     courses: { id: string; code: string; name: string; credits: number; grade_points: number | null; passed: boolean | null }[];
   } | null;
+  /** percorso Pre-Med: corsi richiesti dalle scuole di medicina (si segue con qualsiasi Major) */
+  premed: {
+    enrolled: boolean;
+    total: number;
+    done: number;
+    complete: boolean;
+    courses: { id: string; code: string; name: string; credits: number; grade_points: number | null; passed: boolean | null }[];
+  } | null;
   major_departments: string[];
   major_bonus: number;
   full_time_job: boolean;
