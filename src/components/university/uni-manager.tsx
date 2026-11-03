@@ -658,6 +658,7 @@ function Majors() {
         Gli indirizzi sono quelli della scheda (Gestione → Elenchi della scheda). Per laurearsi servono i crediti, il GPA minimo e tutti questi corsi con almeno C−. Mettete anche i prerequisiti dei corsi obbligatori, così nessuno resta bloccato.
       </p>
       {error && <p className="text-sm text-destructive">{error}</p>}
+      <PreMedCourses courses={courses} />
       {majors.map((m) => {
         const mine = req.filter((r) => r.major_id === m.id).map((r) => byId.get(r.course_id)).filter((c): c is Course => !!c).sort((a, b) => a.level - b.level || a.code.localeCompare(b.code));
         return (
@@ -688,5 +689,71 @@ function Majors() {
         );
       })}
     </div>
+  );
+}
+
+/* ------------------------------ Percorso Pre-Med ------------------------------ */
+
+/** Corsi richiesti dalle scuole di medicina: si seguono con qualsiasi Major */
+function PreMedCourses({ courses }: { courses: Course[] }) {
+  const supabase = useMemo(() => createClient(), []);
+  const [list, setList] = useState<{ course_id: string; sort_order: number }[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    const { data } = await supabase.from("premed_courses").select("course_id, sort_order").order("sort_order");
+    setList((data ?? []) as { course_id: string; sort_order: number }[]);
+  }, [supabase]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- lettura all'apertura
+    load();
+  }, [load]);
+
+  async function add(course: string) {
+    setError(null);
+    const next = Math.max(0, ...(list ?? []).map((x) => x.sort_order)) + 1;
+    const { error: e } = await supabase.from("premed_courses").insert({ course_id: course, sort_order: next });
+    if (e) setError(e.message);
+    load();
+  }
+  async function remove(course: string) {
+    setError(null);
+    const { error: e } = await supabase.from("premed_courses").delete().eq("course_id", course);
+    if (e) setError(e.message);
+    load();
+  }
+
+  if (!list) return null;
+  const byId = new Map(courses.map((c) => [c.id, c]));
+  const mine = list.map((x) => byId.get(x.course_id)).filter((c): c is Course => !!c);
+  return (
+    <section className="glass flex flex-col gap-2 rounded-2xl border border-peach/30 p-3">
+      <h3 className="font-heading text-xl tracking-wide text-peach">Percorso Pre-Med</h3>
+      <p className="text-xs text-muted-foreground">
+        Non è un Major: lo segue chi vuole entrare a medicina, con qualsiasi indirizzo (pulsante nella pagina Università). Chi lo segue ha il bonus del Major nei corsi di
+        Scienze biomediche; con tutti questi corsi superati (almeno C−) alla laurea la pagella dice «Pre-Med completato».
+      </p>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      <div className="flex flex-wrap gap-1.5 text-xs">
+        {mine.length === 0 && <span className="text-muted-foreground">Nessun corso nel percorso.</span>}
+        {mine.map((c) => (
+          <span key={c.id} className="flex items-center gap-1 rounded-full bg-white/10 py-0.5 pr-1 pl-2.5" title={c.name}>
+            {c.code}
+            <button type="button" onClick={() => remove(c.id)} className="rounded-full p-0.5 hover:bg-destructive/30" aria-label={`Togli ${c.code} dal Pre-Med`}>
+              <X className="size-3" />
+            </button>
+          </span>
+        ))}
+        <select value="" onChange={(e) => e.target.value && add(e.target.value)} className="h-7 rounded-full border border-input bg-night/40 px-2" aria-label="Aggiungi un corso al Pre-Med">
+          <option value="">+ corso…</option>
+          {courses
+            .filter((c) => c.active && !mine.some((x) => x.id === c.id))
+            .map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.code} · {c.name}
+              </option>
+            ))}
+        </select>
+      </div>
+    </section>
   );
 }
