@@ -50,6 +50,7 @@ export async function OwnSheet({ variant }: { variant: SheetVariant }) {
       canSeePrivate
       canReview={can(player, "personaggi.approvare")}
       canManageHealth={can(player, "combattimento.gestire")}
+      canAssignPx={can(player, "personaggi.assegnare_px")}
       isAdmin={player.level.is_admin}
     />
   );
@@ -94,6 +95,7 @@ export async function OtherSheet({ id, variant }: { id: string; variant: SheetVa
       canSeePrivate={canSeePrivate}
       canReview={can(player, "personaggi.approvare")}
       canManageHealth={can(player, "combattimento.gestire")}
+      canAssignPx={can(player, "personaggi.assegnare_px")}
       isAdmin={isAdmin}
     />
   );

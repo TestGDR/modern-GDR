@@ -38,6 +38,7 @@ import { HealthSection } from "@/components/game/health-section";
 import { SheetMusic } from "@/components/game/sheet-music";
 import { SheetStatus } from "@/components/game/status-icons";
 import { OptionRequestPanel } from "@/components/game/option-request";
+import { ActionPointsBox } from "@/components/game/action-points-box";
 import { AdminSheetPanel } from "@/components/game/admin-sheet";
 import { useCloseModal } from "@/components/game/page-modal";
 import { PrefsPanel } from "@/components/game/prefs-panel";
@@ -113,6 +114,8 @@ type CharacterSheetWindowProps = {
   canSeePrivate?: boolean;
   /** Staff del combattimento: PF, stato e ferite a mano */
   canManageHealth?: boolean;
+  /** Staff dei PX: punti azione della settimana, con le correzioni */
+  canAssignPx?: boolean;
 };
 
 /** Scheda del personaggio a sezioni, nello stile "finestra" del gioco */
@@ -127,6 +130,7 @@ export function CharacterSheetWindow({
   isAdmin = false,
   affiliations = { jobs: [], groups: [], teams: [], wealth: null, joinedAt: null, lastLoginAt: null },
   canSeePrivate = false,
+  canAssignPx = false,
   canManageHealth = false,
 }: CharacterSheetWindowProps) {
   const [view, setView] = useState<View>({ section: "principale", mode: "view" });
@@ -289,7 +293,7 @@ export function CharacterSheetWindow({
             </SectionFrame>
           ) : section.key === "abilita" ? (
             <SectionFrame title="Abilità">
-              <SkillList character={character} build={build} rules={rules} canGrow={isOwner && character.status === "approvata"} />
+              <SkillList character={character} build={build} rules={rules} canGrow={isOwner && character.status === "approvata"} canAssignPx={canAssignPx && character.status === "approvata"} />
             </SectionFrame>
           ) : section.key === "tratti" ? (
             <SectionFrame title="Tratti">
@@ -639,7 +643,7 @@ function rankOf(score: number, thresholds: number[]) {
   return RANKS[i];
 }
 
-function SkillList({ character, build, rules, canGrow }: { character: SheetCharacter; build: CharacterBuild; rules: RulesData; canGrow: boolean }) {
+function SkillList({ character, build, rules, canGrow, canAssignPx }: { character: SheetCharacter; build: CharacterBuild; rules: RulesData; canGrow: boolean; canAssignPx: boolean }) {
   const router = useRouter();
   const [growing, startGrow] = useTransition();
   const [growMsg, setGrowMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -675,6 +679,7 @@ function SkillList({ character, build, rules, canGrow }: { character: SheetChara
           <p className="font-heading text-3xl tracking-wide text-white">{total}</p>
         </div>
       </div>
+      {(canGrow || canAssignPx) && <ActionPointsBox characterId={character.id} canAdjust={canAssignPx} />}
       {canGrow && (
         <p className="text-xs text-muted-foreground">
           Con i PX da spendere alzi un&apos;abilità di un livello con il pulsante <strong className="text-peach">+</strong>: costa 10 × il nuovo livello e non supera mai la caratteristica.
