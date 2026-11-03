@@ -713,7 +713,7 @@ export type SportPosition = {
   sort_order: number;
 };
 /** Combinazione in più di un ruolo sportivo (si usa la migliore dell'atleta) */
-export type SportPositionCombo = { id: string; position_id: string; attribute_id: string; skill_id: string; sort_order: number };
+export type SportPositionCombo = { id: string; position_id: string; attribute_id: string; skill_id: string; sort_order: number; slot: 1 | 2 };
 export type SportTeam = { id: string; name: string; nickname: string; is_player_school: boolean; conference: boolean; is_national: boolean; active: boolean };
 export type SportTeamRating = { team_id: string; sport_id: string; rating: number };
 export type SportSeason = { id: string; sport_id: string; label: string; status: "planning" | "active" | "closed"; created_at: string };

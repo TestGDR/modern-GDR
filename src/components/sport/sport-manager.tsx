@@ -16,6 +16,9 @@ import {
   SQUAD_LABEL,
   VENUE_LABEL,
   dieValue,
+  rollAverage,
+  rollsText,
+  type RollPart,
   eventDate,
   trainingFormula,
 } from "@/lib/sport";
@@ -171,7 +174,7 @@ type RollRow = {
   contribution: number;
   highlight: boolean;
   injury: { events: number } | null;
-  modifiers: { voci?: { name: string; value: number }[]; totale?: number; ruolo?: string };
+  modifiers: { voci?: { name: string; value: number }[]; totale?: number; ruolo?: string; tiri?: RollPart[] };
   characters: { name: string } | null;
 };
 
@@ -471,8 +474,16 @@ function EventDetail({ event, sport, teams, lookup, onChange }: { event: SportEv
         <ul className="flex flex-col gap-0.5">
           {rolls.map((r) => (
             <li key={r.id}>
-              <strong>{firstName(r.characters?.name ?? "")}</strong> ({r.modifiers.ruolo}): d10 {r.d10}
-              {r.extra_d10 !== null && ` [${r.crit_type === "success" ? "+" : "−"}${r.extra_d10}]`} + mod {r.modifiers.totale ?? 0} = {r.total} vs CD {r.cd} · voto {r.grade} · contributo {r.contribution > 0 ? "+" : ""}
+              <strong>{firstName(r.characters?.name ?? "")}</strong> ({r.modifiers.ruolo}):{" "}
+              {(r.modifiers.tiri ?? []).length > 1 ? (
+                <>{rollsText(r.modifiers.tiri ?? [])}</>
+              ) : (
+                <>
+                  d10 {r.d10}
+                  {r.extra_d10 !== null && ` [${r.crit_type === "success" ? "+" : "−"}${r.extra_d10}]`} + mod {r.modifiers.totale ?? 0} = {r.total}
+                </>
+              )}{" "}
+              vs CD {r.cd} · voto {r.grade} · contributo {r.contribution > 0 ? "+" : ""}
               {r.contribution}
               {r.highlight && " · ⭐"}
               {r.injury && ` · 🩹 ${r.injury.events >= 999 ? "fine stagione" : `${r.injury.events} eventi`}`}
@@ -658,6 +669,7 @@ type TrainingMods = {
   trainer?: number;
   spinta?: "prudent" | "normal" | "max";
   spinta_valore?: number;
+  tiri?: RollPart[];
   infortunio?: boolean;
 };
 
@@ -699,11 +711,20 @@ function TrainingsTab({ sport, lookup }: { sport: Sport; lookup: Lookup }) {
     };
   }
 
+  // il totale ricalcolato dai pezzi: un tiro, o la media di due
+  function computedOf(t: TrainingRow) {
+    const tiri = (t.modifiers as TrainingMods).tiri ?? [];
+    const one = (p: { attr?: number | null; skill?: number | null; d10: number; crit: string; extra: number | null; mods?: number | null }) =>
+      (p.attr ?? 0) + (p.skill ?? 0) + dieValue(p) + (p.mods ?? 0);
+    if (tiri.length > 1) {
+      const [a, b] = tiri.map((x) => one({ attr: x.caratteristica, skill: x.abilita, d10: x.d10, crit: x.crit, extra: x.extra, mods: x.mods }));
+      return rollAverage(a, b);
+    }
+    return one(partsOf(t));
+  }
+
   if (!rows) return <Loader2 className="mx-auto animate-spin text-muted-foreground" />;
-  const wrong = rows.filter((t) => {
-    const p = partsOf(t);
-    return (p.attr ?? 0) + (p.skill ?? 0) + dieValue(p) + (p.mods ?? 0) !== t.total;
-  }).length;
+  const wrong = rows.filter((t) => computedOf(t) !== t.total).length;
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-3 text-xs">
@@ -725,7 +746,7 @@ function TrainingsTab({ sport, lookup }: { sport: Sport; lookup: Lookup }) {
         </span>
       </div>
       <p className="text-xs text-muted-foreground">
-        Caratteristica + abilità del ruolo + d10 (10 → si aggiunge un secondo d10, 1 → lo si toglie) + modificatori (intensità, voci, malus) contro la CD (14, −2 con il personal trainer).
+        Caratteristica + abilità del ruolo + d10 (10 → si aggiunge un secondo d10, 1 → lo si toglie) + modificatori (intensità, voci, malus) contro la CD (14, −2 con il personal trainer). I ruoli con due tiri usano la media dei due.
         Riuscito = +1 ai tiri sportivi per due settimane.
       </p>
       {rows.length === 0 && <p className="text-sm text-muted-foreground">Nessun allenamento nel periodo.</p>}
@@ -733,7 +754,7 @@ function TrainingsTab({ sport, lookup }: { sport: Sport; lookup: Lookup }) {
         {rows.map((t) => {
           const m = t.modifiers as TrainingMods;
           const p = partsOf(t);
-          const computed = (p.attr ?? 0) + (p.skill ?? 0) + dieValue(p) + (p.mods ?? 0);
+          const computed = computedOf(t);
           const voci = (m.voci ?? []).filter((v) => v.value !== 0);
           const intensity = m.intensita_valore ?? (m.totale ?? 0) - (m.voci_totale ?? voci.reduce((s, v) => s + v.value, 0));
           return (
@@ -749,7 +770,7 @@ function TrainingsTab({ sport, lookup }: { sport: Sport; lookup: Lookup }) {
                 </span>
               </div>
               <p className="font-mono text-xs">
-                {trainingFormula(p)} contro CD {t.cd}
+                {(m.tiri ?? []).length > 1 ? rollsText(m.tiri ?? []) : trainingFormula(p)} contro CD {t.cd}
                 {m.trainer ? ` (${m.cd_base ?? t.cd + m.trainer} − ${m.trainer} personal trainer)` : ""}
               </p>
               <p className="text-[0.7rem] text-muted-foreground">
@@ -960,7 +981,7 @@ function SportForm({ sport, lookup, onDone }: { sport: Sport | null; lookup: Loo
             </Button>
           </div>
           <p className="text-[0.7rem] text-muted-foreground">
-            Ogni ruolo può avere più combinazioni di caratteristica + abilità: in gara e in allenamento si usa da sola la migliore dell&apos;atleta. Rissa vale anche per il contatto fisico (placcaggi, lotta).
+            Combinazioni in più: «e» = secondo tiro (si tirano due dadi e conta la media), «oppure» = alternativa del primo tiro. Per ogni tiro si usa da sola la combinazione migliore dell&apos;atleta; clic su «e»/«oppure» per cambiarla. Rissa vale anche per il contatto fisico (placcaggi, lotta).
           </p>
         </section>
       )}
@@ -982,16 +1003,29 @@ function ComboEditor({
   const combos = lookup.combos.filter((c) => c.position_id === position.id);
   const [attr, setAttr] = useState(lookup.attrs[0]?.id ?? "");
   const [skill, setSkill] = useState("");
+  const [slot, setSlot] = useState<1 | 2>(2);
   return (
     <div className="flex w-full flex-wrap items-center gap-1.5 pl-32 text-[0.7rem]">
       {combos.map((c) => (
         <span key={c.id} className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5">
-          oppure {lookup.attrs.find((a) => a.id === c.attribute_id)?.code} + {lookup.skills.find((s) => s.id === c.skill_id)?.name ?? "—"}
+          <button
+            type="button"
+            className="font-semibold text-peach hover:underline"
+            title={c.slot === 2 ? "Secondo tiro (si fa la media): clic per renderla un'alternativa del primo" : "Alternativa del primo tiro: clic per farne il secondo tiro"}
+            onClick={() => run(supabase.from("sport_position_combos").update({ slot: c.slot === 2 ? 1 : 2 }).eq("id", c.id))}
+          >
+            {c.slot === 2 ? "e" : "oppure"}
+          </button>
+          {lookup.attrs.find((a) => a.id === c.attribute_id)?.code} + {lookup.skills.find((s) => s.id === c.skill_id)?.name ?? "—"}
           <button type="button" aria-label="Togli la combinazione" className="text-muted-foreground hover:text-destructive" onClick={() => run(supabase.from("sport_position_combos").delete().eq("id", c.id))}>
             ×
           </button>
         </span>
       ))}
+      <select className={cn(inputClass, "h-7 w-32 text-xs")} value={slot} onChange={(e) => setSlot(Number(e.target.value) === 1 ? 1 : 2)} aria-label="Tiro">
+        <option value={2}>e (secondo tiro)</option>
+        <option value={1}>oppure (alternativa)</option>
+      </select>
       <select className={cn(inputClass, "h-7 w-16 text-xs")} value={attr} onChange={(e) => setAttr(e.target.value)} aria-label="Caratteristica">
         {lookup.attrs.map((a) => (
           <option key={a.id} value={a.id}>
@@ -1013,7 +1047,7 @@ function ComboEditor({
         variant="ghost"
         disabled={!attr || !skill}
         onClick={() => {
-          run(supabase.from("sport_position_combos").insert({ position_id: position.id, attribute_id: attr, skill_id: skill, sort_order: combos.length + 1 }));
+          run(supabase.from("sport_position_combos").insert({ position_id: position.id, attribute_id: attr, skill_id: skill, sort_order: combos.length + 1, slot }));
           setSkill("");
         }}
       >

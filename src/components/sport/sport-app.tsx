@@ -17,8 +17,10 @@ import {
   VENUE_LABEL,
   eventDate,
   positionRollText,
+  rollsText,
   trainingFormula,
   type PositionWithRolls,
+  type RollPart,
 } from "@/lib/sport";
 import { PushPicker, type Push } from "@/components/sport/push-picker";
 import { SportIcon } from "@/components/sport/sport-icon";
@@ -55,7 +57,7 @@ export function SportApp({ characterId }: { characterId: string | null }) {
       supabase.from("sports").select("*").eq("status", "active").order("sort_order"),
       supabase
         .from("sport_positions")
-        .select("*, attributes(code), skills(name), sport_position_combos(sort_order, attributes(code), skills(name))")
+        .select("*, attributes(code), skills(name), sport_position_combos(sort_order, slot, attributes(code), skills(name))")
         .order("sort_order"),
       supabase.from("sport_teams").select("*").eq("active", true).order("name"),
       supabase.from("sport_roster").select("position_id, squad_status").is("left_at", null),
@@ -138,9 +140,12 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
     if (e) return setError(e.message);
     const r = data as {
       success: boolean; crit: string; total: number; cd: number; form: number; d10: number; extra: number | null;
-      attr?: number; code?: string; skill?: number; skill_name?: string; mods?: number; injured?: boolean;
+      attr?: number; code?: string; skill?: number; skill_name?: string; mods?: number; injured?: boolean; tiri?: RollPart[];
     };
-    const conto = trainingFormula({ code: r.code, attr: r.attr, skillName: r.skill_name, skill: r.skill, d10: r.d10, crit: r.crit, extra: r.extra, mods: r.mods });
+    const conto =
+      r.tiri && r.tiri.length > 1
+        ? rollsText(r.tiri)
+        : trainingFormula({ code: r.code, attr: r.attr, skillName: r.skill_name, skill: r.skill, d10: r.d10, crit: r.crit, extra: r.extra, mods: r.mods });
     setInfo(
       (r.success
         ? `Allenamento riuscito${r.crit === "success" ? ", giornata perfetta" : ""}: forma +1 per due settimane. Bonus ai tiri sportivi ora +${r.form}.`

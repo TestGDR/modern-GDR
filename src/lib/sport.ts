@@ -23,18 +23,46 @@ export const INTENSITY_LABEL = { light: "Leggera", normal: "Normale", intense: "
 export type PositionWithRolls = {
   attributes: { code: string } | null;
   skills: { name: string } | null;
-  sport_position_combos: { sort_order: number; attributes: { code: string } | null; skills: { name: string } | null }[] | null;
+  sport_position_combos: { sort_order: number; slot: 1 | 2; attributes: { code: string } | null; skills: { name: string } | null }[] | null;
 };
 
-/** "RIF + Lanciare · VIG + Atletica (si usa la migliore)" */
+/** "RIF + Lanciare e VIG + Atletica / VIG + Agilità (due tiri, conta la media)" */
 export function positionRollText(p: PositionWithRolls) {
-  const parts = [
-    `${p.attributes?.code ?? "?"}${p.skills ? ` + ${p.skills.name}` : ""}`,
-    ...[...(p.sport_position_combos ?? [])]
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map((c) => `${c.attributes?.code ?? "?"} + ${c.skills?.name ?? "?"}`),
-  ];
-  return parts.join(" · ") + (parts.length > 1 ? " (si usa la migliore)" : "");
+  const combos = [...(p.sport_position_combos ?? [])].sort((a, b) => a.sort_order - b.sort_order);
+  const text = (c: { attributes: { code: string } | null; skills: { name: string } | null }) => `${c.attributes?.code ?? "?"}${c.skills ? ` + ${c.skills.name}` : ""}`;
+  const first = [text(p), ...combos.filter((c) => c.slot === 1).map(text)];
+  const second = combos.filter((c) => c.slot === 2).map(text);
+  if (second.length) return `${first.join(" / ")} e ${second.join(" / ")} (due tiri, conta la media)`;
+  return first.join(" / ") + (first.length > 1 ? " (si usa la migliore)" : "");
+}
+
+/** Un tiro sportivo salvato nel dettaglio (modifiers.tiri) */
+export type RollPart = {
+  codice: string | null;
+  abilita_nome: string | null;
+  caratteristica: number;
+  abilita: number;
+  d10: number;
+  extra: number | null;
+  crit: string;
+  mods: number;
+  totale: number;
+};
+
+export function rollPartFormula(p: RollPart) {
+  return trainingFormula({ code: p.codice, attr: p.caratteristica, skillName: p.abilita_nome, skill: p.abilita, d10: p.d10, crit: p.crit, extra: p.extra, mods: p.mods });
+}
+
+/** Media di due tiri arrotondata come nel database (le metà lontano dallo zero) */
+export function rollAverage(a: number, b: number) {
+  const x = (a + b) / 2;
+  return Math.sign(x) * Math.round(Math.abs(x));
+}
+
+/** "Tiro 1: … = 13 · Tiro 2: … = 15 → media 14" */
+export function rollsText(tiri: RollPart[]) {
+  if (tiri.length < 2) return tiri[0] ? rollPartFormula(tiri[0]) : "";
+  return `Tiro 1: ${rollPartFormula(tiri[0])} · Tiro 2: ${rollPartFormula(tiri[1])} → media ${rollAverage(tiri[0].totale, tiri[1].totale)}`;
 }
 export const EVENT_STATUS_LABEL: Record<SportEvent["status"], string> = {
   scheduled: "In programma",
