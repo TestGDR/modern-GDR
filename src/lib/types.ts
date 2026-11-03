@@ -789,6 +789,9 @@ export type MySport = {
   /** allenamenti riusciti ancora validi (forma) */
   form: number;
   training_max: number;
+  /** volte «Al massimo» rimaste nella stagione e il massimo */
+  push_left: number;
+  push_max: number;
   trainer_until: string | null;
   trainer_price: number;
   physio_price: number;

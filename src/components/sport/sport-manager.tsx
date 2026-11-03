@@ -652,6 +652,9 @@ type TrainingMods = {
   totale?: number;
   cd_base?: number;
   trainer?: number;
+  spinta?: "prudent" | "normal" | "max";
+  spinta_valore?: number;
+  infortunio?: boolean;
 };
 
 /** Allenamenti di tutti gli atleti con il conto per intero e il controllo che torni */
@@ -748,8 +751,10 @@ function TrainingsTab({ sport, lookup }: { sport: Sport; lookup: Lookup }) {
               <p className="text-[0.7rem] text-muted-foreground">
                 Modificatori: intensità {m.intensita === "light" ? "leggera" : m.intensita === "intense" ? "intensa" : "normale"} ({intensity > 0 ? "+" : ""}
                 {intensity})
+                {m.spinta && m.spinta !== "normal" && ` · spinta ${m.spinta === "max" ? "al massimo (+1)" : "prudente (−1)"}`}
                 {voci.length > 0 && ` · ${voci.map((v) => `${v.name} ${v.value > 0 ? "+" : ""}${v.value}`).join(" · ")}`}
                 {t.crit === "failure" && " · fallimento critico (1 sul d10)"}
+                {m.infortunio && " · infortunio in allenamento"}
                 {t.crit === "success" && " · successo critico (10 sul d10)"}
               </p>
               {computed !== t.total && <p className="text-xs text-destructive">⚠ Il conto non torna: i pezzi fanno {computed}, il tiro salvato è {t.total}.</p>}

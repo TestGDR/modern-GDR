@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Dices, Loader2, Megaphone, Save } from "lucide-react";
+import { PushPicker, type Push } from "@/components/sport/push-picker";
 import { Button } from "@/components/ui/button";
 import { SQUAD_LABEL, VENUE_LABEL, eventDate } from "@/lib/sport";
 import { createClient } from "@/lib/supabase/client";
@@ -50,6 +51,8 @@ export function MyCallups({ characterId, onRolled }: { characterId: string; onRo
   const [items, setItems] = useState<{ event: EventInfo; roll: CallupRoll }[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // spinta scelta per ogni gara (normale se non si sceglie)
+  const [push, setPush] = useState<Record<string, Push>>({});
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -70,9 +73,11 @@ export function MyCallups({ characterId, onRolled }: { characterId: string; onRo
   }, [load]);
 
   async function compete(eventId: string) {
+    const p = push[eventId] ?? "normal";
+    if (p === "max" && !window.confirm("Al massimo: +1 al tiro, ma con un 1 sul dado ti infortuni più facilmente. Lo usi per questa gara?")) return;
     setBusy(eventId);
     setError(null);
-    const { error: e } = await supabase.rpc("sport_callup_roll", { p_event: eventId, p_character: characterId });
+    const { error: e } = await supabase.rpc("sport_callup_roll", { p_event: eventId, p_character: characterId, p_push: p });
     setBusy(null);
     if (e) setError(e.message);
     await load();
@@ -107,9 +112,12 @@ export function MyCallups({ characterId, onRolled }: { characterId: string; onRo
                   {roll.crit === "failure" && " · errore grave"} · pagella {roll.grade}
                 </span>
               ) : open ? (
-                <Button type="button" size="sm" className="rounded-full" disabled={busy === ev.id} onClick={() => compete(ev.id)}>
-                  {busy === ev.id ? <Loader2 className="animate-spin" /> : <Dices />} Gareggia
-                </Button>
+                <span className="flex flex-wrap items-center gap-2">
+                  <PushPicker value={push[ev.id] ?? "normal"} onChange={(p) => setPush({ ...push, [ev.id]: p })} disabled={busy === ev.id} />
+                  <Button type="button" size="sm" className="rounded-full" disabled={busy === ev.id} onClick={() => compete(ev.id)}>
+                    {busy === ev.id ? <Loader2 className="animate-spin" /> : <Dices />} Gareggia
+                  </Button>
+                </span>
               ) : (
                 <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-muted-foreground">Tempo scaduto: la tua gara verrà simulata</span>
               )}
@@ -118,7 +126,7 @@ export function MyCallups({ characterId, onRolled }: { characterId: string; onRo
         })}
       </ul>
       <p className="text-xs text-muted-foreground">
-        «Gareggia» fa il tuo tiro della gara (caratteristica + abilità del ruolo + d10 + modificatori), una volta sola. Il risultato della squadra arriva quando lo staff
+        «Gareggia» fa il tuo tiro della gara (caratteristica + abilità del ruolo + d10 + modificatori), una volta sola. Prima scegli la spinta: prudente −1 senza infortuni, normale, al massimo +1 con più rischio di infortunio (poche volte a stagione, mai in due gare di fila). Il risultato della squadra arriva quando lo staff
         simula e pubblica la gara.
       </p>
     </section>

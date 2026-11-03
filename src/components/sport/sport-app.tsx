@@ -18,6 +18,7 @@ import {
   eventDate,
   trainingFormula,
 } from "@/lib/sport";
+import { PushPicker, type Push } from "@/components/sport/push-picker";
 import { SportIcon } from "@/components/sport/sport-icon";
 import { createClient } from "@/lib/supabase/client";
 import type {
@@ -122,23 +123,24 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
     onChange();
   }
 
-  async function train(m: MySport) {
+  async function train(m: MySport, push: Push) {
     setBusy(true);
     setError(null);
     setInfo(null);
-    const { data, error: e } = await supabase.rpc("sport_train", { p_character: characterId, p_sport: m.sport_id });
+    const { data, error: e } = await supabase.rpc("sport_train", { p_character: characterId, p_sport: m.sport_id, p_push: push });
     setBusy(false);
     if (e) return setError(e.message);
     const r = data as {
       success: boolean; crit: string; total: number; cd: number; form: number; d10: number; extra: number | null;
-      attr?: number; code?: string; skill?: number; skill_name?: string; mods?: number;
+      attr?: number; code?: string; skill?: number; skill_name?: string; mods?: number; injured?: boolean;
     };
     const conto = trainingFormula({ code: r.code, attr: r.attr, skillName: r.skill_name, skill: r.skill, d10: r.d10, crit: r.crit, extra: r.extra, mods: r.mods });
     setInfo(
       (r.success
         ? `Allenamento riuscito${r.crit === "success" ? ", giornata perfetta" : ""}: forma +1 per due settimane. Bonus ai tiri sportivi ora +${r.form}.`
         : `Allenamento andato male${r.crit === "failure" ? ", proprio una giornata no" : ""}. Riprova la settimana prossima.`) +
-        ` Tiro: ${conto} contro CD ${r.cd}.`,
+        ` Tiro: ${conto} contro CD ${r.cd}.` +
+        (r.injured ? " Sei andato al massimo e ti sei fatto male: fuori per la prossima gara." : ""),
     );
     onChange();
   }
@@ -201,7 +203,7 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
           <TrainingBox
             m={m}
             busy={busy}
-            onTrain={() => train(m)}
+            onTrain={(push) => train(m, push)}
             onTrainer={() =>
               window.confirm(`Prendere un personal trainer per 30 giorni? Costa ${m.trainer_price} $: l'allenamento settimanale diventa più facile.`) &&
               call("service_trainer", { p_character: characterId, p_sport: m.sport_id }, "Personal trainer preso per 30 giorni.")
@@ -254,7 +256,7 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
             </Button>
           </div>
           <p className="text-[0.7rem] text-muted-foreground">
-            Leggera −1 · Normale · Intensa +1 ai tiri sportivi ma −1 agli esami del semestre. Intensità e Redshirt si scelgono prima del primo evento della stagione.
+            Leggera: −1 ai tiri sportivi ma +1 agli esami · Normale · Intensa: +1 ai tiri sportivi ma −1 agli esami. Vale per tutta la stagione: intensità e Redshirt si scelgono prima del primo evento.
           </p>
         </section>
       ))}
@@ -331,8 +333,9 @@ function SeasonStats({ m }: { m: MySport }) {
 }
 
 /** Allenamento settimanale: un tiro ogni 7 giorni, se riesce +1 di forma per due settimane */
-function TrainingBox({ m, busy, onTrain, onTrainer }: { m: MySport; busy: boolean; onTrain: () => void; onTrainer: () => void }) {
+function TrainingBox({ m, busy, onTrain, onTrainer }: { m: MySport; busy: boolean; onTrain: (push: Push) => void; onTrainer: () => void }) {
   const [now] = useState(() => Date.now());
+  const [push, setPush] = useState<Push>("normal");
   const trainer = m.trainer_until !== null && new Date(m.trainer_until).getTime() > now;
   const waiting = m.next_training_at !== null && new Date(m.next_training_at).getTime() > now;
   const bonus = Math.min(m.form + m.training_bonus, m.training_max);
@@ -346,10 +349,16 @@ function TrainingBox({ m, busy, onTrain, onTrainer }: { m: MySport; busy: boolea
           Bonus ai tiri sportivi: <strong className="text-mint">+{bonus}</strong> su {m.training_max}
           {m.training_bonus > 0 && ` (di cui +${m.training_bonus} dal Master)`}
         </span>
-        <Button type="button" size="xs" className="ml-auto rounded-full" disabled={busy || waiting || injured || !m.position_id} onClick={onTrain}>
-          Allenati
-        </Button>
+        <span className="ml-auto inline-flex flex-wrap items-center gap-2">
+          <PushPicker value={push} onChange={setPush} left={m.push_left} disabled={busy || waiting || injured} />
+          <Button type="button" size="xs" className="rounded-full" disabled={busy || waiting || injured || !m.position_id} onClick={() => onTrain(push)}>
+            Allenati
+          </Button>
+        </span>
       </div>
+      <p className="text-[0.7rem] text-muted-foreground">
+        Spinta: prudente −1 senza infortuni · normale · al massimo +1 ma con un 1 sul dado ti fai male più facilmente. «Al massimo» ancora {m.push_left} volte su {m.push_max} in questa stagione, tra gare e allenamenti.
+      </p>
       {m.last_training && (
         <p className="text-muted-foreground">
           Ultimo allenamento: {eventDate(m.last_training.at)} · {m.last_training.success ? "riuscito" : "non riuscito"} ({m.last_training.total} contro {m.last_training.cd})
