@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
-// Gestione → Punti azione (permesso personaggi.assegnare_px): i punti della settimana
+// Gestione → Azioni in chat (permesso personaggi.assegnare_px): le azioni della settimana
 // di tutti i personaggi, correzioni prima del lunedì e il pacchetto della settimana scorsa.
 
 type Row = {
@@ -54,8 +54,8 @@ export function ActionPointsManager() {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs text-muted-foreground">
-        Un punto azione per ogni azione valida in chat (lunghezza minima e un altro personaggio in giocata). Ogni lunedì i punti della settimana diventano un pacchetto di PX secondo
-        le fasce di Impostazioni del sistema. Qui si correggono i punti della settimana in corso prima del lunedì.
+        Conta ogni azione valida in chat (lunghezza minima e un altro personaggio in giocata). Ogni lunedì le azioni della settimana diventano un pacchetto di PX secondo
+        le fasce di Impostazioni del sistema. Qui si correggono le azioni della settimana in corso prima del lunedì.
       </p>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <input
@@ -70,7 +70,7 @@ export function ActionPointsManager() {
           <thead className="text-xs text-muted-foreground">
             <tr>
               <th className="py-1 text-left font-normal">Personaggio</th>
-              <th className="font-normal">Punti</th>
+              <th className="font-normal">Azioni</th>
               <th className="font-normal">Pacchetto</th>
               <th className="font-normal">Correggi</th>
               <th className="font-normal">Settimana scorsa</th>
@@ -98,15 +98,15 @@ export function ActionPointsManager() {
                 <td className={cn("text-center", r.package > 0 ? "text-sand" : "text-muted-foreground")}>{r.package} PX</td>
                 <td className="text-center">
                   <span className="inline-flex gap-1">
-                    <Button type="button" size="icon-xs" variant="ghost" disabled={busy} aria-label={`Togli un punto a ${r.name}`} onClick={() => adjust(r, -1)}>
+                    <Button type="button" size="icon-xs" variant="ghost" disabled={busy} aria-label={`Togli un'azione a ${r.name}`} onClick={() => adjust(r, -1)}>
                       <Minus />
                     </Button>
-                    <Button type="button" size="icon-xs" variant="ghost" disabled={busy} aria-label={`Aggiungi un punto a ${r.name}`} onClick={() => adjust(r, 1)}>
+                    <Button type="button" size="icon-xs" variant="ghost" disabled={busy} aria-label={`Aggiungi un'azione a ${r.name}`} onClick={() => adjust(r, 1)}>
                       <Plus />
                     </Button>
                   </span>
                 </td>
-                <td className="text-center text-xs text-muted-foreground">{r.last_points === null ? "—" : `${r.last_points} punti → ${r.last_px} PX`}</td>
+                <td className="text-center text-xs text-muted-foreground">{r.last_points === null ? "—" : `${r.last_points} azioni → ${r.last_px} PX`}</td>
                 <td className="text-center">{r.px}</td>
               </tr>
             ))}

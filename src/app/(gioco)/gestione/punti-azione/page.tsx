@@ -6,13 +6,13 @@ import { LoadingBlocks } from "@/components/game/loading";
 import { PageHeader } from "@/components/game/page-header";
 import { requirePermission } from "@/lib/admin";
 
-export const metadata: Metadata = { title: "Punti azione" };
+export const metadata: Metadata = { title: "Azioni in chat" };
 
 export default function Page() {
   return (
     <>
       <BackToPanel />
-      <PageHeader title="Punti azione" subtitle="L'attività in chat della settimana e i pacchetti di PX del lunedì." />
+      <PageHeader title="Azioni in chat" subtitle="L'attività in chat della settimana e i pacchetti di PX del lunedì." />
       <Suspense fallback={<LoadingBlocks />}>
         <Content />
       </Suspense>

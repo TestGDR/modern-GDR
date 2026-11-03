@@ -5,7 +5,7 @@ import { Minus, Plus, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
-// Scheda → Abilità: punti azione della settimana e pacchetto di PX che arriverà lunedì.
+// Scheda → Abilità: azioni della settimana e pacchetto di PX che arriverà lunedì.
 // Lo staff con personaggi.assegnare_px li vede su ogni scheda e li corregge (− / +).
 
 type ActionPoints = {
@@ -50,20 +50,20 @@ export function ActionPointsBox({ characterId, canAdjust = false }: { characterI
       <p className="flex flex-wrap items-center gap-2 text-sm">
         <Star className="size-4 text-sand" />
         <span>
-          Punti azione questa settimana: <strong className="text-sand">{data.points}</strong>
+          Azioni questa settimana: <strong className="text-sand">{data.points}</strong>
         </span>
         <span className="text-muted-foreground">
           · pacchetto di lunedì: <strong className="text-foreground">{data.package} PX</strong>
-          {data.next_at !== null && ` (a ${data.next_at} punti diventa ${data.next_package} PX)`}
+          {data.next_at !== null && ` (a ${data.next_at} azioni diventa ${data.next_package} PX)`}
           {data.next_at === null && " (il massimo della settimana)"}
         </span>
         {canAdjust && (
           <span className="ml-auto inline-flex items-center gap-1">
             <span className="text-[0.65rem] text-muted-foreground">Correggi</span>
-            <Button type="button" size="icon-xs" variant="ghost" disabled={busy || data.points === 0} aria-label="Togli un punto azione" onClick={() => adjust(-1)}>
+            <Button type="button" size="icon-xs" variant="ghost" disabled={busy || data.points === 0} aria-label="Togli un'azione" onClick={() => adjust(-1)}>
               <Minus />
             </Button>
-            <Button type="button" size="icon-xs" variant="ghost" disabled={busy} aria-label="Aggiungi un punto azione" onClick={() => adjust(1)}>
+            <Button type="button" size="icon-xs" variant="ghost" disabled={busy} aria-label="Aggiungi un'azione" onClick={() => adjust(1)}>
               <Plus />
             </Button>
           </span>
@@ -71,9 +71,9 @@ export function ActionPointsBox({ characterId, canAdjust = false }: { characterI
       </p>
       {error && <p className="text-destructive">{error}</p>}
       <p className="text-muted-foreground">
-        Un punto per ogni azione di almeno {data.min_chars} caratteri con un altro personaggio in giocata. Ogni lunedì i punti diventano PX (al massimo {data.max_package} a
+        Conta ogni azione di almeno {data.min_chars} caratteri con un altro personaggio in giocata. Ogni lunedì le azioni diventano PX (al massimo {data.max_package} a
         settimana) e il conteggio riparte.
-        {data.last && ` Ultimo pacchetto: ${data.last.points} punti → ${data.last.px} PX.`}
+        {data.last && ` Ultimo pacchetto: ${data.last.points} azioni → ${data.last.px} PX.`}
         {full ? " Hai raggiunto il tetto dei PX accumulati." : ` PX dai pacchetti finora: ${data.earned} su ${data.cap}.`}
       </p>
     </div>
