@@ -28,6 +28,7 @@ import { HoverTip } from "@/components/game/hover-tip";
 import { LevelIcon } from "@/components/game/level-icon";
 import { WindowButton } from "@/components/game/info-window";
 import { closeAllWindows, isModalPath } from "@/components/game/page-modal";
+import { useNewVersion } from "@/components/game/site-watch";
 import { TicketIcon } from "@/components/game/ticket-icon";
 import { ForumIcon } from "@/components/game/forum-icon";
 import { SocialIcon } from "@/components/social/social-icon";
@@ -221,20 +222,25 @@ function PlaceCard({ info, map }: { info: RoomInfo | null; map: GameMap | null }
 
 /** Aggiorna, Mappa, Esci */
 function MainButtons() {
-  const router = useRouter();
-  const inChat = CHAT_PATH.test(useBackgroundPath());
-  // In chat "Aggiorna" ricarica la chat; altrove riporta alla mappa
+  const bg = useBackgroundPath();
+  const inChat = CHAT_PATH.test(bg);
+  const newVersion = useNewVersion();
+  // In chat "Aggiorna" ricarica la chat; altrove riporta alla mappa.
+  // È un caricamento vero: chiude le finestre, prende i dati freschi e, se c'è, la versione nuova del sito
   function update() {
-    // "Aggiorna" chiude anche tutte le finestre aperte
     closeAllWindows();
-    if (inChat) return router.refresh();
-    router.push("/mappa");
-    router.refresh();
+    window.location.assign(inChat ? bg : "/mappa");
   }
   const btn = "flex flex-col items-center gap-1 rounded-xl bg-white/5 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground";
   return (
     <div className="grid grid-cols-3 gap-2">
-      <button type="button" onClick={update} className={btn} title={inChat ? "Aggiorna la chat" : "Torna alla mappa aggiornata"}>
+      <button
+        type="button"
+        onClick={update}
+        className={cn(btn, "relative", newVersion && "bg-mint/15 text-foreground ring-1 ring-mint/60")}
+        title={newVersion ? "È uscita una nuova versione del sito: premi per caricarla" : inChat ? "Aggiorna la chat" : "Torna alla mappa aggiornata"}
+      >
+        {newVersion && <span className="absolute top-1.5 right-1.5 size-2 animate-pulse rounded-full bg-mint" aria-hidden />}
         <RefreshCw className="size-5 text-mint" /> Aggiorna
       </button>
       <Link href="/mappa" className={btn}>

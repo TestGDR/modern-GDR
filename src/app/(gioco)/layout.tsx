@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { GameSidebar, SidebarFrame, SidebarShell } from "@/components/game/game-sidebar";
 import { ModalGate, ModalReopen } from "@/components/game/page-modal";
 import { MessageButtonsFallback } from "@/components/game/message-buttons";
-import { VersionBanner } from "@/components/game/site-watch";
 import { AdminTopIcon, PlayerGuide, PlayerCommunity, PlayerIdle, PlayerMessages, PlayerNews, PlayerPortrait, PortraitFallback, TopBar } from "@/components/game/top-bar";
 import { DuskBackdrop } from "@/components/scenery/sunset-sky";
 
@@ -63,8 +62,7 @@ export default function GameLayout({ children, modal }: { children: React.ReactN
           <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-10 lg:py-8">{children}</div>
         </main>
 
-        {/* Nuova versione pubblicata e uscita per inattività */}
-        <VersionBanner />
+        {/* Uscita per inattività */}
         <Suspense fallback={null}>
           <PlayerIdle />
         </Suspense>

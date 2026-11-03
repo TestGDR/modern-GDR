@@ -2,19 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Clock, RefreshCw } from "lucide-react";
+import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logoutExpired, logoutIdle } from "@/lib/actions/auth";
 import { readLastActivity, writeLastActivity } from "@/lib/last-activity";
 import { useResync } from "@/lib/use-resync";
 
 // Due controlli del sito che girano nel browser (dal Westeros):
-// - banner "Aggiorna" quando è stata pubblicata una nuova versione;
+// - avviso di nuova versione pubblicata (lo mostra il pulsante "Aggiorna" della barra laterale);
 // - uscita automatica dopo il tempo di inattività, con avviso 5 minuti prima;
 // - uscita alla fine della durata massima della sessione.
 
-/** Banner "nuova versione": confronta la propria versione con /api/versione ogni 10 minuti */
-export function VersionBanner() {
+/** C'è una versione nuova del sito? Confronta la propria con /api/versione ogni 10 minuti */
+export function useNewVersion() {
   const [outdated, setOutdated] = useState(false);
   const check = useCallback(async () => {
     try {
@@ -27,15 +27,7 @@ export function VersionBanner() {
     }
   }, []);
   useResync(check, 10 * 60_000);
-  if (!outdated) return null;
-  return (
-    <div className="fixed inset-x-0 top-0 z-[60] flex items-center justify-center gap-3 bg-flamingo px-4 py-2 text-sm font-medium text-white shadow-lg">
-      È disponibile una nuova versione del sito.
-      <Button type="button" size="sm" variant="secondary" onClick={() => window.location.reload()} className="rounded-full">
-        <RefreshCw /> Aggiorna
-      </Button>
-    </div>
-  );
+  return outdated;
 }
 
 const EVENTS = ["mousemove", "mousedown", "keydown", "wheel", "touchstart", "pointerdown", "scroll"] as const;
