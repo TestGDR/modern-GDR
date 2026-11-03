@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, CircleAlert, Loader2, Pencil, Send } from "lucide-react";
 import { OptionChoice } from "@/components/creation/option-choice";
 import { SheetFrame, type SheetVariant } from "@/components/game/character-sheet-window";
 import { Button } from "@/components/ui/button";
-import { saveCreation, setCharacterSurname, submitCharacter, type CreationPatch } from "@/lib/actions/creation";
+import { saveCreation, setCharacterSurname, submitCharacter, type CreationPatch, type SaveResult } from "@/lib/actions/creation";
 import type { CharacterBuild, RulesData } from "@/lib/data";
 import {
   attributePointsUsed,
@@ -72,30 +72,56 @@ export function CreationWizard({ character, build, rules, settings, variant }: C
 
   /* ------------------------- Salvataggio automatico ------------------------- */
 
+  // un salvataggio alla volta: quello nuovo parte quando il precedente è finito
+  const saving = useRef<Promise<void>>(Promise.resolve());
+
   async function flush() {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
-    const patch = pending.current;
-    pending.current = {};
-    if (Object.keys(patch).length === 0) return;
-    setStatus("saving");
-    const result = await saveCreation(character.id, patch);
-    setStatus(result.ok ? "saved" : "error");
-    setMessage(result.error ?? null);
+    const run = saving.current.then(async () => {
+      const patch = pending.current;
+      pending.current = {};
+      if (Object.keys(patch).length === 0) return;
+      setStatus("saving");
+      let result: SaveResult;
+      try {
+        result = await saveCreation(character.id, patch);
+      } catch {
+        // connessione persa: le modifiche tornano in coda (quelle arrivate dopo hanno la precedenza) e si riprova
+        pending.current = mergePatches(patch, pending.current);
+        result = { ok: false, error: "Connessione persa: riprovo a salvare tra qualche secondo." };
+        timer.current = setTimeout(flush, 4000);
+      }
+      setStatus(result.ok ? "saved" : "error");
+      setMessage(result.error ?? null);
+    });
+    saving.current = run.catch(() => undefined);
+    await run;
   }
 
   function queue(patch: CreationPatch) {
-    const p = pending.current;
-    pending.current = {
-      ...p,
-      ...patch,
-      attributes: patch.attributes ? { ...p.attributes, ...patch.attributes } : p.attributes,
-      skills: patch.skills ? { ...p.skills, ...patch.skills } : p.skills,
-    };
+    pending.current = mergePatches(pending.current, patch);
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(flush, 600);
   }
+
+  // chiudendo la finestra o cambiando scheda del browser l'ultima modifica parte subito
+  const flushRef = useRef(flush);
+  useEffect(() => {
+    flushRef.current = flush;
+  });
+  useEffect(() => {
+    const now = () => void flushRef.current();
+    const onHide = () => document.visibilityState === "hidden" && now();
+    window.addEventListener("pagehide", now);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      window.removeEventListener("pagehide", now);
+      document.removeEventListener("visibilitychange", onHide);
+      now();
+    };
+  }, []);
 
   async function goTo(next: number) {
     const target = Math.min(Math.max(next, 1), 6);
@@ -336,6 +362,16 @@ function initialState(character: Character, build: CharacterBuild, rules: RulesD
     appearance: character.appearance ?? "",
     residence: character.residence ?? "",
     bio: character.bio ?? "",
+  };
+}
+
+/** Unisce due modifiche in coda: la seconda vince, caratteristiche e abilità si sommano */
+function mergePatches(older: CreationPatch, newer: CreationPatch): CreationPatch {
+  return {
+    ...older,
+    ...newer,
+    attributes: newer.attributes ? { ...older.attributes, ...newer.attributes } : older.attributes,
+    skills: newer.skills ? { ...older.skills, ...newer.skills } : older.skills,
   };
 }
 
