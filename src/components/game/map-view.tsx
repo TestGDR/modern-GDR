@@ -32,6 +32,8 @@ export function MapView({ maps, districts, groups, rooms, activity, initialDistr
   const initial = districts.find((d) => d.id === initialDistrictId) ?? null;
   const [mapId, setMapId] = useState(initial?.map_id ?? maps[0]?.id ?? null);
   const [openId, setOpenId] = useState<string | null>(initial?.id ?? null);
+  // sul telefono il primo tocco mostra il fumetto del quartiere, il secondo apre le chat
+  const [peekId, setPeekId] = useState<string | null>(null);
   // La pagina della mappa resta in memoria mentre si è altrove: uscendo dalla mappa la finestra si chiude,
   // così tornando non si riapre da sola
   const pathname = usePathname();
@@ -105,7 +107,17 @@ export function MapView({ maps, districts, groups, rooms, activity, initialDistr
               <MiamiIllustration className="block h-auto w-full" />
             )}
             {here.map((d) => (
-              <MapDot key={d.id} district={d} people={people(d.id)} onOpen={() => setOpenId(d.id)} />
+              <MapDot
+                key={d.id}
+                district={d}
+                people={people(d.id)}
+                peek={peekId === d.id}
+                onPeek={() => setPeekId(d.id)}
+                onOpen={() => {
+                  setPeekId(null);
+                  setOpenId(d.id);
+                }}
+              />
             ))}
         </div>
         <SecretRoomForm mapId={map.id} />
@@ -138,34 +150,64 @@ export function MapView({ maps, districts, groups, rooms, activity, initialDistr
   );
 }
 
-/** Punto del quartiere sulla mappa, con il nome al passaggio del mouse */
-function MapDot({ district: d, people, onOpen }: { district: District; people: number; onOpen: () => void }) {
+/**
+ * Punto del quartiere sulla mappa. Al passaggio del mouse un fumetto con nome e
+ * descrizione; il clic apre le chat. Col dito: primo tocco il fumetto, secondo le chat.
+ */
+function MapDot({
+  district: d,
+  people,
+  peek,
+  onPeek,
+  onOpen,
+}: {
+  district: District;
+  people: number;
+  peek: boolean;
+  onPeek: () => void;
+  onOpen: () => void;
+}) {
+  const [touch, setTouch] = useState(false);
   const x = Number(d.x);
   const y = Number(d.y);
+  // vicino al bordo alto il fumetto va sotto il punto; vicino ai lati si allinea al punto
+  const below = y < 30;
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      aria-label={d.name}
-      className="group absolute -translate-x-1/2 -translate-y-1/2 p-1.5"
-      style={{ left: `${x}%`, top: `${y}%` }}
-    >
-      <span className="relative block size-4">
-        <span className="absolute inset-0 animate-ping rounded-full bg-flamingo/50" />
-        <span className="absolute inset-0 rounded-full border-2 border-white bg-flamingo shadow-[0_0_10px_var(--flamingo)] transition group-hover:scale-125" />
-        {people > 0 && <span className="absolute -top-1 -right-1 size-2 rounded-full bg-mint ring-2 ring-night" title={`${people} in gioco`} />}
-      </span>
-      <span
+    <div className="group absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${x}%`, top: `${y}%` }}>
+      <button
+        type="button"
+        onPointerDown={(e) => setTouch(e.pointerType === "touch")}
+        onClick={() => (touch && !peek ? onPeek() : onOpen())}
+        aria-label={d.name}
+        className="block p-1.5"
+      >
+        <span className="relative block size-4">
+          <span className="absolute inset-0 animate-ping rounded-full bg-flamingo/50" />
+          <span className="absolute inset-0 rounded-full border-2 border-white bg-flamingo shadow-[0_0_10px_var(--flamingo)] transition group-hover:scale-125" />
+          {people > 0 && <span className="absolute -top-1 -right-1 size-2 rounded-full bg-mint ring-2 ring-night" />}
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={onOpen}
+        tabIndex={-1}
         className={cn(
-          // nome sempre visibile (non c'è più l'elenco a fianco); al passaggio si illumina
-          "pointer-events-none absolute top-6 z-10 rounded-md bg-night/80 max-sm:hidden px-1.5 py-0.5 font-heading text-[0.7rem] tracking-wide whitespace-nowrap text-white/90 transition group-hover:bg-flamingo group-hover:text-white group-focus-visible:bg-flamingo sm:text-sm",
-          // vicino ai bordi il nome si allinea al punto invece di uscire dalla mappa
-          x < 15 ? "left-0" : x > 85 ? "right-0" : "left-1/2 -translate-x-1/2",
+          "absolute z-20 w-60 max-w-[70vw] rounded-xl border border-white/15 bg-night/95 p-3 text-left shadow-xl backdrop-blur transition",
+          "invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100",
+          peek && "visible opacity-100",
+          below ? "top-full mt-1" : "bottom-full mb-1",
+          x < 20 ? "left-0" : x > 80 ? "right-0" : "left-1/2 -translate-x-1/2",
         )}
       >
-        {d.name}
-      </span>
-    </button>
+        <span className="block font-heading text-lg leading-tight tracking-wide text-white">{d.name}</span>
+        {d.tagline && <span className="mt-0.5 block text-xs text-peach">{d.tagline}</span>}
+        {d.description && <span className="mt-1.5 line-clamp-4 block text-xs leading-snug whitespace-pre-line text-muted-foreground">{d.description}</span>}
+        <span className="mt-2 flex items-center justify-between gap-2 text-[0.7rem]">
+          <span className={people > 0 ? "text-mint" : "text-muted-foreground"}>{people > 0 ? `${people} in gioco` : "Nessuno in gioco"}</span>
+          <span className="text-flamingo">{touch ? "Tocca per le chat" : "Clicca per le chat"} →</span>
+        </span>
+      </button>
+    </div>
   );
 }
 
