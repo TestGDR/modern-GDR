@@ -153,6 +153,17 @@
   }
 }
 
+/* Ritratti in chat (Impostazioni della chat) */
+:root[data-chat-avatars="piccoli"] .chat-avatar > img,
+:root[data-chat-avatars="piccoli"] .chat-avatar > span {
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1rem;
+}
+:root[data-chat-avatars="nascosti"] .chat-avatar {
+  display: none;
+}
+
 @layer utilities {
   /* Testo con sfumatura del tramonto (rosa → pesca) */
   .text-sunset {

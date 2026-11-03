@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowLeft, ChevronDown, Crown, Dices, Eye, EyeOff, LayoutGrid, NotebookPen, Package, Save, SendHorizontal, Swords, Users } from "lucide-react";
+import { ArrowDown, ArrowLeft, ChevronDown, Crown, Dices, Eye, EyeOff, LayoutGrid, NotebookPen, Package, Save, SendHorizontal, SlidersHorizontal, Swords, Users } from "lucide-react";
 import { ItemsPanel } from "@/components/game/chat-items";
 import { ChatToolWindow, NotepadPanel, SaveChatPanel } from "@/components/game/chat-tools";
+import { ChatPrefsPanel } from "@/components/game/prefs-panel";
 import {
   BlurredRows,
   DicePanel,
@@ -51,7 +52,7 @@ type Props = {
 const byTime = (a: Message, b: Message) => a.created_at.localeCompare(b.created_at) || a.id - b.id;
 
 /** Comandi della chat: ognuno si apre nella sua finestra */
-type Tool = "scontro" | "oggetti" | "dadi" | "master" | "note" | "salva";
+type Tool = "scontro" | "oggetti" | "dadi" | "master" | "note" | "salva" | "impostazioni";
 
 /**
  * Stanza di chat (dal Westeros: ChatRoom.tsx). Tempo reale con Supabase,
@@ -426,6 +427,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
     { id: "oggetti", label: "Oggetti", icon: <Package />, show: true },
     { id: "salva", label: "Salva chat", icon: <Save />, show: true },
     { id: "master", label: "Master", icon: <Crown />, show: canNarrate || canModerate },
+    { id: "impostazioni", label: "Impostazioni", icon: <SlidersHorizontal />, show: true },
   ];
 
   return (
@@ -600,6 +602,11 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
             <ChatToolWindow title="Blocco note" icon={<NotebookPen className="size-5" />} width={520} onClose={() => closeTool("note")}>
               <NotepadPanel value={note} onChange={setNote} sending={sending} maxLength={maxLen} kind={kind} onSend={() => send(note, () => setNote(""))} />
               {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+            </ChatToolWindow>
+          )}
+          {tools.includes("impostazioni") && (
+            <ChatToolWindow title="Impostazioni della chat" icon={<SlidersHorizontal className="size-5" />} width={560} onClose={() => closeTool("impostazioni")}>
+              <ChatPrefsPanel />
             </ChatToolWindow>
           )}
           {tools.includes("salva") && (

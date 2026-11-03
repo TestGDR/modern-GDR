@@ -4,7 +4,20 @@ import { useEffect, useMemo, useState } from "react";
 import { Play, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { playSound, soundsOf, type SoundGroup } from "@/lib/notify-sound";
-import { CHAT_FONT_SIZES, DEFAULT_PREFS, applyPrefs, loadPrefs, savePrefs, savedPrefs, type Prefs } from "@/lib/prefs";
+import {
+  CHAT_AVATARS,
+  CHAT_FONT_FAMILIES,
+  CHAT_FONT_SIZES,
+  CHAT_LINES,
+  DEFAULT_PREFS,
+  applyPrefs,
+  loadPrefs,
+  savePrefs,
+  savedPrefs,
+  type ChatFontFamily,
+  type ChatLine,
+  type Prefs,
+} from "@/lib/prefs";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -106,39 +119,8 @@ export function PrefsPanel() {
 
       <section className="flex flex-col gap-3 rounded-xl bg-white/5 p-4">
         <h3 className="font-heading text-xl tracking-wide text-peach">Testo e colori della chat</h3>
-        <label className="flex flex-col gap-1.5 text-sm">
-          Grandezza del testo in chat
-          <select value={prefs.chat_font_pt} onChange={(e) => set("chat_font_pt", Number(e.target.value))} className={field}>
-            {CHAT_FONT_SIZES.map((pt) => (
-              <option key={pt} value={pt}>
-                {pt} pt{pt === DEFAULT_PREFS.chat_font_pt ? " (normale)" : ""}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="flex items-center gap-3 text-sm">
-            <input type="color" value={prefs.speech_color} onChange={(e) => set("speech_color", e.target.value)} className="size-10 cursor-pointer rounded-lg border border-input bg-transparent" />
-            Parlato (tra «» o &quot;&quot;)
-          </label>
-          <label className="flex items-center gap-3 text-sm">
-            <input type="color" value={prefs.action_color} onChange={(e) => set("action_color", e.target.value)} className="size-10 cursor-pointer rounded-lg border border-input bg-transparent" />
-            Testo dell&apos;azione
-          </label>
-        </div>
-        <p className="rounded-lg bg-night/50 px-3 py-2 leading-relaxed" style={{ color: "var(--chat-action)", fontSize: "var(--chat-font, 11pt)" }}>
-          Lena si appoggia al bancone. <span className="font-semibold" style={{ color: "var(--chat-speech)" }}>«Stasera si va a South Beach?»</span> chiede sorridendo.
-        </p>
-        <button
-          type="button"
-          onClick={() => {
-            set("speech_color", DEFAULT_PREFS.speech_color);
-            set("action_color", DEFAULT_PREFS.action_color);
-          }}
-          className="w-fit text-xs text-muted-foreground underline hover:text-foreground"
-        >
-          Colori predefiniti
-        </button>
+        <p className="text-xs text-muted-foreground">Si cambiano anche dalla chat, con il pulsante Impostazioni.</p>
+        <ChatPrefsFields prefs={prefs} set={set} />
       </section>
 
       <div className="flex items-center justify-end gap-3">
@@ -146,6 +128,160 @@ export function PrefsPanel() {
         {status === "error" && <span className="text-sm text-destructive">Salvataggio non riuscito. Riprova.</span>}
         <Button type="button" onClick={save} disabled={!changed || status === "saving"} className="rounded-full">
           <Save /> Salva le preferenze
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+type SetPref = <K extends keyof Prefs>(k: K, v: Prefs[K]) => void;
+
+/** Grandezze, carattere, interlinea, colori e ritratti della chat (scheda e pulsante in chat) */
+function ChatPrefsFields({ prefs, set }: { prefs: Prefs; set: SetPref }) {
+  const sizes = (key: "chat_font_pt" | "chat_other_pt", label: string, normal: number) => (
+    <label className="flex flex-col gap-1.5 text-sm">
+      {label}
+      <select value={prefs[key]} onChange={(e) => set(key, Number(e.target.value))} className={field}>
+        {CHAT_FONT_SIZES.map((pt) => (
+          <option key={pt} value={pt}>
+            {pt} pt{pt === normal ? " (normale)" : ""}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+  const color = (key: "speech_color" | "action_color" | "name_color", label: React.ReactNode) => (
+    <label className="flex items-center gap-3 text-sm">
+      <input type="color" value={prefs[key]} onChange={(e) => set(key, e.target.value)} className="size-10 shrink-0 cursor-pointer rounded-lg border border-input bg-transparent" />
+      {label}
+    </label>
+  );
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {sizes("chat_font_pt", "Grandezza delle azioni", DEFAULT_PREFS.chat_font_pt)}
+        {sizes("chat_other_pt", "Grandezza degli altri messaggi (dadi, sussurri, OFF)", DEFAULT_PREFS.chat_other_pt)}
+        <label className="flex flex-col gap-1.5 text-sm">
+          Carattere delle azioni
+          <select value={prefs.chat_font_family} onChange={(e) => set("chat_font_family", e.target.value as ChatFontFamily)} className={field}>
+            {CHAT_FONT_FAMILIES.map((f) => (
+              <option key={f.id} value={f.id} style={{ fontFamily: f.css }}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm">
+          Interlinea delle azioni
+          <select value={prefs.chat_line} onChange={(e) => set("chat_line", e.target.value as ChatLine)} className={field}>
+            {CHAT_LINES.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {color("speech_color", <>Parlato (tra «» o &quot;&quot;)</>)}
+        {color("action_color", <>Testo dell&apos;azione</>)}
+        {color("name_color", <>Nomi degli altri</>)}
+      </div>
+      <div className="flex flex-col gap-1.5 text-sm">
+        Ritratti in chat
+        <div className="flex gap-1.5">
+          {CHAT_AVATARS.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => set("chat_avatars", a.id)}
+              className={cn("rounded-full border px-3 py-1 text-xs", prefs.chat_avatars === a.id ? "border-flamingo bg-flamingo/25 text-white" : "border-white/15 text-muted-foreground hover:bg-white/5")}
+              aria-pressed={prefs.chat_avatars === a.id}
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
+        {prefs.chat_avatars === "nascosti" && <span className="text-xs text-muted-foreground">Senza ritratti non c&apos;è nemmeno il pulsante del look accanto.</span>}
+      </div>
+      {/* anteprima con le impostazioni scelte */}
+      <div className="flex flex-col gap-1.5 rounded-lg bg-night/50 px-3 py-2">
+        <p>
+          <span className="font-heading text-lg tracking-wide" style={{ color: "var(--chat-name)" }}>
+            Lena
+          </span>
+        </p>
+        <p className="whitespace-pre-line" style={{ color: "var(--chat-action)", fontSize: "var(--chat-font, 11pt)", fontFamily: "var(--chat-family, inherit)", lineHeight: "var(--chat-line, 1.625)" }}>
+          Si appoggia al bancone e sistema gli occhiali da sole. <span className="font-semibold" style={{ color: "var(--chat-speech)" }}>«Stasera si va a La Jolla?»</span> chiede sorridendo, mentre
+          il sole scende sull&apos;oceano.
+        </p>
+        <p className="text-muted-foreground" style={{ fontSize: "var(--chat-other, 10pt)" }}>
+          <span className="mr-1 rounded bg-white/10 px-1.5 py-0.5 text-[0.65rem] font-semibold tracking-wider uppercase">OFF</span> Torno tra cinque minuti!
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          for (const k of ["chat_font_pt", "chat_other_pt", "chat_font_family", "chat_line", "speech_color", "action_color", "name_color", "chat_avatars"] as const) {
+            set(k, DEFAULT_PREFS[k]);
+          }
+        }}
+        className="w-fit text-xs text-muted-foreground underline hover:text-foreground"
+      >
+        Torna alle impostazioni predefinite
+      </button>
+    </div>
+  );
+}
+
+/** Pulsante Impostazioni della chat: solo testo, colori e ritratti, con anteprima nella chat dietro */
+export function ChatPrefsPanel() {
+  const supabase = useMemo(() => createClient(), []);
+  const [prefs, setPrefs] = useState<Prefs>(() => savedPrefs() ?? DEFAULT_PREFS);
+  const [saved, setSaved] = useState<Prefs | null>(null);
+  const [status, setStatus] = useState<"idle" | "saving" | "done" | "error">("idle");
+
+  useEffect(() => {
+    loadPrefs(supabase).then((p) => {
+      setPrefs(p);
+      setSaved(p);
+    });
+  }, [supabase]);
+  // anteprima subito nella chat; chiudendo senza salvare si torna a quelle salvate
+  useEffect(() => {
+    applyPrefs(prefs);
+  }, [prefs]);
+  useEffect(() => {
+    return () => {
+      const p = savedPrefs();
+      if (p) applyPrefs(p);
+    };
+  }, []);
+
+  const set: SetPref = (k, v) => {
+    setStatus("idle");
+    setPrefs((p) => ({ ...p, [k]: v }));
+  };
+  const changed = saved !== null && JSON.stringify(saved) !== JSON.stringify(prefs);
+
+  async function save() {
+    setStatus("saving");
+    const ok = await savePrefs(supabase, prefs);
+    if (!ok) return setStatus("error");
+    setSaved(prefs);
+    applyPrefs(prefs);
+    setStatus("done");
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-xs text-muted-foreground">Le vedi solo tu e valgono su ogni computer e telefono. La chat dietro cambia subito: salva per tenerle.</p>
+      <ChatPrefsFields prefs={prefs} set={set} />
+      <div className="flex items-center justify-end gap-3">
+        {status === "done" && !changed && <span className="text-sm text-mint">Salvate.</span>}
+        {status === "error" && <span className="text-sm text-destructive">Salvataggio non riuscito. Riprova.</span>}
+        <Button type="button" onClick={save} disabled={!changed || status === "saving"} className="rounded-full">
+          <Save /> Salva
         </Button>
       </div>
     </div>

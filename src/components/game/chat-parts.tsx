@@ -117,7 +117,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
 
   if (m.kind === "dado") {
     return (
-      <div className="group flex items-start gap-2 rounded-xl border border-peach/25 bg-peach/10 px-3 py-2" style={{ fontSize: "calc(var(--chat-font, 11pt) * 0.92)" }}>
+      <div className="group flex items-start gap-2 rounded-xl border border-peach/25 bg-peach/10 px-3 py-2" style={{ fontSize: "var(--chat-other, 10pt)" }}>
         <Dices className="mt-0.5 size-4 shrink-0 text-peach" />
         <p className="min-w-0 flex-1">
           <span className="mr-2 text-xs text-muted-foreground">{time}</span>
@@ -138,7 +138,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
 
   if (m.kind === "sussurro") {
     return (
-      <div className="group flex items-start gap-2 rounded-xl border border-lavender/30 bg-violet/25 px-3 py-2" style={{ fontSize: "calc(var(--chat-font, 11pt) * 0.92)" }}>
+      <div className="group flex items-start gap-2 rounded-xl border border-lavender/30 bg-violet/25 px-3 py-2" style={{ fontSize: "var(--chat-other, 10pt)" }}>
         <Lock className="mt-0.5 size-3.5 shrink-0 text-lavender" />
         <p className="min-w-0 flex-1">
           <span className="mr-2 text-xs text-muted-foreground">{time}</span>
@@ -155,7 +155,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
 
   if (m.kind === "fuori_gioco") {
     return (
-      <div className="group flex items-start gap-2 px-1 text-muted-foreground" style={{ fontSize: "calc(var(--chat-font, 11pt) * 0.92)" }}>
+      <div className="group flex items-start gap-2 px-1 text-muted-foreground" style={{ fontSize: "var(--chat-other, 10pt)" }}>
         <p className="min-w-0 flex-1">
           <span className="mr-2 text-xs">{time}</span>
           <span className="mr-1 rounded bg-white/10 px-1.5 py-0.5 text-[0.65rem] font-semibold tracking-wider uppercase">OFF</span>
@@ -175,7 +175,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
           <span className="ml-auto text-xs text-muted-foreground">{time}</span>
           {tools}
         </header>
-        <p className="leading-relaxed whitespace-pre-line" style={{ color: "var(--chat-action, #e4dfdb)", fontSize: "var(--chat-font, 11pt)" }}>
+        <p className="whitespace-pre-line" style={{ color: "var(--chat-action, #e4dfdb)", fontSize: "var(--chat-font, 11pt)", fontFamily: "var(--chat-family, inherit)", lineHeight: "var(--chat-line, 1.625)" }}>
           <FormattedText text={m.content} names={names} />
           {edited}
         </p>
@@ -188,7 +188,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
   const own = mine && !npc;
   return (
     <article className={cn("group flex gap-2.5 rounded-2xl px-2.5 py-2.5 sm:gap-3 sm:px-4 sm:py-3", own ? "bg-flamingo/10" : npc ? "bg-orchid/10 ring-1 ring-orchid/25" : "bg-white/5")}>
-      <div className="relative shrink-0 self-start">
+      <div className="chat-avatar relative shrink-0 self-start">
         {avatar ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={avatar} alt="" className="size-12 rounded-full object-cover ring-2 ring-white/15 sm:size-[70px]" />
@@ -211,7 +211,10 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
       </div>
       <div className="min-w-0 flex-1">
         <header className="mb-1 flex items-baseline gap-2">
-          <span className={cn("font-heading text-lg tracking-wide", own ? "text-flamingo" : npc ? "text-orchid" : "text-peach")}>
+          <span
+            className={cn("font-heading text-lg tracking-wide", own ? "text-flamingo" : npc && "text-orchid")}
+            style={own || npc ? undefined : { color: "var(--chat-name, var(--peach))" }}
+          >
             {npc ? m.character_name : firstName(m.character_name)}
             {to}
           </span>
@@ -219,7 +222,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
           <span className="ml-auto text-xs text-muted-foreground">{time}</span>
           {tools}
         </header>
-        <p className="leading-relaxed whitespace-pre-line" style={{ color: "var(--chat-action, #e4dfdb)", fontSize: "var(--chat-font, 11pt)" }}>
+        <p className="whitespace-pre-line" style={{ color: "var(--chat-action, #e4dfdb)", fontSize: "var(--chat-font, 11pt)", fontFamily: "var(--chat-family, inherit)", lineHeight: "var(--chat-line, 1.625)" }}>
           <FormattedText text={m.content} names={names} />
           {edited}
         </p>
@@ -232,7 +235,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
 function CombatRow({ message: m, time, canSeeRolls, tools }: { message: Message; time: string; canSeeRolls: boolean; tools: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="group flex items-start gap-2 rounded-xl border border-flamingo/30 bg-flamingo/10 px-3 py-2" style={{ fontSize: "calc(var(--chat-font, 11pt) * 0.92)" }}>
+    <div className="group flex items-start gap-2 rounded-xl border border-flamingo/30 bg-flamingo/10 px-3 py-2" style={{ fontSize: "var(--chat-other, 10pt)" }}>
       <Swords className="mt-0.5 size-4 shrink-0 text-flamingo" />
       <div className="min-w-0 flex-1">
         <p>
