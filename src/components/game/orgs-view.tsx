@@ -152,7 +152,7 @@ export function OrgsView({ kind, orgs, categories = [], characterId, periodDays,
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-heading text-xl tracking-wide">{o.name}</span>
                       <span className="block text-xs text-muted-foreground">
-                        {o.members.length} {o.members.length === 1 ? "membro" : "membri"}
+                        {o.hidden ? "Membri riservati" : `${o.members.length} ${o.members.length === 1 ? "membro" : "membri"}`}
                         {kind === "job" && payRange(o.roles)}
                       </span>
                     </span>
@@ -260,10 +260,12 @@ function OrgPage({
               <li key={r.id} className={cn("glass flex flex-col gap-2 rounded-xl p-3", full && "opacity-50 grayscale", mineHere && "border border-mint/50")}>
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <span className="font-medium">{r.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {r.max_members !== null ? `${taken}/${r.max_members} posti` : `${taken} ${taken === 1 ? "membro" : "membri"}`}
-                    {full && " · al completo"}
-                  </span>
+                  {!org.hidden && (
+                    <span className="text-xs text-muted-foreground">
+                      {r.max_members !== null ? `${taken}/${r.max_members} posti` : `${taken} ${taken === 1 ? "membro" : "membri"}`}
+                      {full && " · al completo"}
+                    </span>
+                  )}
                   {mineHere && <span className="text-xs text-mint">Il tuo ruolo{me?.mode ? ` (${JOB_KIND_LABEL[me.mode].toLowerCase()})` : ""}</span>}
                   {kind === "job" && !r.self_select && <span className="text-xs text-muted-foreground">· assegnato dallo staff</span>}
                 </div>
@@ -307,8 +309,10 @@ function OrgPage({
 
       {/* Membri */}
       <section className="flex flex-col gap-2">
-        <h3 className="border-b border-white/10 pb-1 font-heading text-2xl tracking-wide text-peach">Membri ({org.members.length})</h3>
-        {org.members.length === 0 && <p className="text-sm text-muted-foreground">Ancora nessuno.</p>}
+        <h3 className="border-b border-white/10 pb-1 font-heading text-2xl tracking-wide text-peach">Membri{org.hidden ? "" : ` (${org.members.length})`}</h3>
+        {org.hidden && org.members.length === 0 && <p className="text-sm text-muted-foreground">I membri di questo gruppo sono riservati.</p>}
+        {org.hidden && org.members.length > 0 && <p className="text-xs text-orchid">Gruppo riservato: questo elenco lo vedono solo i membri e lo staff.</p>}
+        {!org.hidden && org.members.length === 0 && <p className="text-sm text-muted-foreground">Ancora nessuno.</p>}
         <ul className="grid gap-1.5 sm:grid-cols-2">
           {org.members.map((m) => (
             <li key={m.character_id}>
