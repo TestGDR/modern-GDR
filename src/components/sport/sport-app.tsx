@@ -16,7 +16,9 @@ import {
   SQUAD_LABEL,
   VENUE_LABEL,
   eventDate,
+  positionRollText,
   trainingFormula,
+  type PositionWithRolls,
 } from "@/lib/sport";
 import { PushPicker, type Push } from "@/components/sport/push-picker";
 import { SportIcon } from "@/components/sport/sport-icon";
@@ -38,7 +40,8 @@ import { cn } from "@/lib/utils";
 // Athletic Department: il mio sport (entrare, allenamento, eleggibilità) e le squadre
 // con calendario, risultati, classifica, roster e premi.
 
-type Catalog = { sports: Sport[]; positions: SportPosition[]; teams: SportTeam[]; taken: Record<string, number> };
+type CatalogPosition = SportPosition & PositionWithRolls;
+type Catalog = { sports: Sport[]; positions: CatalogPosition[]; teams: SportTeam[]; taken: Record<string, number> };
 
 export function SportApp({ characterId }: { characterId: string | null }) {
   const supabase = useMemo(() => createClient(), []);
@@ -50,7 +53,10 @@ export function SportApp({ characterId }: { characterId: string | null }) {
   const load = useCallback(async () => {
     const [s, p, t, r, w, m] = await Promise.all([
       supabase.from("sports").select("*").eq("status", "active").order("sort_order"),
-      supabase.from("sport_positions").select("*").order("sort_order"),
+      supabase
+        .from("sport_positions")
+        .select("*, attributes(code), skills(name), sport_position_combos(sort_order, attributes(code), skills(name))")
+        .order("sort_order"),
       supabase.from("sport_teams").select("*").eq("active", true).order("name"),
       supabase.from("sport_roster").select("position_id, squad_status").is("left_at", null),
       supabase.rpc("sport_athlete_of_week"),
@@ -60,7 +66,7 @@ export function SportApp({ characterId }: { characterId: string | null }) {
     for (const x of (r.data ?? []) as { position_id: string | null; squad_status: string }[]) {
       if (x.position_id && (x.squad_status === "starter" || x.squad_status === "captain")) taken[x.position_id] = (taken[x.position_id] ?? 0) + 1;
     }
-    setCatalog({ sports: (s.data ?? []) as Sport[], positions: (p.data ?? []) as SportPosition[], teams: (t.data ?? []) as SportTeam[], taken });
+    setCatalog({ sports: (s.data ?? []) as Sport[], positions: (p.data ?? []) as unknown as CatalogPosition[], teams: (t.data ?? []) as SportTeam[], taken });
     setWeek((w.data ?? null) as typeof week);
     setMine((m.data ?? []) as MySport[]);
   }, [supabase, characterId]);
@@ -293,6 +299,14 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
           </select>
         </div>
         {sportId && <p className="text-xs text-muted-foreground">{catalog.sports.find((s) => s.id === sportId)?.description}</p>}
+        {positionId && (
+          <p className="text-xs text-muted-foreground">
+            Tiro del ruolo: {(() => {
+              const p = positions.find((x) => x.id === positionId);
+              return p ? positionRollText(p) : "—";
+            })()}
+          </p>
+        )}
         <Button
           type="button"
           size="sm"

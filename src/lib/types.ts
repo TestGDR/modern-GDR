@@ -51,7 +51,7 @@ export type Skill = {
   attribute_id: string;
   name: string;
   description: string;
-  category: "Studio" | "Sport" | "Arti" | "Sociale" | "Pratico" | null;
+  category: "Studio" | "Fisico" | "Arti" | "Sociale" | "Pratico" | null;
   sort_order: number;
   active: boolean;
 };
@@ -712,6 +712,8 @@ export type SportPosition = {
   team_bonus: boolean;
   sort_order: number;
 };
+/** Combinazione in più di un ruolo sportivo (si usa la migliore dell'atleta) */
+export type SportPositionCombo = { id: string; position_id: string; attribute_id: string; skill_id: string; sort_order: number };
 export type SportTeam = { id: string; name: string; nickname: string; is_player_school: boolean; conference: boolean; is_national: boolean; active: boolean };
 export type SportTeamRating = { team_id: string; sport_id: string; rating: number };
 export type SportSeason = { id: string; sport_id: string; label: string; status: "planning" | "active" | "closed"; created_at: string };

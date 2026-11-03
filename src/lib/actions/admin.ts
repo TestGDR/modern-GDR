@@ -97,7 +97,7 @@ export type SkillInput = {
   active: boolean;
 };
 
-const CATEGORIES = ["Studio", "Sport", "Arti", "Sociale", "Pratico"];
+const CATEGORIES = ["Studio", "Fisico", "Arti", "Sociale", "Pratico"];
 
 export async function saveSkill(input: SkillInput): Promise<ActionResult> {
   const name = clean(input.name, 60);

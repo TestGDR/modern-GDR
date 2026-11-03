@@ -18,6 +18,24 @@ export const PHASE_LABEL: Record<SportPhase, string> = {
 };
 export const SQUAD_LABEL: Record<SquadStatus, string> = { starter: "Titolare", reserve: "Riserva", captain: "Capitano", redshirt: "Redshirt" };
 export const INTENSITY_LABEL = { light: "Leggera", normal: "Normale", intense: "Intensa" } as const;
+
+/** Ruolo letto con caratteristica, abilità e combinazioni in più */
+export type PositionWithRolls = {
+  attributes: { code: string } | null;
+  skills: { name: string } | null;
+  sport_position_combos: { sort_order: number; attributes: { code: string } | null; skills: { name: string } | null }[] | null;
+};
+
+/** "RIF + Lanciare · VIG + Atletica (si usa la migliore)" */
+export function positionRollText(p: PositionWithRolls) {
+  const parts = [
+    `${p.attributes?.code ?? "?"}${p.skills ? ` + ${p.skills.name}` : ""}`,
+    ...[...(p.sport_position_combos ?? [])]
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((c) => `${c.attributes?.code ?? "?"} + ${c.skills?.name ?? "?"}`),
+  ];
+  return parts.join(" · ") + (parts.length > 1 ? " (si usa la migliore)" : "");
+}
 export const EVENT_STATUS_LABEL: Record<SportEvent["status"], string> = {
   scheduled: "In programma",
   postponed: "Rinviato",

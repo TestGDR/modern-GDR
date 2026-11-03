@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { deleteSkill, moveItem, saveSkill, type SkillInput } from "@/lib/actions/admin";
 import type { Attribute, Skill } from "@/lib/types";
 
-const CATEGORIES = ["Studio", "Sport", "Arti", "Sociale", "Pratico"] as const;
+const CATEGORIES = ["Studio", "Fisico", "Arti", "Sociale", "Pratico"] as const;
 
 type Props = { skills: Skill[]; attributes: Attribute[]; usage: Record<string, number> };
 

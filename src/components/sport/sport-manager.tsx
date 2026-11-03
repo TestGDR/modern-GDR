@@ -27,6 +27,7 @@ import type {
   SportEventTeam,
   SportFormat,
   SportPosition,
+  SportPositionCombo,
   SportRosterEntry,
   SportSeason,
   SportSeasonKind,
@@ -42,6 +43,7 @@ import { cn } from "@/lib/utils";
 type Lookup = {
   sports: Sport[];
   positions: SportPosition[];
+  combos: SportPositionCombo[];
   teams: SportTeam[];
   ratings: SportTeamRating[];
   attrs: { id: string; code: string; name: string }[];
@@ -91,9 +93,10 @@ export function SportManager({ isAdmin = false }: { isAdmin?: boolean }) {
   const [sportId, setSportId] = useState("");
 
   const load = useCallback(async () => {
-    const [s, p, t, r, a, k] = await Promise.all([
+    const [s, p, c, t, r, a, k] = await Promise.all([
       supabase.from("sports").select("*").order("sort_order").order("name"),
       supabase.from("sport_positions").select("*").order("sort_order"),
+      supabase.from("sport_position_combos").select("*").order("sort_order"),
       supabase.from("sport_teams").select("*").order("is_player_school", { ascending: false }).order("name"),
       supabase.from("sport_team_ratings").select("*"),
       supabase.from("attributes").select("id, code, name").eq("active", true).order("sort_order"),
@@ -103,6 +106,7 @@ export function SportManager({ isAdmin = false }: { isAdmin?: boolean }) {
     setLookup({
       sports,
       positions: (p.data ?? []) as SportPosition[],
+      combos: (c.data ?? []) as SportPositionCombo[],
       teams: (t.data ?? []) as SportTeam[],
       ratings: (r.data ?? []) as SportTeamRating[],
       attrs: (a.data ?? []) as Lookup["attrs"],
@@ -910,6 +914,7 @@ function SportForm({ sport, lookup, onDone }: { sport: Sport | null; lookup: Loo
               <Button type="button" size="icon-xs" variant="ghost" aria-label="Elimina il ruolo" onClick={() => run(supabase.from("sport_positions").delete().eq("id", p.id))}>
                 <Trash2 />
               </Button>
+              <ComboEditor position={p} lookup={lookup} run={run} />
             </div>
           ))}
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
@@ -954,9 +959,66 @@ function SportForm({ sport, lookup, onDone }: { sport: Sport | null; lookup: Loo
               <Plus /> Aggiungi
             </Button>
           </div>
-          <p className="text-[0.7rem] text-muted-foreground">Attenzione alle abilità del combattimento (Rissa, Schivare, Parare, Armi): meglio non usarle per gli sport.</p>
+          <p className="text-[0.7rem] text-muted-foreground">
+            Ogni ruolo può avere più combinazioni di caratteristica + abilità: in gara e in allenamento si usa da sola la migliore dell&apos;atleta. Rissa vale anche per il contatto fisico (placcaggi, lotta).
+          </p>
         </section>
       )}
+    </div>
+  );
+}
+
+/** Combinazioni in più di un ruolo: elenco con la X e aggiunta */
+function ComboEditor({
+  position,
+  lookup,
+  run,
+}: {
+  position: SportPosition;
+  lookup: Lookup;
+  run: (p: PromiseLike<{ error: { message: string } | null }>) => void;
+}) {
+  const supabase = useMemo(() => createClient(), []);
+  const combos = lookup.combos.filter((c) => c.position_id === position.id);
+  const [attr, setAttr] = useState(lookup.attrs[0]?.id ?? "");
+  const [skill, setSkill] = useState("");
+  return (
+    <div className="flex w-full flex-wrap items-center gap-1.5 pl-32 text-[0.7rem]">
+      {combos.map((c) => (
+        <span key={c.id} className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5">
+          oppure {lookup.attrs.find((a) => a.id === c.attribute_id)?.code} + {lookup.skills.find((s) => s.id === c.skill_id)?.name ?? "—"}
+          <button type="button" aria-label="Togli la combinazione" className="text-muted-foreground hover:text-destructive" onClick={() => run(supabase.from("sport_position_combos").delete().eq("id", c.id))}>
+            ×
+          </button>
+        </span>
+      ))}
+      <select className={cn(inputClass, "h-7 w-16 text-xs")} value={attr} onChange={(e) => setAttr(e.target.value)} aria-label="Caratteristica">
+        {lookup.attrs.map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.code}
+          </option>
+        ))}
+      </select>
+      <select className={cn(inputClass, "h-7 w-40 text-xs")} value={skill} onChange={(e) => setSkill(e.target.value)} aria-label="Abilità">
+        <option value="">Abilità…</option>
+        {lookup.skills.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </select>
+      <Button
+        type="button"
+        size="xs"
+        variant="ghost"
+        disabled={!attr || !skill}
+        onClick={() => {
+          run(supabase.from("sport_position_combos").insert({ position_id: position.id, attribute_id: attr, skill_id: skill, sort_order: combos.length + 1 }));
+          setSkill("");
+        }}
+      >
+        <Plus /> Combinazione
+      </Button>
     </div>
   );
 }
