@@ -173,7 +173,11 @@ function MapDot({
   // vicino al bordo alto il fumetto va sotto il punto; vicino ai lati si allinea al punto
   const below = y < 30;
   return (
-    <div className="group absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${x}%`, top: `${y}%` }}>
+    // il punto con il fumetto aperto passa sopra tutti gli altri punti
+    <div
+      className={cn("group absolute z-10 -translate-x-1/2 -translate-y-1/2 hover:z-50 focus-within:z-50", peek && "z-50")}
+      style={{ left: `${x}%`, top: `${y}%` }}
+    >
       <button
         type="button"
         onPointerDown={(e) => setTouch(e.pointerType === "touch")}
