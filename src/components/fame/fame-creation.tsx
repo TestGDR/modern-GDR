@@ -77,6 +77,18 @@ export function FameCreation({ characterId }: { characterId: string }) {
         {st.max_category > 0 && ` In una stessa categoria puoi spendere al massimo ${st.max_category} PF.`}
       </p>
       {error && <p className="text-sm text-destructive">{error}</p>}
+      {st.converted && (
+        // personaggio già approvato in passato (poi sbloccato): niente PF da spendere
+        <p className="rounded-lg bg-violet/30 px-3 py-2 text-sm text-lavender">
+          Questo personaggio era già approvato: i suoi Punti Fama sono già stati convertiti, quindi qui non se ne spendono. Le voci di fama le aggiunge lo
+          staff da Gestione → Fama: chiedile con un ticket.
+        </p>
+      )}
+      {!st.converted && left === 0 && st.pool > 0 && (
+        <p className="rounded-lg bg-white/5 px-3 py-2 text-sm text-muted-foreground">
+          Hai speso tutti i Punti Fama: per sceglierne un&apos;altra togli prima una voce (clicca di nuovo su una voce scelta).
+        </p>
+      )}
 
       {categories.length > 1 && (
         <div className="flex flex-wrap gap-1">
@@ -96,7 +108,10 @@ export function FameCreation({ characterId }: { characterId: string }) {
       <ul className="grid gap-2 sm:grid-cols-2">
         {items.map((i) => {
           const on = chosen.has(i.id);
-          const tooMuch = !on && (i.cost > left || (st.max_item > 0 && i.cost > st.max_item));
+          const overItem = st.max_item > 0 && i.cost > st.max_item;
+          const tooMuch = !on && (st.converted || i.cost > left || overItem);
+          // perché non si può prendere (mostrato sulla voce)
+          const why = st.converted ? null : overItem ? `Costa più del massimo per voce (${st.max_item} PF)` : `Servono ${i.cost} PF, te ne restano ${left}`;
           return (
             <li key={i.id}>
               <button
@@ -123,6 +138,7 @@ export function FameCreation({ characterId }: { characterId: string }) {
                     {i.infamy > 0 && <span className="text-flamingo"> · +{i.infamy} infamia</span>}
                   </span>
                   {i.description && <span className="block text-xs text-muted-foreground">{i.description}</span>}
+                  {tooMuch && why && <span className="mt-1 block text-[0.7rem] font-medium text-flamingo">{why}</span>}
                 </span>
               </button>
             </li>
