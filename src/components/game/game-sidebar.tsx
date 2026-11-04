@@ -624,8 +624,11 @@ function useOrgBadges(characterIds: string[]) {
         .in("character_id", ids)
         .overrideTypes<{ character_id: string; grp: { id: string; name: string; icon_url: string | null; active: boolean; hidden: boolean } | null; role: { name: string } | null }[], { merge: false }>(),
       supabase.rpc("fame_icons", { p_characters: ids }),
-    ]).then(([jobs, groups, fame]) => {
+      supabase.rpc("sport_captains"),
+    ]).then(([jobs, groups, fame, captains]) => {
       if (!alive) return;
+      // capitani delle squadre: «Capitano» accanto al ruolo
+      const captainOf = new Set(((captains.data ?? []) as { character_id: string; group_id: string }[]).map((c) => `${c.group_id}:${c.character_id}`));
       const next: Record<string, OrgBadge[]> = {};
       const add = (characterId: string, org: { id: string; name: string; icon_url: string | null; active: boolean } | null, role: string | undefined) => {
         if (!org?.active || !org.icon_url) return;
@@ -633,7 +636,11 @@ function useOrgBadges(characterIds: string[]) {
       };
       for (const j of jobs.data ?? []) add(j.character_id, j.job, j.role?.name);
       // i gruppi nascosti non compaiono mai negli online
-      for (const g of groups.data ?? []) if (!g.grp?.hidden) add(g.character_id, g.grp, g.role?.name);
+      for (const g of groups.data ?? []) {
+        if (g.grp?.hidden) continue;
+        const captain = g.grp && captainOf.has(`${g.grp.id}:${g.character_id}`);
+        add(g.character_id, g.grp, captain ? `${g.role?.name ?? "Atleta"} · Capitano` : g.role?.name);
+      }
       // livello di fama e di infamia (solo quelli con un'icona; si spegne da Gestione → Fama)
       type FameIconRow = { character_id: string; fame_name: string | null; fame_icon: string | null; infamy_name: string | null; infamy_icon: string | null };
       for (const f of (fame.data ?? []) as FameIconRow[]) {
