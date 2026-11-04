@@ -340,7 +340,29 @@ function Registration({
   run: (fn: string, args: Record<string, unknown>) => Promise<void>;
 }) {
   const [query, setQuery] = useState("");
-  const [dept, setDept] = useState("");
+  // "" = tutti, "percorso" = solo i corsi del mio percorso, altrimenti un dipartimento
+  const [dept, setDept] = useState("percorso");
+  const [path, setPath] = useState<{ main: string[]; affine: string[]; general: string[] }>({ main: [], affine: [], general: [] });
+  const majorId = data.character.major_id;
+  useEffect(() => {
+    const supabase = createClient();
+    let alive = true;
+    Promise.all([
+      majorId ? supabase.from("major_subjects").select("prefix, kind").eq("major_id", majorId) : Promise.resolve({ data: [] }),
+      supabase.from("general_courses").select("course_id"),
+    ]).then(([sj, g]) => {
+      if (!alive) return;
+      const subj = (sj.data ?? []) as { prefix: string; kind: string }[];
+      setPath({
+        main: subj.filter((x) => x.kind === "principale").map((x) => x.prefix),
+        affine: subj.filter((x) => x.kind === "affine").map((x) => x.prefix),
+        general: ((g.data ?? []) as { course_id: string }[]).map((x) => x.course_id),
+      });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [majorId]);
   const term = data.term!;
   const s = catalog.settings;
   const mine = data.current.filter((e) => e.status !== "withdrawn");
@@ -358,6 +380,18 @@ function Registration({
   const majorDepts = new Set(extras?.major_departments ?? []);
   const minorCourses = new Set((extras?.minor?.courses ?? []).map((c) => c.id));
   const premedCourses = new Set((extras?.premed?.courses ?? []).map((c) => c.id));
+  const prefix = (c: Course) => c.code.split(" ")[0];
+  // materie principali: quelle scritte dallo staff, altrimenti le sigle dei corsi obbligatori
+  const mainPrefixes = new Set(path.main.length ? path.main : catalog.courses.filter((c) => required.has(c.id)).map(prefix));
+  const affinePrefixes = new Set(path.affine);
+  const generalCourses = new Set(path.general);
+  const inPath = (c: Course) =>
+    required.has(c.id) ||
+    mainPrefixes.has(prefix(c)) ||
+    affinePrefixes.has(prefix(c)) ||
+    minorCourses.has(c.id) ||
+    (extras?.premed?.enrolled && premedCourses.has(c.id)) ||
+    generalCourses.has(c.id);
 
   // perché non ci si può iscrivere (null = si può)
   function blocked(c: Course): string | null {
@@ -374,7 +408,9 @@ function Registration({
 
   const departments = [...new Set(catalog.courses.map((c) => c.department))].sort();
   const q = query.trim().toLowerCase();
-  const shown = catalog.courses.filter((c) => (!dept || c.department === dept) && (!q || `${c.code} ${c.name}`.toLowerCase().includes(q)));
+  const shown = catalog.courses.filter(
+    (c) => (!dept || (dept === "percorso" ? inPath(c) : c.department === dept)) && (!q || `${c.code} ${c.name}`.toLowerCase().includes(q)),
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -457,7 +493,8 @@ function Registration({
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cerca un corso…" aria-label="Cerca un corso" className="h-9 w-full rounded-lg border border-input bg-night/40 pr-2 pl-8 text-sm outline-none focus-visible:border-ring" />
           </label>
           <select value={dept} onChange={(e) => setDept(e.target.value)} aria-label="Dipartimento" className="h-9 rounded-lg border border-input bg-night/40 px-2 text-sm outline-none">
-            <option value="">Tutti i dipartimenti</option>
+            <option value="percorso">Il mio percorso</option>
+            <option value="">Tutti i corsi</option>
             {departments.map((d) => (
               <option key={d} value={d}>
                 {d}
@@ -478,6 +515,13 @@ function Registration({
                     {majorDepts.has(c.department) && extras && extras.major_bonus > 0 && (
                       <span className="ml-1.5 rounded bg-mint/20 px-1 text-[0.65rem] text-mint uppercase">Major +{extras.major_bonus}</span>
                     )}
+                    {!required.has(c.id) && mainPrefixes.has(prefix(c)) && (
+                      <span className="ml-1.5 rounded bg-sand/15 px-1 text-[0.65rem] text-sand uppercase">Major</span>
+                    )}
+                    {!mainPrefixes.has(prefix(c)) && affinePrefixes.has(prefix(c)) && (
+                      <span className="ml-1.5 rounded bg-orchid/20 px-1 text-[0.65rem] text-orchid uppercase">Affine</span>
+                    )}
+                    {generalCourses.has(c.id) && <span className="ml-1.5 rounded bg-white/10 px-1 text-[0.65rem] text-muted-foreground uppercase">Base</span>}
                     {minorCourses.has(c.id) && <span className="ml-1.5 rounded bg-lavender/20 px-1 text-[0.65rem] text-lavender uppercase">Minor</span>}
                     {premedCourses.has(c.id) && <span className="ml-1.5 rounded bg-peach/20 px-1 text-[0.65rem] text-peach uppercase">Pre-Med</span>}
                   </span>

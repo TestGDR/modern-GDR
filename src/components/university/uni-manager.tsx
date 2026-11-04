@@ -622,14 +622,17 @@ function Majors() {
   const { supabase, courses, load: loadCourses } = useCatalog();
   const [majors, setMajors] = useState<{ id: string; name: string }[]>([]);
   const [req, setReq] = useState<{ major_id: string; course_id: string }[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
-    const [m, r] = await Promise.all([
+    const [m, r, sj] = await Promise.all([
       supabase.from("sheet_options").select("id, name").eq("kind", "indirizzo").eq("active", true).order("sort_order"),
       supabase.from("major_required_courses").select("major_id, course_id"),
+      supabase.from("major_subjects").select("major_id, prefix, kind").order("prefix"),
     ]);
     setMajors((m.data ?? []) as { id: string; name: string }[]);
     setReq((r.data ?? []) as { major_id: string; course_id: string }[]);
+    setSubjects((sj.data ?? []) as Subject[]);
   }, [supabase]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- lettura all'apertura
@@ -649,21 +652,70 @@ function Majors() {
     if (e) setError(e.message);
     load();
   }
+  async function addSubject(major: string, prefix: string, kind: Subject["kind"]) {
+    setError(null);
+    const { error: e } = await supabase.from("major_subjects").upsert({ major_id: major, prefix, kind });
+    if (e) setError(e.message);
+    load();
+  }
+  async function removeSubject(major: string, prefix: string) {
+    setError(null);
+    const { error: e } = await supabase.from("major_subjects").delete().eq("major_id", major).eq("prefix", prefix);
+    if (e) setError(e.message);
+    load();
+  }
 
   if (!courses) return <p className="text-sm text-muted-foreground">Carico…</p>;
   const byId = new Map(courses.map((c) => [c.id, c]));
+  // sigle dei corsi (CS, BIO…) con quanti corsi attivi ha ognuna
+  const prefixes = new Map<string, number>();
+  for (const c of courses) if (c.active) prefixes.set(c.code.split(" ")[0], (prefixes.get(c.code.split(" ")[0]) ?? 0) + 1);
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">
-        Gli indirizzi sono quelli della scheda (Gestione → Elenchi della scheda). Per laurearsi servono i crediti, il GPA minimo e tutti questi corsi con almeno C−. Mettete anche i prerequisiti dei corsi obbligatori, così nessuno resta bloccato.
+        Gli indirizzi sono quelli della scheda (Gestione → Elenchi della scheda). Per laurearsi servono i crediti, il GPA minimo e tutti i corsi obbligatori con almeno C−. Mettete anche i prerequisiti dei corsi obbligatori, così nessuno resta bloccato.
+        Le <strong>materie principali</strong> sono le sigle del Major, le <strong>affini</strong> quelle di altre materie che hanno senso per lui: l&apos;iscrizione automatica sceglie
+        nell&apos;ordine obbligatori, principali, Minor e Pre-Med, affini e corsi di base, e mai altro. Il giocatore può comunque scegliere qualsiasi corso a mano.
       </p>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <PreMedCourses courses={courses} />
+      <CourseListEditor
+        courses={courses}
+        table="general_courses"
+        title="Corsi di base"
+        className="border-mint/30"
+        titleClass="text-mint"
+        text="Corsi aperti a tutti i Major (metodo di studio, scrittura, educazione fisica): l'iscrizione automatica li usa per ultimi, per arrivare ai crediti minimi."
+      />
+      <CourseListEditor
+        courses={courses}
+        table="premed_courses"
+        title="Percorso Pre-Med"
+        className="border-peach/30"
+        titleClass="text-peach"
+        text="Non è un Major: lo segue chi vuole entrare a medicina, con qualsiasi indirizzo (pulsante nella pagina Università). Chi lo segue ha il bonus del Major nei corsi di Scienze biomediche; con tutti questi corsi superati (almeno C−) alla laurea la pagella dice «Pre-Med completato»."
+      />
       {majors.map((m) => {
         const mine = req.filter((r) => r.major_id === m.id).map((r) => byId.get(r.course_id)).filter((c): c is Course => !!c).sort((a, b) => a.level - b.level || a.code.localeCompare(b.code));
         return (
           <section key={m.id} className="glass flex flex-col gap-2 rounded-2xl p-3">
             <h3 className="font-heading text-xl tracking-wide">{m.name}</h3>
+            <SubjectsRow
+              label="Materie principali"
+              kind="principale"
+              mine={subjects.filter((x) => x.major_id === m.id)}
+              prefixes={prefixes}
+              onAdd={(p) => addSubject(m.id, p, "principale")}
+              onRemove={(p) => removeSubject(m.id, p)}
+            />
+            <SubjectsRow
+              label="Materie affini"
+              kind="affine"
+              mine={subjects.filter((x) => x.major_id === m.id)}
+              prefixes={prefixes}
+              onAdd={(p) => addSubject(m.id, p, "affine")}
+              onRemove={(p) => removeSubject(m.id, p)}
+            />
+            <span className="text-xs text-muted-foreground">Corsi obbligatori</span>
             <div className="flex flex-wrap gap-1.5 text-xs">
               {mine.length === 0 && <span className="text-muted-foreground">Nessun corso obbligatorio.</span>}
               {mine.map((c) => (
@@ -692,17 +744,81 @@ function Majors() {
   );
 }
 
-/* ------------------------------ Percorso Pre-Med ------------------------------ */
+type Subject = { major_id: string; prefix: string; kind: "principale" | "affine" };
 
-/** Corsi richiesti dalle scuole di medicina: si seguono con qualsiasi Major */
-function PreMedCourses({ courses }: { courses: Course[] }) {
+/** Sigle principali o affini di un Major: si aggiungono dall'elenco delle sigle dei corsi */
+function SubjectsRow({
+  label,
+  kind,
+  mine,
+  prefixes,
+  onAdd,
+  onRemove,
+}: {
+  label: string;
+  kind: Subject["kind"];
+  mine: Subject[];
+  prefixes: Map<string, number>;
+  onAdd: (prefix: string) => void;
+  onRemove: (prefix: string) => void;
+}) {
+  const list = mine.filter((x) => x.kind === kind);
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-xs">
+      <span className={cn("w-32 shrink-0", kind === "principale" ? "text-mint" : "text-lavender")}>{label}</span>
+      {list.length === 0 && <span className="text-muted-foreground">{kind === "principale" ? "Nessuna: valgono le sigle dei corsi obbligatori." : "Nessuna."}</span>}
+      {list.map((x) => (
+        <span
+          key={x.prefix}
+          className={cn("flex items-center gap-1 rounded-full py-0.5 pr-1 pl-2.5", kind === "principale" ? "bg-mint/15" : "bg-lavender/15")}
+          title={`${prefixes.get(x.prefix) ?? 0} corsi`}
+        >
+          {x.prefix}
+          <button type="button" onClick={() => onRemove(x.prefix)} className="rounded-full p-0.5 hover:bg-destructive/30" aria-label={`Togli ${x.prefix}`}>
+            <X className="size-3" />
+          </button>
+        </span>
+      ))}
+      <select value="" onChange={(e) => e.target.value && onAdd(e.target.value)} className="h-7 rounded-full border border-input bg-night/40 px-2" aria-label={`Aggiungi: ${label}`}>
+        <option value="">+ sigla…</option>
+        {[...prefixes.entries()]
+          .filter(([p]) => !mine.some((x) => x.prefix === p))
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([p, n]) => (
+            <option key={p} value={p}>
+              {p} ({n} corsi)
+            </option>
+          ))}
+      </select>
+    </div>
+  );
+}
+
+/* ------------------------------ Elenchi di corsi (base, Pre-Med) ------------------------------ */
+
+/** Elenco di corsi con ordine: corsi di base per tutti o percorso Pre-Med */
+function CourseListEditor({
+  courses,
+  table,
+  title,
+  text,
+  className,
+  titleClass,
+}: {
+  courses: Course[];
+  table: "general_courses" | "premed_courses";
+  title: string;
+  text: string;
+  className: string;
+  titleClass: string;
+}) {
   const supabase = useMemo(() => createClient(), []);
   const [list, setList] = useState<{ course_id: string; sort_order: number }[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
-    const { data } = await supabase.from("premed_courses").select("course_id, sort_order").order("sort_order");
+    const { data } = await supabase.from(table).select("course_id, sort_order").order("sort_order");
     setList((data ?? []) as { course_id: string; sort_order: number }[]);
-  }, [supabase]);
+  }, [supabase, table]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- lettura all'apertura
     load();
@@ -711,13 +827,13 @@ function PreMedCourses({ courses }: { courses: Course[] }) {
   async function add(course: string) {
     setError(null);
     const next = Math.max(0, ...(list ?? []).map((x) => x.sort_order)) + 1;
-    const { error: e } = await supabase.from("premed_courses").insert({ course_id: course, sort_order: next });
+    const { error: e } = await supabase.from(table).insert({ course_id: course, sort_order: next });
     if (e) setError(e.message);
     load();
   }
   async function remove(course: string) {
     setError(null);
-    const { error: e } = await supabase.from("premed_courses").delete().eq("course_id", course);
+    const { error: e } = await supabase.from(table).delete().eq("course_id", course);
     if (e) setError(e.message);
     load();
   }
@@ -726,24 +842,21 @@ function PreMedCourses({ courses }: { courses: Course[] }) {
   const byId = new Map(courses.map((c) => [c.id, c]));
   const mine = list.map((x) => byId.get(x.course_id)).filter((c): c is Course => !!c);
   return (
-    <section className="glass flex flex-col gap-2 rounded-2xl border border-peach/30 p-3">
-      <h3 className="font-heading text-xl tracking-wide text-peach">Percorso Pre-Med</h3>
-      <p className="text-xs text-muted-foreground">
-        Non è un Major: lo segue chi vuole entrare a medicina, con qualsiasi indirizzo (pulsante nella pagina Università). Chi lo segue ha il bonus del Major nei corsi di
-        Scienze biomediche; con tutti questi corsi superati (almeno C−) alla laurea la pagella dice «Pre-Med completato».
-      </p>
+    <section className={cn("glass flex flex-col gap-2 rounded-2xl border p-3", className)}>
+      <h3 className={cn("font-heading text-xl tracking-wide", titleClass)}>{title}</h3>
+      <p className="text-xs text-muted-foreground">{text}</p>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex flex-wrap gap-1.5 text-xs">
-        {mine.length === 0 && <span className="text-muted-foreground">Nessun corso nel percorso.</span>}
+        {mine.length === 0 && <span className="text-muted-foreground">Nessun corso.</span>}
         {mine.map((c) => (
           <span key={c.id} className="flex items-center gap-1 rounded-full bg-white/10 py-0.5 pr-1 pl-2.5" title={c.name}>
             {c.code}
-            <button type="button" onClick={() => remove(c.id)} className="rounded-full p-0.5 hover:bg-destructive/30" aria-label={`Togli ${c.code} dal Pre-Med`}>
+            <button type="button" onClick={() => remove(c.id)} className="rounded-full p-0.5 hover:bg-destructive/30" aria-label={`Togli ${c.code}`}>
               <X className="size-3" />
             </button>
           </span>
         ))}
-        <select value="" onChange={(e) => e.target.value && add(e.target.value)} className="h-7 rounded-full border border-input bg-night/40 px-2" aria-label="Aggiungi un corso al Pre-Med">
+        <select value="" onChange={(e) => e.target.value && add(e.target.value)} className="h-7 rounded-full border border-input bg-night/40 px-2" aria-label={`Aggiungi un corso: ${title}`}>
           <option value="">+ corso…</option>
           {courses
             .filter((c) => c.active && !mine.some((x) => x.id === c.id))
