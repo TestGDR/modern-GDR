@@ -590,27 +590,31 @@ function RosterTab({ sport, lookup }: { sport: Sport; lookup: Lookup }) {
       {rows.map((r) => (
         <div key={r.id} className="glass flex flex-col gap-1.5 rounded-xl p-2.5 text-xs">
           <p className="text-sm font-medium">{r.characters?.name}</p>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <select className={cn(inputClass, "h-7 w-36")} value={r.position_id ?? ""} disabled={busy} onChange={(e) => update(r.id, { position_id: e.target.value || null })}>
-              {positions.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <select className={cn(inputClass, "h-7 w-28")} value={r.squad_status} disabled={busy} onChange={(e) => update(r.id, { squad_status: e.target.value as SportRosterEntry["squad_status"] })}>
-              {(Object.keys(SQUAD_LABEL) as SportRosterEntry["squad_status"][]).map((k) => (
-                <option key={k} value={k}>
-                  {SQUAD_LABEL[k]}
-                </option>
-              ))}
-            </select>
-            <label className="flex items-center gap-1">
-              <input type="checkbox" checked={r.scholarship} disabled={busy} onChange={(e) => update(r.id, { scholarship: e.target.checked })} /> Borsa
+          {/* ogni menu con la sua etichetta sopra, larghi abbastanza da leggere tutto */}
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-0.5">
+              <span className="text-[0.65rem] text-muted-foreground uppercase">Ruolo</span>
+              <select className={cn(inputClass, "h-8 w-48")} value={r.position_id ?? ""} disabled={busy} onChange={(e) => update(r.id, { position_id: e.target.value || null })}>
+                {positions.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
             </label>
-            <label className="flex items-center gap-1">
-              Allenamenti in chat
-              <select className={cn(inputClass, "h-7 w-14")} value={r.training_bonus} disabled={busy} onChange={(e) => update(r.id, { training_bonus: Number(e.target.value) })}>
+            <label className="flex flex-col gap-0.5">
+              <span className="text-[0.65rem] text-muted-foreground uppercase">Stato (qui il Capitano)</span>
+              <select className={cn(inputClass, "h-8 w-40")} value={r.squad_status} disabled={busy} onChange={(e) => update(r.id, { squad_status: e.target.value as SportRosterEntry["squad_status"] })}>
+                {(Object.keys(SQUAD_LABEL) as SportRosterEntry["squad_status"][]).map((k) => (
+                  <option key={k} value={k}>
+                    {SQUAD_LABEL[k]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-0.5">
+              <span className="text-[0.65rem] text-muted-foreground uppercase">Allenamenti in chat</span>
+              <select className={cn(inputClass, "h-8 w-20")} value={r.training_bonus} disabled={busy} onChange={(e) => update(r.id, { training_bonus: Number(e.target.value) })}>
                 {[0, 1, 2].map((n) => (
                   <option key={n} value={n}>
                     +{n}
@@ -618,11 +622,17 @@ function RosterTab({ sport, lookup }: { sport: Sport; lookup: Lookup }) {
                 ))}
               </select>
             </label>
-            <select className={cn(inputClass, "h-7 w-36")} value={r.eligibility_override} disabled={busy} onChange={(e) => update(r.id, { eligibility_override: e.target.value as SportRosterEntry["eligibility_override"] })}>
-              <option value="auto">Eleggibilità automatica</option>
-              <option value="eligible">Forza eleggibile</option>
-              <option value="ineligible">Forza ineleggibile</option>
-            </select>
+            <label className="flex flex-col gap-0.5">
+              <span className="text-[0.65rem] text-muted-foreground uppercase">Eleggibilità</span>
+              <select className={cn(inputClass, "h-8 w-52")} value={r.eligibility_override} disabled={busy} onChange={(e) => update(r.id, { eligibility_override: e.target.value as SportRosterEntry["eligibility_override"] })}>
+                <option value="auto">Automatica (dai voti)</option>
+                <option value="eligible">Forza eleggibile</option>
+                <option value="ineligible">Forza ineleggibile</option>
+              </select>
+            </label>
+            <label className="flex h-8 items-center gap-1.5">
+              <input type="checkbox" checked={r.scholarship} disabled={busy} onChange={(e) => update(r.id, { scholarship: e.target.checked })} /> Borsa sportiva
+            </label>
             <Button
               type="button"
               size="xs"
@@ -636,17 +646,18 @@ function RosterTab({ sport, lookup }: { sport: Sport; lookup: Lookup }) {
             >
               <Trash2 /> Togli
             </Button>
-            <label className="flex items-center gap-1">
-              Infortunio (eventi)
-              <input
-                type="number"
-                min={0}
-                className={cn(inputClass, "h-7 w-16")}
-                defaultValue={r.injury_events_left >= 999 ? 999 : r.injury_events_left}
-                onBlur={(e) => Number(e.target.value) !== r.injury_events_left && update(r.id, { injury_events_left: Math.max(0, Number(e.target.value)) })}
-              />
-            </label>
           </div>
+          <label className="flex items-center gap-1.5">
+            Infortunio: fuori per
+            <input
+              type="number"
+              min={0}
+              className={cn(inputClass, "h-7 w-16")}
+              defaultValue={r.injury_events_left >= 999 ? 999 : r.injury_events_left}
+              onBlur={(e) => Number(e.target.value) !== r.injury_events_left && update(r.id, { injury_events_left: Math.max(0, Number(e.target.value)) })}
+            />
+            eventi
+          </label>
           {r.pending_position_id && (
             <p className="flex flex-wrap items-center gap-2 text-peach">
               Chiede di passare a {r.pending_sport_id ? lookup.sports.find((s) => s.id === r.pending_sport_id)?.name : sport.name} ·{" "}
