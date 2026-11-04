@@ -14,8 +14,11 @@ import { cn } from "@/lib/utils";
 // I tiri li fa il database (sport_callup_roll); chi non tira viene simulato.
 
 type CallupRoll = { total: number; cd: number; grade: number; crit: "none" | "success" | "failure" } | null;
+/** Discorso del capitano di una gara */
+type Morale = { event_id: string; success: boolean; total: number; cd: number; auto: boolean };
 type EventInfo = {
   id: string;
+  sport_id: string;
   starts_at: string;
   status: string;
   venue: "home" | "away" | "neutral";
@@ -42,7 +45,7 @@ function opponents(ev: EventInfo) {
   return names.length > 2 ? `${names.length} università` : names.join(", ");
 }
 
-const EVENT_SELECT = "id, starts_at, status, venue, sport:sports(name, icon), teams:sport_event_teams(team:sport_teams(name, is_player_school))";
+const EVENT_SELECT = "id, sport_id, starts_at, status, venue, sport:sports(name, icon), teams:sport_event_teams(team:sport_teams(name, is_player_school))";
 
 /* ------------------------------ Giocatore: le mie convocazioni ------------------------------ */
 
@@ -53,19 +56,29 @@ export function MyCallups({ characterId, onRolled }: { characterId: string; onRo
   const [error, setError] = useState<string | null>(null);
   // spinta scelta per ogni gara (normale se non si sceglie)
   const [push, setPush] = useState<Record<string, Push>>({});
+  // sport in cui sono capitano e discorsi già fatti
+  const [captainOf, setCaptainOf] = useState<Set<string>>(new Set());
+  const [morale, setMorale] = useState<Record<string, Morale>>({});
 
   const load = useCallback(async () => {
-    const { data } = await supabase
-      .from("sport_callups")
-      .select(`roll, event:sport_events(${EVENT_SELECT})`)
-      .eq("character_id", characterId)
-      .overrideTypes<{ roll: CallupRoll; event: EventInfo | null }[], { merge: false }>();
-    setItems(
-      (data ?? [])
-        .filter((x) => x.event && x.event.status === "scheduled")
-        .map((x) => ({ event: x.event!, roll: x.roll }))
-        .sort((a, b) => a.event.starts_at.localeCompare(b.event.starts_at)),
-    );
+    const [{ data }, { data: mine }] = await Promise.all([
+      supabase
+        .from("sport_callups")
+        .select(`roll, event:sport_events(${EVENT_SELECT})`)
+        .eq("character_id", characterId)
+        .overrideTypes<{ roll: CallupRoll; event: EventInfo | null }[], { merge: false }>(),
+      supabase.from("sport_roster").select("sport_id, squad_status").eq("character_id", characterId).is("left_at", null),
+    ]);
+    const list = (data ?? [])
+      .filter((x) => x.event && x.event.status === "scheduled")
+      .map((x) => ({ event: x.event!, roll: x.roll }))
+      .sort((a, b) => a.event.starts_at.localeCompare(b.event.starts_at));
+    setCaptainOf(new Set(((mine ?? []) as { sport_id: string; squad_status: string }[]).filter((r) => r.squad_status === "captain").map((r) => r.sport_id)));
+    if (list.length) {
+      const { data: mo } = await supabase.from("sport_morale").select("event_id, success, total, cd, auto").in("event_id", list.map((x) => x.event.id));
+      setMorale(Object.fromEntries(((mo ?? []) as Morale[]).map((m) => [m.event_id, m])));
+    }
+    setItems(list);
   }, [supabase, characterId]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- lettura all'apertura
@@ -82,6 +95,15 @@ export function MyCallups({ characterId, onRolled }: { characterId: string; onRo
     if (e) setError(e.message);
     await load();
     onRolled?.();
+  }
+
+  async function speech(eventId: string) {
+    setBusy(eventId);
+    setError(null);
+    const { error: e } = await supabase.rpc("sport_captain_speech", { p_event: eventId, p_character: characterId });
+    setBusy(null);
+    if (e) setError(e.message);
+    await load();
   }
 
   if (!items || items.length === 0) return null;
@@ -121,15 +143,51 @@ export function MyCallups({ characterId, onRolled }: { characterId: string; onRo
               ) : (
                 <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-muted-foreground">Tempo scaduto: la tua gara verrà simulata</span>
               )}
+              <MoraleLine
+                morale={morale[ev.id] ?? null}
+                captain={captainOf.has(ev.sport_id)}
+                open={open}
+                busy={busy === ev.id}
+                onSpeech={() => speech(ev.id)}
+              />
             </li>
           );
         })}
       </ul>
       <p className="text-xs text-muted-foreground">
-        «Gareggia» fa il tuo tiro della gara (caratteristica + abilità del ruolo + d10 + modificatori), una volta sola. Prima scegli la spinta: prudente −1 senza infortuni, normale, al massimo +1 con più rischio di infortunio (poche volte a stagione, mai in due gare di fila). Il risultato della squadra arriva quando lo staff
+        «Gareggia» fa il tuo tiro della gara (caratteristica + abilità del ruolo + d10 + modificatori), una volta sola. Prima scegli la spinta: prudente −1 senza infortuni, normale, al massimo +1 con più rischio di infortunio (poche volte a stagione, mai in due gare di fila). Il capitano può fare anche il «Discorso pre-partita»: se riesce, +1 a tutti i personaggi della squadra, anche a chi ha già tirato. Il risultato della squadra arriva quando lo staff
         simula e pubblica la gara.
       </p>
     </section>
+  );
+}
+
+/** Morale della squadra per una gara: il capitano fa il discorso, gli altri vedono com'è andata */
+function MoraleLine({ morale, captain, open, busy, onSpeech }: { morale: Morale | null; captain: boolean; open: boolean; busy: boolean; onSpeech: () => void }) {
+  if (morale) {
+    return (
+      <span className={cn("w-full rounded-lg px-2.5 py-1 text-xs", morale.success ? "bg-sand/15 text-sand" : "bg-white/5 text-muted-foreground")}>
+        📢 {captain ? "Il tuo discorso" : "Discorso del capitano"}: {morale.total} contro {morale.cd} ·{" "}
+        {morale.success ? "morale alto, +1 a tutta la squadra" : "morale nella norma, niente bonus"}
+      </span>
+    );
+  }
+  if (captain && open) {
+    return (
+      <span className="flex w-full flex-wrap items-center gap-2 rounded-lg bg-sand/10 px-2.5 py-1.5 text-xs">
+        <span className="min-w-0 flex-1 text-muted-foreground">
+          Sei il capitano: il tuo discorso (CAR + Leadership + d10) può dare +1 a tutta la squadra in questa gara.
+        </span>
+        <Button type="button" size="xs" variant="secondary" className="rounded-full" disabled={busy} onClick={onSpeech}>
+          {busy ? <Loader2 className="animate-spin" /> : <Megaphone />} Discorso pre-partita
+        </Button>
+      </span>
+    );
+  }
+  return (
+    <span className="w-full text-xs text-muted-foreground">
+      📢 {captain ? "Discorso non fatto: verrà tirato alla simulazione." : "Il capitano non ha ancora fatto il discorso pre-partita."}
+    </span>
   );
 }
 

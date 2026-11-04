@@ -174,7 +174,7 @@ type RollRow = {
   contribution: number;
   highlight: boolean;
   injury: { events: number } | null;
-  modifiers: { voci?: { name: string; value: number }[]; totale?: number; ruolo?: string; tiri?: RollPart[] };
+  modifiers: { voci?: { name: string; value: number }[]; totale?: number; ruolo?: string; tiri?: RollPart[]; morale?: number };
   characters: { name: string } | null;
 };
 
@@ -480,9 +480,10 @@ function EventDetail({ event, sport, teams, lookup, onChange }: { event: SportEv
               ) : (
                 <>
                   d10 {r.d10}
-                  {r.extra_d10 !== null && ` [${r.crit_type === "success" ? "+" : "−"}${r.extra_d10}]`} + mod {r.modifiers.totale ?? 0} = {r.total}
+                  {r.extra_d10 !== null && ` [${r.crit_type === "success" ? "+" : "−"}${r.extra_d10}]`} + mod {r.modifiers.totale ?? 0} = {r.total - (r.modifiers.morale ?? 0)}
                 </>
-              )}{" "}
+              )}
+              {r.modifiers.morale ? ` + ${r.modifiers.morale} morale = ${r.total}` : ""}{" "}
               vs CD {r.cd} · voto {r.grade} · contributo {r.contribution > 0 ? "+" : ""}
               {r.contribution}
               {r.highlight && " · ⭐"}
