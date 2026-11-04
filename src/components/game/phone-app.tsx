@@ -111,7 +111,12 @@ function MessageBody({ body, mode }: { body: string; mode: string }) {
           <img src={src} alt="Foto" loading="lazy" referrerPolicy="no-referrer" className="max-h-72 w-auto max-w-full rounded-xl object-contain" />
         </a>
       ))}
-      {text && <p className="break-words whitespace-pre-line">{mode === "testo" ? text : <FormattedText text={text} />}</p>}
+      {/* nel telefono il parlato tra < > è rosa (in chat resta il colore scelto nelle impostazioni) */}
+      {text && (
+        <p className="break-words whitespace-pre-line" style={{ "--chat-speech": "var(--flamingo)" } as React.CSSProperties}>
+          {mode === "testo" ? text : <FormattedText text={text} />}
+        </p>
+      )}
     </>
   );
 }
