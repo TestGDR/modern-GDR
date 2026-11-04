@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, CircleAlert, Loader2, Pencil, Send } from "lucide-react";
 import { OptionChoice } from "@/components/creation/option-choice";
 import { FameCreation } from "@/components/fame/fame-creation";
+import { RichEditor } from "@/components/guide/rich-editor";
 import { SheetFrame, type SheetVariant } from "@/components/game/character-sheet-window";
 import { Button } from "@/components/ui/button";
 import { saveCreation, setCharacterSurname, submitCharacter, type CreationPatch, type SaveResult } from "@/lib/actions/creation";
@@ -932,7 +933,7 @@ function StepBackground({
         </Field>
       </div>
       <Field label="Aspetto" hint="Com'è fisicamente, come si veste, segni particolari.">
-        <textarea className={area} maxLength={3000} value={state.appearance} onChange={(e) => onChange({ appearance: e.target.value })} />
+        <RichEditor value={state.appearance} onChange={(html) => onChange({ appearance: html })} minHeight="min-h-40" />
       </Field>
       <Field label="Dove vive?" hint="Al college (in dormitorio) o con i genitori? Com'è la casa, in che zona della città, con chi la divide. Obbligatorio.">
         <textarea className={cn(area, !state.residence.trim() && "border-flamingo/60")} maxLength={2000} value={state.residence} onChange={(e) => onChange({ residence: e.target.value })} />

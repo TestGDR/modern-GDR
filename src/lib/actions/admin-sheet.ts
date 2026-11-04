@@ -67,7 +67,7 @@ export type AdminSheetInput = {
   optionIds: string[];
 };
 
-const LIMITS = { bio: 5000, appearance: 3000, residence: 2000, traits: 3000, known_facts: 3000, relationships: 3000, equipment: 3000 } as const;
+const LIMITS = { bio: 5000, appearance: 20000, residence: 2000, traits: 3000, known_facts: 20000, relationships: 3000, equipment: 3000 } as const;
 const txt = (v: string, max: number) => (v.trim() ? v.trim().slice(0, max) : null);
 const idOrNull = (v: string | null) => (v && isUuid(v) ? v : null);
 

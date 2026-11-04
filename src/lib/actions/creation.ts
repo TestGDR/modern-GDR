@@ -97,7 +97,7 @@ export async function saveCreation(characterId: string, patch: CreationPatch): P
     fields.minor_id = b.minorId && b.minorId !== b.studyTrackId ? idOrNull(b.minorId) : null;
     fields.year_id = idOrNull(b.yearId);
     fields.club_id = idOrNull(b.clubId);
-    fields.appearance = text(b.appearance, 3000);
+    fields.appearance = text(b.appearance, 20000);
     fields.residence = text(b.residence, 2000);
     fields.bio = text(b.bio, 5000);
   }

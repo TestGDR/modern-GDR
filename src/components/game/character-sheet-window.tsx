@@ -31,6 +31,8 @@ import {
 } from "lucide-react";
 import { FormMessage } from "@/components/auth/auth-forms";
 import { FameSection } from "@/components/fame/fame-section";
+import { RichEditor } from "@/components/guide/rich-editor";
+import { SafeHtml } from "@/components/guide/safe-html";
 import { AffectionsSection } from "@/components/game/affections";
 import { ErrorBoundary } from "@/components/game/error-boundary";
 import { HoverTip } from "@/components/game/hover-tip";
@@ -72,18 +74,20 @@ type Section = {
   field?: TextField;
   /** Suggerimento per chi scrive la sezione */
   hint?: string;
+  /** Si scrive con l'editor (HTML) */
+  rich?: boolean;
 };
 
 const SECTIONS: Section[] = [
   { key: "principale", label: "Principale", icon: Sparkles },
   { key: "dati", label: "Dati", icon: IdCard },
   { key: "fama", label: "Fama", icon: Star },
-  { key: "si-sa-che", label: "Si sa che", icon: Eye, field: "known_facts", hint: "Voci, fatti noti, reputazione: ciò che a Miami si dice di lui o di lei." },
+  { key: "si-sa-che", label: "Si sa che", icon: Eye, field: "known_facts", rich: true, hint: "Voci, fatti noti, reputazione: ciò che a Miami si dice di lui o di lei." },
   { key: "affetti", label: "Affetti", icon: Heart },
   { key: "caratteristiche", label: "Caratteristiche", icon: Gauge },
   { key: "abilita", label: "Abilità", icon: Zap },
   { key: "tratti", label: "Tratti", icon: Fingerprint, field: "traits", hint: "Carattere: personalità, abitudini, pregi e difetti." },
-  { key: "aspetto", label: "Aspetto", icon: ScanFace, field: "appearance", hint: "Com'è fisicamente, come si veste, segni particolari." },
+  { key: "aspetto", label: "Aspetto", icon: ScanFace, field: "appearance", rich: true, hint: "Com'è fisicamente, come si veste, segni particolari." },
   { key: "storia", label: "Storia", icon: BookOpen, field: "bio", hint: "Da dove viene e cosa l'ha portato a Miami." },
   { key: "equipaggiamento", label: "Zaino", icon: Backpack, field: "equipment", hint: "Gli oggetti del Mercato: con sé (li vedono tutti) e nello zaino." },
 ];
@@ -140,7 +144,9 @@ export function CharacterSheetWindow({
   const section = SECTIONS.find((s) => s.key === view.section) ?? SECTIONS[0];
   // gli affetti si modificano direttamente nella sezione (aggiungi, sposta, dedica)
   // lo Zaino non si scrive: si riempie con gli oggetti del Mercato
-  const canEdit = isOwner && !["caratteristiche", "abilita", "affetti", "equipaggiamento"].includes(section.key);
+  // la Storia, dopo l'invio della scheda, la cambia solo l'Amministratore (lo controlla anche il database)
+  const storiaLocked = section.key === "storia" && !isAdmin && (character.status === "approvata" || character.status === "in_attesa");
+  const canEdit = isOwner && !storiaLocked && !["caratteristiche", "abilita", "affetti", "equipaggiamento"].includes(section.key);
   // l'Amministratore cambia caratteristiche e abilità dall'Amministrazione della scheda
   const staffEdit = isAdmin && (section.key === "caratteristiche" || section.key === "abilita");
 
@@ -210,7 +216,9 @@ export function CharacterSheetWindow({
                         ? "Modifica caratteristiche e abilità (Amministrazione della scheda)"
                         : section.key === "affetti"
                           ? "Gli affetti si modificano direttamente nella sezione"
-                          : "Dopo l'approvazione caratteristiche e abilità le modifica lo staff"
+                          : storiaLocked
+                            ? "La storia la modifica solo l'Amministratore"
+                            : "Dopo l'approvazione caratteristiche e abilità le modifica lo staff"
                   }
                   active={view.mode === "edit" || (staffEdit && view.mode === "admin")}
                   disabled={!canEdit && !staffEdit}
@@ -329,7 +337,7 @@ export function CharacterSheetWindow({
             </SectionFrame>
           ) : (
             <SectionFrame title={section.label}>
-              <FreeText text={section.field ? character[section.field] : null} isOwner={isOwner} />
+              <FreeText text={section.field ? character[section.field] : null} isOwner={isOwner && !storiaLocked} html={section.rich} />
             </SectionFrame>
           )}
           </ErrorBoundary>
@@ -443,7 +451,7 @@ function SectionFrame({ title, children }: { title: string; children: React.Reac
   );
 }
 
-function FreeText({ text, isOwner }: { text: string | null; isOwner: boolean }) {
+function FreeText({ text, isOwner, html }: { text: string | null; isOwner: boolean; html?: boolean }) {
   if (!text) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -451,6 +459,8 @@ function FreeText({ text, isOwner }: { text: string | null; isOwner: boolean }) 
       </p>
     );
   }
+  // testo dell'editor: HTML ripulito (i testi vecchi senza HTML restano testo semplice)
+  if (html) return <SafeHtml html={text} className="max-w-2xl text-sm leading-relaxed text-foreground/90" />;
   return <p className="max-w-2xl text-sm leading-relaxed whitespace-pre-line text-foreground/90">{text}</p>;
 }
 
@@ -1021,7 +1031,9 @@ function SectionEditor({
           </>
         )}
 
-        {section.field && (
+        {section.field && section.rich && <RichField name={section.field} label={section.label} hint={section.hint} initial={character[section.field] ?? ""} />}
+
+        {section.field && !section.rich && (
           <EditField id={section.field} label={section.label}>
             {section.hint && <p className="-mt-1 text-xs text-muted-foreground">{section.hint}</p>}
             <Textarea
@@ -1045,6 +1057,20 @@ function SectionEditor({
         </div>
       </form>
     </SectionFrame>
+  );
+}
+
+/** Campo con l'editor: il testo (HTML) va nel modulo con un campo nascosto */
+function RichField({ name, label, hint, initial }: { name: string; label: string; hint?: string; initial: string }) {
+  const [html, setHtml] = useState(initial);
+  return (
+    <div className="flex flex-col gap-2">
+      <Label>{label}</Label>
+      {hint && <p className="-mt-1 text-xs text-muted-foreground">{hint}</p>}
+      <RichEditor value={html} onChange={setHtml} minHeight="min-h-64" />
+      <input type="hidden" name={name} value={html} />
+      <p className="text-xs text-muted-foreground">{html.length.toLocaleString("it-IT")} / 20.000 caratteri</p>
+    </div>
   );
 }
 
