@@ -817,12 +817,13 @@ function ChosenOptions({ build, rules, characterId }: { build: CharacterBuild; r
     { title: "Sportive", items: chosen.filter((o) => o.scope === "sportiva") },
   ];
   return (
-    <div className="grid max-w-3xl gap-4 @lg:grid-cols-2">
+    // un gruppo per riga, a tutta larghezza; dentro, le voci affiancate
+    <div className="flex flex-col gap-5">
       {groups.map((g) =>
         g.items.length === 0 ? null : (
           <section key={g.title}>
             <h3 className="mb-2 font-heading text-lg tracking-wide text-peach">{g.title}</h3>
-            <ul className="flex flex-col gap-1.5">
+            <ul className="grid gap-2 @lg:grid-cols-2 @4xl:grid-cols-3">
               {g.items.map((o) => {
                 const d = build.optionDetails[o.id];
                 return (
