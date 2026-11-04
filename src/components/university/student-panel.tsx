@@ -385,6 +385,19 @@ function Registration({
           <span className={cn("rounded-full px-2 py-0.5 text-xs", credits >= min && credits <= max ? "bg-mint/20 text-mint" : "bg-peach/20 text-peach")}>
             {credits} crediti · full-time da {min} a {max}
           </span>
+          {credits < min && (
+            // completa da solo con i corsi del Major (obbligatori prima) fino ai crediti minimi
+            <Button
+              type="button"
+              size="xs"
+              variant="secondary"
+              className="rounded-full"
+              disabled={busy}
+              onClick={() => run("academic_auto_enroll_me", { p_character: data.character.id })}
+            >
+              <Plus /> Iscrivimi ai corsi del Major
+            </Button>
+          )}
           <label className="ml-auto flex items-center gap-2 text-xs">
             Impegno
             <select
