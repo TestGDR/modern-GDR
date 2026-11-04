@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Dumbbell, Loader2, Medal, Trophy } from "lucide-react";
 import { inputClass } from "@/components/admin/admin-ui";
 import { MyCallups } from "@/components/sport/callups";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { firstName } from "@/lib/format";
 import {
   EVENT_STATUS_LABEL,
@@ -160,7 +160,18 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
     <div className="flex flex-col gap-3">
       {error && <p className="text-sm text-destructive">{error}</p>}
       {info && <p className="text-sm text-mint">{info}</p>}
-      {mine.length === 0 && <p className="text-sm text-muted-foreground">Non fai parte di nessuna squadra. Per entrare in uno sport apri un ticket allo staff con lo sport e il ruolo che vorresti: ti inserisce lui nel roster e nel gruppo della squadra.</p>}
+      {mine.length === 0 && (
+        // senza squadra: si chiede allo staff con un ticket
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-peach/40 bg-peach/10 p-3 text-sm">
+          <p className="min-w-0 flex-1">
+            <strong className="text-peach">Non fai parte di nessuna squadra.</strong> Per entrare in uno sport apri un ticket allo staff con lo sport e il ruolo
+            che vorresti: ti inserisce lui nel roster e nel gruppo della squadra.
+          </p>
+          <Link href="/ticket" className={cn(buttonVariants({ size: "sm" }), "rounded-full")}>
+            Apri un ticket
+          </Link>
+        </div>
+      )}
       {mine.map((m) => (
         <section key={m.roster_id} className="glass flex flex-col gap-2 rounded-2xl p-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
