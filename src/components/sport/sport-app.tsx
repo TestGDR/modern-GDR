@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Dumbbell, Loader2, LogOut, Medal, Trophy } from "lucide-react";
+import { Dumbbell, Loader2, Medal, Trophy } from "lucide-react";
 import { inputClass } from "@/components/admin/admin-ui";
 import { MyCallups } from "@/components/sport/callups";
 import { Button } from "@/components/ui/button";
@@ -114,7 +114,6 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: string; catalog: Catalog; mine: MySport[]; onChange: () => void }) {
   const supabase = useMemo(() => createClient(), []);
   const [sportId, setSportId] = useState("");
-  const [positionId, setPositionId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -253,18 +252,6 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
               />
               Redshirt quest&apos;anno
             </label>
-            <Button
-              type="button"
-              size="xs"
-              variant="ghost"
-              className="ml-auto"
-              disabled={busy}
-              onClick={() => {
-                if (window.confirm(`Lasciare ${m.sport}? Esci dal roster e dal gruppo; lo storico resta.`)) call("sport_leave", { p_character: characterId, p_sport: m.sport_id }, "Hai lasciato la squadra.");
-              }}
-            >
-              <LogOut /> Lascia
-            </Button>
           </div>
           <p className="text-[0.7rem] text-muted-foreground">
             Leggera: −1 ai tiri sportivi ma +1 agli esami · Normale · Intensa: +1 ai tiri sportivi ma −1 agli esami. Vale per tutta la stagione: intensità e Redshirt si scelgono prima del primo evento.
@@ -272,58 +259,33 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
         </section>
       ))}
 
-      <section className="glass flex flex-col gap-2 rounded-2xl p-3">
-        <h2 className="font-heading text-xl tracking-wide text-peach">{mine.length ? "Cambia o aggiungi uno sport" : "Scegli uno sport"}</h2>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <select
-            className={inputClass}
-            value={sportId}
-            onChange={(e) => {
-              setSportId(e.target.value);
-              setPositionId("");
-            }}
-          >
-            <option value="">Sport…</option>
-            {catalog.sports.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.icon} {s.name} ({SEASON_LABEL[s.season]})
-              </option>
-            ))}
-          </select>
-          <select className={inputClass} value={positionId} onChange={(e) => setPositionId(e.target.value)} disabled={!sportId}>
-            <option value="">Ruolo…</option>
+      <section className="glass flex flex-col gap-1 rounded-2xl p-3 text-sm">
+        <h2 className="font-heading text-xl tracking-wide text-peach">{mine.length ? "Cambiare squadra o ruolo" : "Entrare in una squadra"}</h2>
+        <p className="text-muted-foreground">
+          Le squadre le assegna lo staff, come i gruppi: per entrare, cambiare ruolo o lasciare la squadra apri un ticket. Qui sotto i ruoli di ogni sport con i loro tiri.
+        </p>
+        <select className={cn(inputClass, "mt-1 sm:max-w-xs")} value={sportId} onChange={(e) => setSportId(e.target.value)} aria-label="Sport">
+          <option value="">Vedi i ruoli di uno sport…</option>
+          {catalog.sports.map((sp) => (
+            <option key={sp.id} value={sp.id}>
+              {sp.icon} {sp.name}
+            </option>
+          ))}
+        </select>
+        {positions.length > 0 && (
+          <ul className="flex flex-col gap-1 text-xs">
             {positions.map((p) => {
               const free = p.max_slots === null ? null : Math.max(0, p.max_slots - (catalog.taken[p.id] ?? 0));
               return (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                  {free === null ? "" : free > 0 ? ` · ${free} posti da titolare` : " · entri come riserva"}
-                </option>
+                <li key={p.id} className="rounded-lg bg-white/5 px-2.5 py-1.5">
+                  <strong className="font-medium">{p.name}</strong>
+                  <span className="text-muted-foreground"> · {positionRollText(p)}</span>
+                  <span className="text-muted-foreground"> · {free === null ? "posti illimitati" : free > 0 ? `${free} posti da titolare liberi` : "titolari al completo"}</span>
+                </li>
               );
             })}
-          </select>
-        </div>
-        {sportId && <p className="text-xs text-muted-foreground">{catalog.sports.find((s) => s.id === sportId)?.description}</p>}
-        {positionId && (
-          <p className="text-xs text-muted-foreground">
-            Tiro del ruolo: {(() => {
-              const p = positions.find((x) => x.id === positionId);
-              return p ? positionRollText(p) : "—";
-            })()}
-          </p>
+          </ul>
         )}
-        <Button
-          type="button"
-          size="sm"
-          className="self-start rounded-full"
-          disabled={!sportId || !positionId || busy}
-          onClick={() => call("sport_join", { p_character: characterId, p_sport: sportId, p_position: positionId }, "Sei in squadra!")}
-        >
-          Entra in squadra
-        </Button>
-        <p className="text-[0.7rem] text-muted-foreground">
-          Uno sport per volta. Cambiare sport o ruolo a stagione in corso va approvato dal Master.
-        </p>
       </section>
     </div>
   );

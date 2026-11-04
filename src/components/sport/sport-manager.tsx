@@ -584,8 +584,9 @@ function RosterTab({ sport, lookup }: { sport: Sport; lookup: Lookup }) {
 
   return (
     <div className="flex flex-col gap-2">
+      <AddAthlete sport={sport} positions={positions} busy={busy} act={act} />
       {error && <p className="text-sm text-destructive">{error}</p>}
-      {rows.length === 0 && <p className="text-sm text-muted-foreground">Nessun atleta. I giocatori entrano da soli dalla pagina Sport.</p>}
+      {rows.length === 0 && <p className="text-sm text-muted-foreground">Nessun atleta: aggiungili qui sopra.</p>}
       {rows.map((r) => (
         <div key={r.id} className="glass flex flex-col gap-1.5 rounded-xl p-2.5 text-xs">
           <p className="text-sm font-medium">{r.characters?.name}</p>
@@ -622,6 +623,19 @@ function RosterTab({ sport, lookup }: { sport: Sport; lookup: Lookup }) {
               <option value="eligible">Forza eleggibile</option>
               <option value="ineligible">Forza ineleggibile</option>
             </select>
+            <Button
+              type="button"
+              size="xs"
+              variant="ghost"
+              className="ml-auto text-destructive"
+              disabled={busy}
+              onClick={() =>
+                window.confirm(`Togliere ${r.characters?.name ?? "questo atleta"} dalla squadra di ${sport.name}? Esce dal roster e dal gruppo; lo storico delle gare resta.`) &&
+                act(() => supabase.rpc("sport_staff_remove", { p_character: r.character_id, p_sport: sport.id }))
+              }
+            >
+              <Trash2 /> Togli
+            </Button>
             <label className="flex items-center gap-1">
               Infortunio (eventi)
               <input
@@ -648,6 +662,80 @@ function RosterTab({ sport, lookup }: { sport: Sport; lookup: Lookup }) {
         </div>
       ))}
       <p className="text-[0.7rem] text-muted-foreground">999 eventi = fuori fino a fine stagione. Un solo capitano per squadra.</p>
+    </div>
+  );
+}
+
+/** Lo staff mette un personaggio in squadra (se era in un'altra squadra la lascia) */
+function AddAthlete({
+  sport,
+  positions,
+  busy,
+  act,
+}: {
+  sport: Sport;
+  positions: SportPosition[];
+  busy: boolean;
+  act: (run: () => PromiseLike<{ error: { message: string } | null }>) => Promise<boolean>;
+}) {
+  const supabase = useMemo(() => createClient(), []);
+  const [people, setPeople] = useState<{ id: string; name: string; team: string | null }[]>([]);
+  const [who, setWho] = useState("");
+  const [pos, setPos] = useState("");
+  useEffect(() => {
+    let alive = true;
+    Promise.all([
+      supabase.from("characters").select("id, name").eq("status", "approvata").order("name"),
+      supabase.from("sport_roster").select("character_id, sports(name)").is("left_at", null),
+    ]).then(([c, r]) => {
+      if (!alive) return;
+      const team = new Map(((r.data ?? []) as unknown as { character_id: string; sports: { name: string } | null }[]).map((x) => [x.character_id, x.sports?.name ?? null]));
+      setPeople(((c.data ?? []) as { id: string; name: string }[]).map((x) => ({ ...x, team: team.get(x.id) ?? null })));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [supabase, busy]);
+  const chosen = people.find((p) => p.id === who);
+  return (
+    <div className="glass flex flex-wrap items-center gap-1.5 rounded-xl p-2.5 text-xs">
+      <span className="font-heading text-base tracking-wide text-peach">Aggiungi atleta</span>
+      <select className={cn(inputClass, "h-8 min-w-0 flex-1 sm:max-w-64")} value={who} onChange={(e) => setWho(e.target.value)} aria-label="Personaggio">
+        <option value="">Personaggio…</option>
+        {people.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+            {p.team ? ` · ora in ${p.team}` : ""}
+          </option>
+        ))}
+      </select>
+      <select className={cn(inputClass, "h-8 w-44")} value={pos} onChange={(e) => setPos(e.target.value)} aria-label="Ruolo">
+        <option value="">Ruolo…</option>
+        {positions.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+      <Button
+        type="button"
+        size="xs"
+        disabled={busy || !who || !pos}
+        onClick={() => {
+          if (chosen?.team && chosen.team !== sport.name && !window.confirm(`${chosen.name} è in ${chosen.team}: passa a ${sport.name} e lascia l'altra squadra. Continuare?`)) return;
+          act(() => supabase.rpc("sport_staff_assign", { p_character: who, p_sport: sport.id, p_position: pos })).then((ok) => {
+            if (ok) {
+              setWho("");
+              setPos("");
+            }
+          });
+        }}
+      >
+        <Plus /> Inserisci
+      </Button>
+      <span className="w-full text-[0.7rem] text-muted-foreground">
+        Le squadre le assegna solo lo staff, anche a stagione in corso. Ruolo pieno = entra come riserva. Il giocatore riceve un messaggio di SISTEMA; per cambiargli ruolo basta il menu del ruolo qui sotto.
+      </span>
     </div>
   );
 }
