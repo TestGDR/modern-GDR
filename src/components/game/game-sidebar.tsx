@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { CharacterAvatar } from "@/components/game/character-avatar";
+import { FameIcon } from "@/components/fame/fame-icon";
 import { HoverTip } from "@/components/game/hover-tip";
 import { LevelIcon } from "@/components/game/level-icon";
 import { WindowButton } from "@/components/game/info-window";
@@ -400,8 +401,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
           {/* icone di lavori e gruppi, poi il livello */}
           {(c.characterId ? (badges[c.characterId] ?? []) : []).map((b) => (
             <HoverTip key={b.key} label={b.label} className="inline-flex">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={b.icon} alt={b.label} className="size-5 shrink-0 rounded object-contain" />
+              <FameIcon icon={b.icon} label={b.label} className="size-5 text-base" />
             </HoverTip>
           ))}
           {c.levelIcon ? (
@@ -603,7 +603,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
 /** Applica le preferenze dell'account, lette dal database */
 type OrgBadge = { key: string; label: string; icon: string };
 
-/** Icone (con nome) dei lavori e dei gruppi attivi dei personaggi indicati */
+/** Icone (con nome) dei lavori e dei gruppi attivi dei personaggi indicati, poi il livello di fama e infamia */
 function useOrgBadges(characterIds: string[]) {
   const [badges, setBadges] = useState<Record<string, OrgBadge[]>>({});
   const signature = [...new Set(characterIds)].sort().join(",");
@@ -623,7 +623,8 @@ function useOrgBadges(characterIds: string[]) {
         .select("character_id, grp:game_groups(id, name, icon_url, active, hidden), role:group_roles(name)")
         .in("character_id", ids)
         .overrideTypes<{ character_id: string; grp: { id: string; name: string; icon_url: string | null; active: boolean; hidden: boolean } | null; role: { name: string } | null }[], { merge: false }>(),
-    ]).then(([jobs, groups]) => {
+      supabase.rpc("fame_icons", { p_characters: ids }),
+    ]).then(([jobs, groups, fame]) => {
       if (!alive) return;
       const next: Record<string, OrgBadge[]> = {};
       const add = (characterId: string, org: { id: string; name: string; icon_url: string | null; active: boolean } | null, role: string | undefined) => {
@@ -633,6 +634,12 @@ function useOrgBadges(characterIds: string[]) {
       for (const j of jobs.data ?? []) add(j.character_id, j.job, j.role?.name);
       // i gruppi nascosti non compaiono mai negli online
       for (const g of groups.data ?? []) if (!g.grp?.hidden) add(g.character_id, g.grp, g.role?.name);
+      // livello di fama e di infamia (solo quelli con un'icona; si spegne da Gestione → Fama)
+      type FameIconRow = { character_id: string; fame_name: string | null; fame_icon: string | null; infamy_name: string | null; infamy_icon: string | null };
+      for (const f of (fame.data ?? []) as FameIconRow[]) {
+        if (f.fame_icon) (next[f.character_id] ??= []).push({ key: `fama-${f.character_id}`, label: `Fama: ${f.fame_name}`, icon: f.fame_icon });
+        if (f.infamy_icon) (next[f.character_id] ??= []).push({ key: `infamia-${f.character_id}`, label: `Infamia: ${f.infamy_name}`, icon: f.infamy_icon });
+      }
       setBadges(next);
     });
     return () => {

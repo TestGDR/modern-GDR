@@ -63,6 +63,7 @@ export const PERMISSION_AREAS: PermissionArea[] = [
       { key: "chat.narrazione", label: "Narrare come Master", description: "Messaggi «Narrazione master» e modalità master (limiti di caratteri)" },
       { key: "png.gestire", label: "Gestire i PNG", description: "Creare i PNG della città, approvare quelli proposti dai giocatori, modificarli e disattivarli" },
       { key: "universita.gestire", label: "Gestire l'università", description: "Corsi, corsi obbligatori, semestri, bonus/malus, simulazione degli esami e pubblicazione dei voti" },
+      { key: "fama.gestire", label: "Gestire la fama", description: "Voci e badge di fama e infamia dei personaggi, proposte di background, cataloghi, livelli, impostazioni e registro della fama" },
       { key: "sport.gestire", label: "Gestire lo sport", description: "Sport e ruoli, università rivali, stagioni e calendari, roster, simulazione e pubblicazione dei risultati, premi" },
       { key: "alloggi.gestire", label: "Gestire gli alloggi", description: "Dormitori e camere del college, catalogo delle case, assegnare e togliere case e camere" },
       { key: "attivita.gestire", label: "Gestire le attività", description: "Catalogo delle attività in vendita, togliere un'attività a un personaggio" },

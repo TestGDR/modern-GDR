@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, CircleAlert, Loader2, Pencil, Send } from "lucide-react";
 import { OptionChoice } from "@/components/creation/option-choice";
+import { FameCreation } from "@/components/fame/fame-creation";
 import { SheetFrame, type SheetVariant } from "@/components/game/character-sheet-window";
 import { Button } from "@/components/ui/button";
 import { saveCreation, setCharacterSurname, submitCharacter, type CreationPatch, type SaveResult } from "@/lib/actions/creation";
@@ -296,7 +297,13 @@ export function CreationWizard({ character, build, rules, settings, variant }: C
         {step === 2 && (
           <StepAttributes state={state} rules={rules} settings={settings} pointsUsed={pointsUsed} onChange={setAttribute} />
         )}
-        {step === 3 && <StepOptions state={state} rules={rules} settings={settings} remaining={px.remaining} onToggle={toggleOption} onDetail={setOptionDetail} />}
+        {step === 3 && (
+          <>
+            <StepOptions state={state} rules={rules} settings={settings} remaining={px.remaining} onToggle={toggleOption} onDetail={setOptionDetail} />
+            {/* fama di background: Punti Fama a parte, i non spesi diventano PX all'approvazione */}
+            <FameCreation characterId={character.id} />
+          </>
+        )}
         {step === 4 && <StepSkills state={state} rules={rules} settings={settings} remaining={px.remaining} onChange={setSkill} />}
         {step === 5 && <StepBackground state={state} rules={rules} onChange={updateBackground} onNote={(id, note) => setOptionDetail(id, { note })} />}
         {step === 6 && (

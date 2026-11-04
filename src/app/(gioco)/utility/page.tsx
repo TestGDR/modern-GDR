@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BedDouble, BookUser, BriefcaseBusiness, Drama, KeyRound, Landmark, PenLine, Shield, ShoppingBag, Sparkles, Store, VenetianMask } from "lucide-react";
+import { BedDouble, BookUser, BriefcaseBusiness, Drama, KeyRound, Landmark, PenLine, Shield, ShoppingBag, Sparkles, Star, Store, VenetianMask } from "lucide-react";
 import { PageHeader } from "@/components/game/page-header";
 
 export const metadata: Metadata = { title: "Utility" };
@@ -14,6 +14,7 @@ const GROUPS = [
       { href: "/utility/prestavolti", label: "Prestavolti", hint: "I volti scelti, e la registrazione del tuo", icon: VenetianMask, color: "text-orchid" },
       { href: "/utility/prestatalento", label: "Prestatalento", hint: "I talenti scelti, e la registrazione del tuo", icon: Sparkles, color: "text-mint" },
       { href: "/utility/png", label: "PNG", hint: "I personaggi non giocanti della città e i tuoi", icon: Drama, color: "text-orchid" },
+      { href: "/utility/fama", label: "Fama", hint: "I personaggi più famosi del campus", icon: Star, color: "text-sand" },
     ],
   },
   {

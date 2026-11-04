@@ -25,5 +25,5 @@ async function Content() {
   await requirePermission("impostazioni.gestire");
   const [settings, levels] = await Promise.all([getSettings(), getLevels()]);
   // quelle dell'università stanno in Gestione → Università
-  return <SettingsManager settings={settings.filter((s) => !s.key.startsWith("uni_"))} levels={levels} />;
+  return <SettingsManager settings={settings.filter((s) => !s.key.startsWith("uni_") && !s.key.startsWith("fama_"))} levels={levels} />;
 }

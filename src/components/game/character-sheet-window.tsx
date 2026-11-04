@@ -22,6 +22,7 @@ import {
   Settings,
   ShieldAlert,
   Sparkles,
+  Star,
   UserRound,
   UserRoundPlus,
   X,
@@ -29,6 +30,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { FormMessage } from "@/components/auth/auth-forms";
+import { FameSection } from "@/components/fame/fame-section";
 import { AffectionsSection } from "@/components/game/affections";
 import { ErrorBoundary } from "@/components/game/error-boundary";
 import { HoverTip } from "@/components/game/hover-tip";
@@ -75,6 +77,7 @@ type Section = {
 const SECTIONS: Section[] = [
   { key: "principale", label: "Principale", icon: Sparkles },
   { key: "dati", label: "Dati", icon: IdCard },
+  { key: "fama", label: "Fama", icon: Star },
   { key: "si-sa-che", label: "Si sa che", icon: Eye, field: "known_facts", hint: "Voci, fatti noti, reputazione: ciò che a Miami si dice di lui o di lei." },
   { key: "affetti", label: "Affetti", icon: Heart },
   { key: "caratteristiche", label: "Caratteristiche", icon: Gauge },
@@ -285,6 +288,10 @@ export function CharacterSheetWindow({
             />
           ) : section.key === "dati" ? (
             <DataList character={character} rules={rules} affiliations={affiliations} />
+          ) : section.key === "fama" ? (
+            <SectionFrame title="Fama">
+              <FameSection characterId={character.id} />
+            </SectionFrame>
           ) : section.key === "affetti" ? (
             <SectionFrame title="Affetti">
               <AffectionsSection characterId={character.id} canEdit={isOwner || isAdmin} legacyText={character.relationships} />

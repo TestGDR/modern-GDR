@@ -63,6 +63,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { href: "/gestione/patrimonio", category: "regole", title: "Patrimonio", description: "Il tenore di vita: costo in PX, entrata e mantenimento mensili, quota iniziale in banca.", icon: Gem, permissions: ["regole.gestire"] },
   { href: "/gestione/universita", category: "regole", title: "Università", description: "Corsi, corsi obbligatori degli indirizzi, semestri: iscrizioni, simulazione degli esami e pubblicazione dei voti.", icon: GraduationCap, permissions: ["universita.gestire"] },
   { href: "/gestione/sport", category: "regole", title: "Sport", description: "Athletic Department: sport e ruoli, università rivali, stagioni e calendari, simulazione dei risultati, roster e premi.", icon: Trophy, permissions: ["sport.gestire"] },
+  { href: "/gestione/fama", category: "regole", title: "Fama", description: "Fama e infamia dei personaggi: voci libere, badge, background con i Punti Fama, proposte, livelli, impostazioni e registro.", icon: Star, permissions: ["fama.gestire"] },
   { href: "/gestione/elenchi", category: "regole", title: "Elenchi della scheda", description: "Le voci a tendina della scheda: indirizzi di studio, anni di corso, squadre e club.", icon: BookOpenCheck, permissions: ["elenchi.gestire"] },
   // Mondo e comunicazione
   { href: "/gestione/mondo", category: "mondo", title: "Mondo", description: "Mappe, quartieri e chat: immagini, posizione dei punti sulla mappa, accesso e gruppi di chat.", icon: MapIcon, permissions: ["mondo.gestire"] },
