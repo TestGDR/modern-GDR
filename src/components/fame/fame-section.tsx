@@ -24,7 +24,7 @@ export function FameSection({ characterId }: { characterId: string }) {
   const supabase = useMemo(() => createClient(), []);
   const [data, setData] = useState<FameOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"fama" | "badge">("fama");
+  const [tab, setTab] = useState<"fama" | "imprese" | "badge">("fama");
 
   useEffect(() => {
     let alive = true;
@@ -44,11 +44,12 @@ export function FameSection({ characterId }: { characterId: string }) {
 
   return (
     <div className="flex flex-col gap-5">
-      {/* linguette: la fama (barre, background, imprese) e i badge */}
-      <nav className="flex gap-1 self-start rounded-full bg-white/5 p-1" aria-label="Fama o badge">
+      {/* linguette: la fama (barre e background), le imprese e i badge */}
+      <nav className="flex flex-wrap gap-1 self-start rounded-full bg-white/5 p-1" aria-label="Fama, imprese o badge">
         {(
           [
             ["fama", "Fama"],
+            ["imprese", `Imprese e reputazione${data.entries.length ? ` (${data.entries.length})` : ""}`],
             ["badge", `Badge${data.badges.length ? ` (${data.badges.length})` : ""}`],
           ] as const
         ).map(([k, label]) => (
@@ -139,7 +140,11 @@ export function FameSection({ characterId }: { characterId: string }) {
               </ul>
             )}
           </Block>
+        </>
+      )}
 
+      {tab === "imprese" && (
+        <>
           <Block title="Imprese e reputazione">
             {data.entries.length === 0 ? (
               <Empty>Nessuna impresa registrata.</Empty>
