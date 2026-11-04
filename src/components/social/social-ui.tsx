@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 /* ------------------------------ Navigazione dentro il social ------------------------------ */
 
 export type SocialView =
-  | { kind: "feed" }
+  | { kind: "feed"; mode?: "tutti" | "seguiti" }
   | { kind: "search" }
   | { kind: "new"; eventId?: string }
   | { kind: "events" }
@@ -48,6 +48,32 @@ export function useSocial() {
 }
 
 /* ------------------------------ Pezzi grafici ------------------------------ */
+
+export type FeedTab = "tutti" | "seguiti" | "eventi";
+
+/** Linguette in alto nella Home del social: Per te, Seguiti, Eventi */
+export function FeedTabs({ active, onPick }: { active: FeedTab; onPick: (t: FeedTab) => void }) {
+  return (
+    <div className="flex gap-2">
+      {(
+        [
+          ["tutti", "Per te"],
+          ["seguiti", "Seguiti"],
+          ["eventi", "Eventi"],
+        ] as const
+      ).map(([t, label]) => (
+        <button
+          key={t}
+          type="button"
+          onClick={() => onPick(t)}
+          className={cn("rounded-full px-4 py-1.5 text-sm", active === t ? "bg-white/15 font-semibold text-white" : "text-muted-foreground hover:bg-white/5")}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function Avatar({ person, size = "size-9", ring }: { person: Pick<SocialPerson, "name" | "avatar_url"> | null; size?: string; ring?: boolean }) {
   const name = person?.name ?? "?";

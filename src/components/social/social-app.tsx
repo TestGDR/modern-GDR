@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarDays, Heart, Home, PlusSquare, Search, SendHorizontal } from "lucide-react";
+import { Heart, Home, PlusSquare, Search, SendHorizontal } from "lucide-react";
 import { Composer } from "@/components/social/composer";
 import { EventEditor, EventsView, EventView } from "@/components/social/events";
 import { Avatar, SocialCtx, type Me, type SocialView } from "@/components/social/social-ui";
@@ -123,7 +123,6 @@ export function SocialApp({ me: meProp, canModerate, initialView }: Props) {
   const nav: { kind: SocialView["kind"]; label: string; icon: React.ReactNode; to: SocialView; badge?: number }[] = [
     { kind: "feed", label: "Home", icon: <Home />, to: { kind: "feed" } },
     { kind: "search", label: "Cerca", icon: <Search />, to: { kind: "search" } },
-    { kind: "events", label: "Eventi", icon: <CalendarDays />, to: { kind: "events" } },
     ...(me ? [{ kind: "new" as const, label: "Nuovo post", icon: <PlusSquare />, to: { kind: "new" } as SocialView }] : []),
     ...(me ? [{ kind: "activity" as const, label: "Attività", icon: <Heart />, to: { kind: "activity" } as SocialView, badge: unread.activity }] : []),
   ];
@@ -159,7 +158,7 @@ export function SocialApp({ me: meProp, canModerate, initialView }: Props) {
           {needsSetup ? (
             <ProfileEditor first onDone={loadMine} />
           ) : view.kind === "feed" ? (
-            <Feed />
+            <Feed key={view.mode ?? "tutti"} initialMode={view.mode} />
           ) : view.kind === "search" ? (
             <SearchView />
           ) : view.kind === "new" ? (
@@ -207,7 +206,7 @@ export function SocialApp({ me: meProp, canModerate, initialView }: Props) {
               title={n.label}
               className={cn(
                 "relative grid place-items-center py-2.5 [&_svg]:size-6",
-                view.kind === n.kind || (n.kind === "events" && (view.kind === "event" || view.kind === "event-edit")) ? "text-white" : "text-muted-foreground hover:text-foreground",
+                view.kind === n.kind || (n.kind === "feed" && (view.kind === "events" || view.kind === "event" || view.kind === "event-edit")) ? "text-white" : "text-muted-foreground hover:text-foreground",
               )}
             >
               {n.icon}

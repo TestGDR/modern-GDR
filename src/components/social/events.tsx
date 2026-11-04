@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { CalendarDays, Check, Eye, EyeOff, ImagePlus, KeyRound, Lock, MapPin, Pencil, Plus, Trash2, UserPlus, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePersonSearch } from "@/components/social/composer";
-import { Avatar, MediaItem, PersonName, useSocial } from "@/components/social/social-ui";
+import { Avatar, FeedTabs, MediaItem, PersonName, useSocial } from "@/components/social/social-ui";
 import { useResync } from "@/lib/use-resync";
 import {
   EVENT_SELECT,
@@ -73,6 +73,7 @@ export function EventsView() {
 
   return (
     <div className="flex flex-col gap-3">
+      <FeedTabs active="eventi" onPick={(t) => t !== "eventi" && go({ kind: "feed", mode: t })} />
       <div className="flex items-center gap-2">
         <h2 className="font-heading text-3xl tracking-wide text-sunset">Eventi</h2>
         {me && (

@@ -8,7 +8,7 @@ import { PromotePanel } from "@/components/social/promote-panel";
 import { Button } from "@/components/ui/button";
 import { usePersonSearch } from "@/components/social/composer";
 import { PostCard } from "@/components/social/post-card";
-import { Avatar, Caption, MediaItem, PersonName, useSocial } from "@/components/social/social-ui";
+import { Avatar, Caption, FeedTabs, MediaItem, PersonName, useSocial } from "@/components/social/social-ui";
 import { useResync } from "@/lib/use-resync";
 import { useStickToBottom } from "@/lib/use-stick-bottom";
 import {
@@ -62,9 +62,9 @@ export function FollowButton({ id, className }: { id: string; className?: string
 
 /* ------------------------------ Feed ------------------------------ */
 
-export function Feed() {
-  const { supabase, me, following } = useSocial();
-  const [mode, setMode] = useState<"tutti" | "seguiti">("tutti");
+export function Feed({ initialMode = "tutti" }: { initialMode?: "tutti" | "seguiti" }) {
+  const { supabase, me, following, go } = useSocial();
+  const [mode, setMode] = useState<"tutti" | "seguiti">(initialMode);
   const [posts, setPosts] = useState<SocialPost[] | null>(null);
   const [more, setMore] = useState(false);
 
@@ -88,18 +88,12 @@ export function Feed() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2">
-        {(["tutti", "seguiti"] as const).map((m) => (
-          <button
-            key={m}
-            type="button"
-            onClick={() => setMode(m)}
-            className={cn("rounded-full px-4 py-1.5 text-sm", mode === m ? "bg-white/15 font-semibold text-white" : "text-muted-foreground hover:bg-white/5")}
-          >
-            {m === "tutti" ? "Per te" : "Seguiti"}
-          </button>
-        ))}
-      </div>
+      <FeedTabs active={mode} onPick={(t) => (t === "eventi" ? go({ kind: "events" }) : setMode(t))} />
+      {mode === "seguiti" && (
+        <p className="-mt-2 text-xs text-muted-foreground">
+          Solo i post di chi segui{following.size ? ` (${following.size} ${following.size === 1 ? "profilo" : "profili"})` : ""} e i tuoi. «Per te» mostra i post di tutto il social.
+        </p>
+      )}
       {posts === null ? (
         <p className="text-sm text-muted-foreground">Caricamento…</p>
       ) : posts.length === 0 ? (
