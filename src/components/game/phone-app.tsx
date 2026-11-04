@@ -922,7 +922,7 @@ function ThreadView({
                     <div
                       className={cn(
                         "rounded-2xl px-3 py-2 text-sm",
-                        mine ? "rounded-br-sm bg-flamingo/25" : "rounded-bl-sm bg-white/10",
+                        mine ? "rounded-br-sm bg-violet/60" : "rounded-bl-sm bg-white/10",
                         m.mode !== "testo" && "border border-mint/30",
                       )}
                     >
