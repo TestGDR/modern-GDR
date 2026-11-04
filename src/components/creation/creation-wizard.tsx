@@ -638,6 +638,8 @@ function StepOptions({
   const nameOf = (id: string) => rules.options.find((o) => o.id === id)?.name;
   const chosen = rules.options.filter((o) => state.optionIds.includes(o.id));
   const counts = traitCounts(chosen, settings);
+  // PX dati dagli svantaggi: oltre il tetto non ne danno altri
+  const disGain = chosen.filter((o) => o.cost_px < 0).reduce((sum, o) => sum - o.cost_px * (state.optionDetails[o.id]?.level ?? 1), 0);
   const current = OPTION_TABS.find((t) => t.key === tab) ?? OPTION_TABS[0];
   const single = tab === "tenore" || tab === "provenienza";
   // le voci non ancora disponibili si vedono solo se già scelte (per poterle togliere)
@@ -663,7 +665,18 @@ function StepOptions({
             {label} {n}/{max}
           </span>
         ))}
+        {disGain > 0 && (
+          <span className={cn("rounded-full px-2 py-0.5", disGain >= settings.disPxMax ? "bg-peach/20 text-peach" : "bg-white/10")}>
+            PX dagli svantaggi {Math.min(disGain, settings.disPxMax)}/{settings.disPxMax}
+          </span>
+        )}
       </p>
+      {disGain >= settings.disPxMax && (
+        <p className="rounded-lg bg-peach/10 px-3 py-2 text-xs text-peach">
+          Hai già raggiunto il massimo di {settings.disPxMax} PX dagli svantaggi
+          {disGain > settings.disPxMax && ` (quelli scelti ne varrebbero ${disGain})`}: puoi sceglierne altri per la storia, ma non danno più PX.
+        </p>
+      )}
       <nav className="flex flex-wrap gap-1 rounded-2xl bg-white/5 p-1" aria-label="Gruppi di voci">
         {OPTION_TABS.map((t) => {
           const n = rules.options.filter((o) => t.filter(o) && state.optionIds.includes(o.id)).length;
