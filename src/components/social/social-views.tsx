@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Grid3x3, Layers, Megaphone, MessageCircle, Pencil, SendHorizontal, UserRoundPlus } from "lucide-react";
+import { ArrowLeft, CalendarDays, Grid3x3, Layers, Megaphone, MessageCircle, Pencil, SendHorizontal, UserRoundPlus } from "lucide-react";
+import { ProfileEvents } from "@/components/social/events";
 import { PromotePanel } from "@/components/social/promote-panel";
 import { Button } from "@/components/ui/button";
 import { usePersonSearch } from "@/components/social/composer";
@@ -151,14 +152,14 @@ export function ProfileView({ id }: { id: string }) {
   const [person, setPerson] = useState<SocialPerson | null | undefined>(undefined);
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [stats, setStats] = useState({ posts: 0, followers: 0, following: 0 });
-  const [tab, setTab] = useState<"post" | "tag">("post");
+  const [tab, setTab] = useState<"post" | "tag" | "eventi">("post");
   const [editing, setEditing] = useState(false);
   const [promote, setPromote] = useState(false);
 
   const load = useCallback(async () => {
     const [p, list, fr, fg, pc] = await Promise.all([
       supabase.from("characters").select(PERSON).eq("id", id).maybeSingle<SocialPerson>(),
-      tab === "post"
+      tab !== "tag"
         ? supabase.from("social_posts").select(POST_SELECT).eq("character_id", id).order("created_at", { ascending: false }).limit(60)
         : supabase.from("social_tags").select(`post:social_posts(${POST_SELECT})`).eq("character_id", id).limit(60),
       supabase.from("social_follows").select("follower_id", { count: "exact", head: true }).eq("followed_id", id),
@@ -166,7 +167,7 @@ export function ProfileView({ id }: { id: string }) {
       supabase.from("social_posts").select("id", { count: "exact", head: true }).eq("character_id", id),
     ]);
     setPerson(p.data);
-    const rows = tab === "post" ? ((list.data ?? []) as unknown as SocialPost[]) : ((list.data ?? []) as unknown as { post: SocialPost | null }[]).map((x) => x.post).filter((x): x is SocialPost => x !== null);
+    const rows = tab !== "tag" ? ((list.data ?? []) as unknown as SocialPost[]) : ((list.data ?? []) as unknown as { post: SocialPost | null }[]).map((x) => x.post).filter((x): x is SocialPost => x !== null);
     setPosts(rows.sort((a, b) => b.created_at.localeCompare(a.created_at)));
     setStats({ posts: pc.count ?? 0, followers: fr.count ?? 0, following: fg.count ?? 0 });
   }, [supabase, id, tab]);
@@ -255,6 +256,7 @@ export function ProfileView({ id }: { id: string }) {
           [
             ["post", "Post", Grid3x3],
             ["tag", "Taggato", UserRoundPlus],
+            ["eventi", "Eventi", CalendarDays],
           ] as const
         ).map(([k, label, Icon]) => (
           <button
@@ -267,7 +269,9 @@ export function ProfileView({ id }: { id: string }) {
           </button>
         ))}
       </div>
-      {posts.length === 0 ? (
+      {tab === "eventi" ? (
+        <ProfileEvents id={person.id} />
+      ) : posts.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">{tab === "post" ? "Nessun post." : "Nessun post in cui è taggato."}</p>
       ) : (
         <ul className="grid grid-cols-3 gap-0.5">
@@ -445,6 +449,10 @@ const KIND_TEXT: Record<SocialNotification["kind"], string> = {
   reaction: "ha reagito al tuo post",
   comment: "ha commentato:",
   tag: "ti ha taggato in un post.",
+  evento_invito: "ti ha invitato a",
+  evento_nuovo: "ha creato l'evento",
+  evento_partecipa: "parteciperà al tuo evento",
+  evento_promemoria: "ti aspetta oggi a",
 };
 
 export function ActivityView({ onRead }: { onRead: () => void }) {
@@ -455,7 +463,7 @@ export function ActivityView({ onRead }: { onRead: () => void }) {
     let alive = true;
     supabase
       .from("social_notifications")
-      .select(`id, kind, post_id, detail, created_at, read_at, actor:characters!social_notifications_actor_id_fkey(${PERSON})`)
+      .select(`id, kind, post_id, event_id, detail, created_at, read_at, actor:characters!social_notifications_actor_id_fkey(${PERSON})`)
       .eq("character_id", me.id)
       .order("created_at", { ascending: false })
       .limit(100)
@@ -476,7 +484,7 @@ export function ActivityView({ onRead }: { onRead: () => void }) {
       {items === null ? (
         <p className="text-sm text-muted-foreground">Caricamento…</p>
       ) : items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Ancora niente: qui vedrai chi ti segue, reagisce, commenta o ti tagga.</p>
+        <p className="text-sm text-muted-foreground">Ancora niente: qui vedrai chi ti segue, reagisce, commenta, ti tagga o ti invita a un evento.</p>
       ) : (
         items.map((n) => (
           <div key={n.id} className={cn("flex items-center gap-3 rounded-xl px-2 py-2", !n.read_at && "bg-flamingo/10")}>
@@ -487,10 +495,15 @@ export function ActivityView({ onRead }: { onRead: () => void }) {
               <PersonName person={n.actor} className="mr-1" />
               {KIND_TEXT[n.kind]} {n.kind === "reaction" && n.detail}
               {n.kind === "comment" && <span className="text-muted-foreground"> {n.detail}</span>}
+              {n.kind.startsWith("evento_") && n.detail && <b className="font-semibold"> «{n.detail}»</b>}
               <span className="ml-1.5 text-xs text-muted-foreground">{socialTime(n.created_at)}</span>
             </p>
             {n.kind === "follow" && n.actor ? (
               <FollowButton id={n.actor.id} />
+            ) : n.event_id ? (
+              <Button type="button" variant="ghost" size="sm" onClick={() => go({ kind: "event", id: n.event_id! })}>
+                Vedi
+              </Button>
             ) : (
               n.post_id && (
                 <Button type="button" variant="ghost" size="sm" onClick={() => go({ kind: "post", id: n.post_id! })}>

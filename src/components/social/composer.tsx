@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, ImagePlus, MapPin, Tag, X } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarDays, ImagePlus, MapPin, Tag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, MediaItem, useSocial } from "@/components/social/social-ui";
 import { detectMedia, handleOf, PERSON, type Media, type SocialPerson } from "@/lib/social";
+
+type MyEvent = { id: string; title: string; starts_at: string };
 
 /** Cerca personaggi approvati per nome o @nome */
 export function usePersonSearch(query: string) {
@@ -36,8 +38,30 @@ export function usePersonSearch(query: string) {
 }
 
 /** Nuovo post: link di foto/video (carosello), testo, luogo, persone taggate */
-export function Composer({ onPublished }: { onPublished: (id: string) => void }) {
+export function Composer({ onPublished, eventId }: { onPublished: (id: string) => void; eventId?: string }) {
   const { supabase, me } = useSocial();
+  const [eventChoice, setEventChoice] = useState(eventId ?? "");
+  const [myEvents, setMyEvents] = useState<MyEvent[]>([]);
+  // eventi a cui si può collegare il post: quelli che organizzo e quelli a cui partecipo (o forse), dell'ultimo mese
+  useEffect(() => {
+    if (!me) return;
+    let alive = true;
+    const since = new Date(Date.now() - 30 * 86400_000).toISOString();
+    Promise.all([
+      supabase.from("social_events").select("id, title, starts_at").eq("character_id", me.id).gte("starts_at", since),
+      supabase.from("social_event_guests").select("event:social_events(id, title, starts_at)").eq("character_id", me.id).in("status", ["partecipo", "forse"]),
+    ]).then(([own, guest]) => {
+      if (!alive) return;
+      const all = [
+        ...((own.data ?? []) as MyEvent[]),
+        ...((guest.data ?? []) as unknown as { event: MyEvent | null }[]).map((x) => x.event).filter((x): x is MyEvent => x !== null && x.starts_at >= since),
+      ];
+      setMyEvents(all.filter((e, i) => all.findIndex((x) => x.id === e.id) === i).sort((a, b) => b.starts_at.localeCompare(a.starts_at)));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [supabase, me]);
   const [media, setMedia] = useState<Media[]>([]);
   const [link, setLink] = useState("");
   const [body, setBody] = useState("");
@@ -72,7 +96,7 @@ export function Composer({ onPublished }: { onPublished: (id: string) => void })
     setError(null);
     const { data, error: e } = await supabase
       .from("social_posts")
-      .insert({ character_id: me.id, body: body.trim().slice(0, 2200), media, location: location.trim().slice(0, 60) || null })
+      .insert({ character_id: me.id, body: body.trim().slice(0, 2200), media, location: location.trim().slice(0, 60) || null, event_id: eventChoice || null })
       .select("id")
       .single<{ id: string }>();
     if (e || !data) {
@@ -140,6 +164,20 @@ export function Composer({ onPublished }: { onPublished: (id: string) => void })
         <MapPin className="size-4 shrink-0 text-muted-foreground" />
         <input value={location} onChange={(e) => setLocation(e.target.value)} maxLength={60} placeholder="Luogo (facoltativo), es. South Beach" className={input} />
       </label>
+
+      {myEvents.length > 0 && (
+        <label className="flex items-center gap-2">
+          <CalendarDays className="size-4 shrink-0 text-muted-foreground" />
+          <select value={eventChoice} onChange={(e) => setEventChoice(e.target.value)} aria-label="Collega a un evento" className={input}>
+            <option value="">Nessun evento</option>
+            {myEvents.map((ev) => (
+              <option key={ev.id} value={ev.id}>
+                Dall&apos;evento: {ev.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       {/* tag */}
       <section className="flex flex-col gap-2">

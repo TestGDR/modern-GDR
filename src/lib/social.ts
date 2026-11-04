@@ -40,6 +40,9 @@ export type SocialPost = {
   npc_likes?: number;
   social_comments: { count: number }[];
   social_tags: { character: SocialPerson | null }[];
+  /** evento a cui è collegato il post (foto dall'evento) */
+  event_id?: string | null;
+  event?: { id: string; title: string } | null;
 };
 
 export type SocialComment = {
@@ -62,17 +65,68 @@ export type SocialDm = {
 
 export type SocialNotification = {
   id: number;
-  kind: "follow" | "reaction" | "comment" | "tag";
+  kind: "follow" | "reaction" | "comment" | "tag" | "evento_invito" | "evento_nuovo" | "evento_partecipa" | "evento_promemoria";
   post_id: string | null;
+  event_id?: string | null;
   detail: string;
   created_at: string;
   read_at: string | null;
   actor: SocialPerson | null;
 };
 
+/** Evento del social (social_events) */
+export type EventVisibility = "pubblico" | "follower" | "invito";
+export type GuestStatus = "invitato" | "partecipo" | "forse" | "non_vengo";
+export type SocialEvent = {
+  id: string;
+  character_id: string;
+  title: string;
+  description: string;
+  cover_url: string | null;
+  starts_at: string;
+  ends_at: string | null;
+  room_id: string | null;
+  place: string;
+  visibility: EventVisibility;
+  has_password: boolean;
+  created_at: string;
+  organizer: SocialPerson | null;
+  room: { id: string; name: string } | null;
+  social_event_guests: { character_id: string; status: GuestStatus }[];
+};
+export type EventGuest = { character_id: string; status: GuestStatus; character: SocialPerson | null };
+
+export const VISIBILITY_LABEL: Record<EventVisibility, string> = { pubblico: "Pubblico", follower: "Solo follower", invito: "Su invito" };
+export const GUEST_LABEL: Record<GuestStatus, string> = { invitato: "Invitato", partecipo: "Partecipa", forse: "Forse", non_vengo: "Non viene" };
+
+/** "sabato 8 novembre, 21:00" in ora italiana */
+export function eventWhen(iso: string, end?: string | null) {
+  const d = new Date(iso);
+  const day = d.toLocaleDateString("it-IT", { timeZone: "Europe/Rome", weekday: "long", day: "numeric", month: "long" });
+  const t = (x: Date) => x.toLocaleTimeString("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit" });
+  return `${day}, ${t(d)}${end ? ` – ${t(new Date(end))}` : ""}`;
+}
+
+/** Valore per <input type=datetime-local> in ora italiana */
+export function toRomeInput(iso: string) {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+  const time = d.toLocaleTimeString("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit" });
+  return `${date}T${time}`;
+}
+
+/** Da <input type=datetime-local> (ora italiana) a ISO */
+export function fromRomeInput(v: string) {
+  const guess = new Date(`${v}:00Z`);
+  const rome = new Date(guess.toLocaleString("en-US", { timeZone: "Europe/Rome" }));
+  const utc = new Date(guess.toLocaleString("en-US", { timeZone: "UTC" }));
+  return new Date(guess.getTime() - (rome.getTime() - utc.getTime())).toISOString();
+}
+
 /** Campi da chiedere al database per un personaggio */
 export const PERSON = "id, name, avatar_url, social:social_profiles(handle, bio, npc_followers, bought_followers, boost_until, boost_mult)";
-export const POST_SELECT = `id, character_id, body, media, location, created_at, edited_at, npc_likes, author:characters!social_posts_character_id_fkey(${PERSON}), social_reactions(character_id, emoji), social_comments(count), social_tags(character:characters(${PERSON}))`;
+export const EVENT_SELECT = `id, character_id, title, description, cover_url, starts_at, ends_at, room_id, place, visibility, has_password, created_at, organizer:characters!social_events_character_id_fkey(${PERSON}), room:rooms(id, name), social_event_guests(character_id, status)`;
+export const POST_SELECT = `id, character_id, body, media, location, created_at, edited_at, npc_likes, author:characters!social_posts_character_id_fkey(${PERSON}), social_reactions(character_id, emoji), social_comments(count), social_tags(character:characters(${PERSON})), event_id, event:social_events(id, title)`;
 
 /** Nome visibile: @nome se c'è, altrimenti il nome del personaggio */
 export function handleOf(p: SocialPerson | null | undefined) {

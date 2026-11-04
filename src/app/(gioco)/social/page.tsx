@@ -22,7 +22,9 @@ async function Content({ searchParams }: { searchParams: PageProps<"/social">["s
   const character = activeCharacter(player);
   const profilo = typeof params.profilo === "string" && isUuid(params.profilo) ? params.profilo : null;
   const dm = typeof params.dm === "string" && isUuid(params.dm) ? params.dm : null;
-  const initialView: SocialView | null = dm && character ? { kind: "dm", id: dm } : profilo ? { kind: "profile", id: profilo } : null;
+  const evento = typeof params.evento === "string" && isUuid(params.evento) ? params.evento : null;
+  const initialView: SocialView | null =
+    dm && character ? { kind: "dm", id: dm } : evento ? { kind: "event", id: evento } : profilo ? { kind: "profile", id: profilo } : null;
   return (
     <SocialApp
       me={character ? { id: character.id, name: character.name, avatar_url: character.avatar_url } : null}

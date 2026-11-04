@@ -12,7 +12,10 @@ import { cn } from "@/lib/utils";
 export type SocialView =
   | { kind: "feed" }
   | { kind: "search" }
-  | { kind: "new" }
+  | { kind: "new"; eventId?: string }
+  | { kind: "events" }
+  | { kind: "event"; id: string }
+  | { kind: "event-edit"; id?: string }
   | { kind: "activity" }
   | { kind: "profile"; id: string }
   | { kind: "post"; id: string }

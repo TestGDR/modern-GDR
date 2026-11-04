@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   BookOpen,
   CalendarDays,
@@ -296,7 +297,7 @@ function EventDetail({ item, canManage, onEdit, onDelete }: { item: CalendarItem
         )}
         <li className="flex items-center gap-2">
           <Users className="size-4 shrink-0 text-muted-foreground" />
-          {item.source === "sport" ? "Athletic Department" : "Evento organizzato dallo staff"}
+          {item.source === "sport" ? "Athletic Department" : item.source === "social" ? `Organizza ${item.organizer ?? "un personaggio"} · evento del social` : "Evento organizzato dallo staff"}
           {item.phase && item.phase !== "regular" && ` · ${PHASE_LABEL[item.phase]}`}
         </li>
         {item.status === "cancelled" && <li className="text-destructive">Annullato</li>}
@@ -327,6 +328,11 @@ function EventDetail({ item, canManage, onEdit, onDelete }: { item: CalendarItem
             <Trash2 /> Elimina
           </Button>
         </div>
+      )}
+      {item.source === "social" && (
+        <Link href={`/social?evento=${item.id}`} className="self-start rounded-full bg-white/10 px-3 py-1 text-xs hover:bg-white/20">
+          Apri l&apos;evento nel social
+        </Link>
       )}
       {item.source === "sport" && canManage && <p className="text-[0.7rem] text-muted-foreground">Le partite si gestiscono da Gestione → Sport.</p>}
     </article>

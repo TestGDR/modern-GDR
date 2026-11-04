@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, MessageCircle, MoreHorizontal, Pencil, SendHorizontal, SmilePlus, Trash2 } from "lucide-react";
+import { CalendarDays, MapPin, MessageCircle, MoreHorizontal, Pencil, SendHorizontal, SmilePlus, Trash2 } from "lucide-react";
 import { Avatar, Caption, Carousel, PersonName, useSocial } from "@/components/social/social-ui";
 import { PERSON, REACTIONS, socialTime, type Reaction, type SocialComment, type SocialPost } from "@/lib/social";
 import { cn } from "@/lib/utils";
@@ -126,6 +126,11 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
             <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
               <MapPin className="size-3" /> {current.location}
             </p>
+          )}
+          {post.event && (
+            <button type="button" onClick={() => go({ kind: "event", id: post.event!.id })} className="flex max-w-full items-center gap-1 truncate text-xs text-lavender hover:underline">
+              <CalendarDays className="size-3 shrink-0" /> {post.event.title}
+            </button>
           )}
         </div>
         <span className="text-xs text-muted-foreground" title={current.edited ? `Modificato ${socialTime(current.edited)}` : undefined}>

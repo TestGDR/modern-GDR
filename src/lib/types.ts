@@ -674,7 +674,7 @@ export type TermStudent = {
 
 export type CalendarItem = {
   id: string;
-  source: "evento" | "sport";
+  source: "evento" | "sport" | "social";
   title: string;
   description: string;
   category: "evento" | "festa" | "lezione" | "staff" | "sport" | "universita";
@@ -686,6 +686,8 @@ export type CalendarItem = {
   phase?: SportPhase;
   sport_id?: string;
   recap?: string | null;
+  /** eventi del social: nome di chi organizza */
+  organizer?: string;
 };
 
 export type SportSeasonKind = "fall" | "winter" | "spring" | "year_round";

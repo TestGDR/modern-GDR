@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Heart, Home, PlusSquare, Search, SendHorizontal } from "lucide-react";
+import { CalendarDays, Heart, Home, PlusSquare, Search, SendHorizontal } from "lucide-react";
 import { Composer } from "@/components/social/composer";
+import { EventEditor, EventsView, EventView } from "@/components/social/events";
 import { Avatar, SocialCtx, type Me, type SocialView } from "@/components/social/social-ui";
 import {
   ActivityView,
@@ -26,7 +27,7 @@ type Props = {
   /** Personaggio approvato del giocatore (null = solo lettura) */
   me: Omit<Me, "handle"> | null;
   canModerate: boolean;
-  /** Apertura diretta: /social?profilo=<id> o ?dm=<id> */
+  /** Apertura diretta: /social?profilo=<id>, ?dm=<id> o ?evento=<id> */
   initialView: SocialView | null;
 };
 
@@ -122,6 +123,7 @@ export function SocialApp({ me: meProp, canModerate, initialView }: Props) {
   const nav: { kind: SocialView["kind"]; label: string; icon: React.ReactNode; to: SocialView; badge?: number }[] = [
     { kind: "feed", label: "Home", icon: <Home />, to: { kind: "feed" } },
     { kind: "search", label: "Cerca", icon: <Search />, to: { kind: "search" } },
+    { kind: "events", label: "Eventi", icon: <CalendarDays />, to: { kind: "events" } },
     ...(me ? [{ kind: "new" as const, label: "Nuovo post", icon: <PlusSquare />, to: { kind: "new" } as SocialView }] : []),
     ...(me ? [{ kind: "activity" as const, label: "Attività", icon: <Heart />, to: { kind: "activity" } as SocialView, badge: unread.activity }] : []),
   ];
@@ -161,7 +163,19 @@ export function SocialApp({ me: meProp, canModerate, initialView }: Props) {
           ) : view.kind === "search" ? (
             <SearchView />
           ) : view.kind === "new" ? (
-            <Composer onPublished={(id) => setView({ kind: "post", id })} />
+            <Composer key={view.eventId ?? "new"} eventId={view.eventId} onPublished={(id) => setView({ kind: "post", id })} />
+          ) : view.kind === "events" ? (
+            <EventsView />
+          ) : view.kind === "event" ? (
+            <>
+              {history.length > 0 && <BackButton onClick={back} />}
+              <EventView key={view.id} id={view.id} onBack={back} />
+            </>
+          ) : view.kind === "event-edit" ? (
+            <>
+              <BackButton onClick={back} />
+              <EventEditor key={view.id ?? "new"} id={view.id} onSaved={(id) => setView({ kind: "event", id })} />
+            </>
           ) : view.kind === "activity" ? (
             <ActivityView onRead={loadUnread} />
           ) : view.kind === "profile" ? (
@@ -191,7 +205,10 @@ export function SocialApp({ me: meProp, canModerate, initialView }: Props) {
               onClick={() => go(n.to)}
               aria-label={n.label}
               title={n.label}
-              className={cn("relative grid place-items-center py-2.5 [&_svg]:size-6", view.kind === n.kind ? "text-white" : "text-muted-foreground hover:text-foreground")}
+              className={cn(
+                "relative grid place-items-center py-2.5 [&_svg]:size-6",
+                view.kind === n.kind || (n.kind === "events" && (view.kind === "event" || view.kind === "event-edit")) ? "text-white" : "text-muted-foreground hover:text-foreground",
+              )}
             >
               {n.icon}
               {!!n.badge && <span className="absolute top-1.5 left-1/2 ml-2 size-2 rounded-full bg-flamingo" />}
