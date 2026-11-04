@@ -148,8 +148,9 @@ export function CharacterSheetWindow({
       <StatusBanner character={character} canReview={canReview} />
       <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto @2xl:grid-cols-[16rem_minmax(0,1fr)] @2xl:overflow-hidden">
         {/* Colonna sinistra: ritratto e sezioni */}
-        <aside className="flex flex-col border-white/10 @2xl:min-h-0 @2xl:border-r">
-          <div className="flex items-center gap-3 p-4 @2xl:justify-center @2xl:pb-3">
+        <aside className="contents @2xl:flex @2xl:min-h-0 @2xl:flex-col @2xl:border-r @2xl:border-white/10">
+          {/* sul cellulare il ritratto e gli stati stanno sulla foto della Principale */}
+          <div className="hidden items-center gap-3 p-4 @2xl:flex @2xl:justify-center @2xl:pb-3">
             <Portrait character={character} />
             {/* ruolo staff e stati del personaggio (alcol, droghe, insonnia), sotto la musica */}
             <span className="flex flex-col items-center gap-2">
@@ -158,7 +159,10 @@ export function CharacterSheetWindow({
             </span>
           </div>
 
-          <nav className="flex gap-1 overflow-x-auto px-3 pb-3 @2xl:flex-1 @2xl:flex-col @2xl:overflow-y-auto @2xl:px-0 @2xl:pb-0" aria-label="Sezioni della scheda">
+          <nav
+            className="sticky top-0 z-20 flex overflow-x-auto border-b border-white/10 bg-night/85 backdrop-blur [scrollbar-width:none] @2xl:static @2xl:flex-1 @2xl:flex-col @2xl:overflow-y-auto @2xl:border-b-0 @2xl:bg-transparent @2xl:backdrop-blur-none"
+            aria-label="Sezioni della scheda"
+          >
             {SECTIONS.map(({ key, label, icon: Icon }) => {
               const active = view.section === key && view.mode !== "settings";
               return (
@@ -168,13 +172,15 @@ export function CharacterSheetWindow({
                   onClick={() => open(key)}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-xs font-medium tracking-wide whitespace-nowrap uppercase transition-colors @2xl:rounded-none @2xl:border-b @2xl:border-white/5 @2xl:px-5 @2xl:py-2",
+                    // cellulare: linguette a riquadro con il titolo in Bebas; computer: elenco a sinistra come prima
+                    "flex shrink-0 items-center gap-2 border-r border-white/5 px-4 py-3 font-heading text-base tracking-[0.14em] whitespace-nowrap uppercase transition-colors",
+                    "@2xl:border-r-0 @2xl:border-b @2xl:px-5 @2xl:py-2 @2xl:font-sans @2xl:text-xs @2xl:font-medium @2xl:tracking-wide",
                     active
-                      ? "bg-gradient-to-r from-flamingo/35 to-flamingo/5 text-white shadow-[inset_3px_0_0_var(--flamingo)]"
+                      ? "bg-gradient-to-b from-flamingo/45 to-flamingo/10 text-white shadow-[inset_0_-2px_0_var(--peach)] @2xl:bg-gradient-to-r @2xl:from-flamingo/35 @2xl:to-flamingo/5 @2xl:shadow-[inset_3px_0_0_var(--flamingo)]"
                       : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
                   )}
                 >
-                  <Icon className={cn("size-3.5 shrink-0", active ? "text-peach" : "text-lavender/70")} />
+                  <Icon className={cn("hidden size-3.5 shrink-0 @2xl:block", active ? "text-peach" : "text-lavender/70")} />
                   {label}
                 </button>
               );
@@ -268,7 +274,15 @@ export function CharacterSheetWindow({
               onDone={() => setView((v) => ({ ...v, mode: "view" }))}
             />
           ) : section.key === "principale" ? (
-            <MainSection character={character} />
+            <MainSection
+              character={character}
+              badges={
+                <>
+                  <SheetStatus characterId={character.id} />
+                  {character.music_url && <SheetMusic key={character.music_url} url={character.music_url} />}
+                </>
+              }
+            />
           ) : section.key === "dati" ? (
             <DataList character={character} rules={rules} affiliations={affiliations} />
           ) : section.key === "affetti" ? (
@@ -369,23 +383,30 @@ function Portrait({ character }: { character: SheetCharacter }) {
  * sul cellulare (o con la finestra stretta) scheda verticale 9:16 (circa 360x640)
  * con la sua immagine, o quella del computer se manca.
  */
-function MainSection({ character }: { character: SheetCharacter }) {
+function MainSection({ character, badges }: { character: SheetCharacter; badges: React.ReactNode }) {
   return (
     <>
       <div className="hidden @2xl:block">
         <MainCover character={character} src={character.cover_url} className="aspect-[8/7] max-w-[640px]" />
       </div>
       <div className="@2xl:hidden">
-        <MainCover character={character} src={character.cover_mobile_url ?? character.cover_url} className="aspect-[9/16] max-h-[85dvh] max-w-[720px]" />
+        {/* a tutta finestra: la foto prende la larghezza e l'altezza che restano sotto le schede */}
+        <MainCover
+          character={character}
+          src={character.cover_mobile_url ?? character.cover_url}
+          className="aspect-[9/16] max-h-[calc(100dvh-7.5rem)] min-h-[28rem]"
+          badges={badges}
+        />
       </div>
     </>
   );
 }
 
-function MainCover({ character, src, className }: { character: SheetCharacter; src: string | null; className: string }) {
+function MainCover({ character, src, className, badges }: { character: SheetCharacter; src: string | null; className: string; badges?: React.ReactNode }) {
   const subtitle = [character.occupation, character.district?.name].filter(Boolean).join(" · ");
   return (
     <div className={cn("relative mx-auto flex w-full flex-col justify-end overflow-hidden", className)}>
+      {badges && <div className="absolute top-3 left-3 z-10 flex flex-col items-start gap-2">{badges}</div>}
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt={`Immagine di ${character.name}`} className="absolute inset-0 size-full object-cover" />
@@ -397,9 +418,9 @@ function MainCover({ character, src, className }: { character: SheetCharacter; s
         </div>
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-night via-night/30 to-transparent" />
-      <div className="relative p-6 sm:p-8">
-        <h2 className="font-heading text-5xl leading-none tracking-wide text-white drop-shadow-lg sm:text-6xl">{character.name}</h2>
-        {subtitle && <p className="mt-2 font-heading text-lg tracking-[0.25em] text-peach uppercase">{subtitle}</p>}
+      <div className="relative p-5 sm:p-8">
+        <h2 className="font-heading text-5xl leading-none tracking-[0.06em] text-white drop-shadow-lg sm:text-6xl">{character.name}</h2>
+        {subtitle && <p className="mt-2 font-heading text-base tracking-[0.3em] text-peach uppercase drop-shadow sm:text-lg">{subtitle}</p>}
         {character.quote && <p className="mt-2 max-w-xl text-sm text-white/80 italic">«{character.quote}»</p>}
       </div>
     </div>
