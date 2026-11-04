@@ -160,7 +160,7 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
     <div className="flex flex-col gap-3">
       {error && <p className="text-sm text-destructive">{error}</p>}
       {info && <p className="text-sm text-mint">{info}</p>}
-      {mine.length === 0 && <p className="text-sm text-muted-foreground">Non fai parte di nessuna squadra. Scegli uno sport e un ruolo: niente provini, entri subito nel roster e nel gruppo della squadra.</p>}
+      {mine.length === 0 && <p className="text-sm text-muted-foreground">Non fai parte di nessuna squadra. Per entrare in uno sport apri un ticket allo staff con lo sport e il ruolo che vorresti: ti inserisce lui nel roster e nel gruppo della squadra.</p>}
       {mine.map((m) => (
         <section key={m.roster_id} className="glass flex flex-col gap-2 rounded-2xl p-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -262,7 +262,7 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
       <section className="glass flex flex-col gap-1 rounded-2xl p-3 text-sm">
         <h2 className="font-heading text-xl tracking-wide text-peach">{mine.length ? "Cambiare squadra o ruolo" : "Entrare in una squadra"}</h2>
         <p className="text-muted-foreground">
-          Le squadre le assegna lo staff, come i gruppi: per entrare, cambiare ruolo o lasciare la squadra apri un ticket. Qui sotto i ruoli di ogni sport con i loro tiri.
+          Le squadre le assegna lo staff, come i gruppi: per entrare, cambiare ruolo o lasciare la squadra apri un ticket. Qui sotto puoi consultare i ruoli di ogni sport, con i loro tiri e i posti liberi (solo da leggere: non ci si iscrive da qui).
         </p>
         <select className={cn(inputClass, "mt-1 sm:max-w-xs")} value={sportId} onChange={(e) => setSportId(e.target.value)} aria-label="Sport">
           <option value="">Vedi i ruoli di uno sport…</option>
