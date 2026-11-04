@@ -32,7 +32,7 @@ async function Content() {
   ]);
   return (
     <>
-      <p className="mb-3 text-sm text-muted-foreground">Le squadre sportive non sono qui: le crea e le gestisce Gestione → Sport, e i giocatori ci entrano dalla pagina Sport.</p>
+      <p className="mb-3 text-sm text-muted-foreground">Le squadre sportive non sono qui: le crea e le gestisce Gestione → Sport, dove nel Roster si inseriscono e si tolgono gli atleti.</p>
       <PanelTabs
         initial={1}
         tabs={[
