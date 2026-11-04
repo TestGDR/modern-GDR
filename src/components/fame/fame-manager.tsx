@@ -30,7 +30,7 @@ const TABS: { key: Tab; label: string; icon: typeof Star }[] = [
 ];
 
 type Character = { id: string; name: string; status: string };
-type BgItem = { id: string; name: string; description: string; category: string; cost_pf: number; active: boolean; sort_order: number };
+type BgItem = { id: string; name: string; description: string; category: string; cost_pf: number; fame_points: number; infamy_points: number; active: boolean; sort_order: number };
 type Rarity = { id: string; name: string; color: string; sort_order: number };
 type Badge = { id: string; name: string; description: string; icon: string; points: number; kind: "fama" | "infamia"; rarity_id: string | null; is_unique: boolean; active: boolean; sort_order: number };
 
@@ -261,7 +261,7 @@ function CharactersTab() {
                 <li key={b.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-white/5 px-2.5 py-1.5 text-sm">
                   <strong className="font-medium">{b.name}</strong>
                   <span className="text-xs text-muted-foreground">
-                    {b.category} · {b.cost ?? "—"} PF · {b.status}
+                    {b.category} · {b.cost ?? "—"} PF · +{b.fame ?? 0} fama{b.infamy ? ` · +${b.infamy} infamia` : ""} · {b.status}
                   </span>
                   <Button
                     type="button"
@@ -281,7 +281,7 @@ function CharactersTab() {
                 <option value="">Aggiungi una voce del catalogo…</option>
                 {items.map((i) => (
                   <option key={i.id} value={i.id}>
-                    {i.category} · {i.name} ({i.cost_pf} PF)
+                    {i.category} · {i.name} ({i.cost_pf} PF, +{i.fame_points} fama)
                   </option>
                 ))}
               </select>
@@ -403,6 +403,8 @@ function ProposalsTab() {
   const { busy, error, run } = useRun(load);
   const [cost, setCost] = useState<Record<string, string>>({});
   const [note, setNote] = useState<Record<string, string>>({});
+  const [fame, setFame] = useState<Record<string, string>>({});
+  const [infamy, setInfamy] = useState<Record<string, string>>({});
 
   if (!rows) return <Loader2 className="animate-spin text-muted-foreground" />;
   return (
@@ -417,8 +419,21 @@ function ProposalsTab() {
           {p.custom_description && <p className="text-muted-foreground">{p.custom_description}</p>}
           <div className="flex flex-wrap items-center gap-2">
             <input className={cn(inputClass, "h-8 w-24")} type="number" min={0} max={100} placeholder="Costo PF" value={cost[p.id] ?? ""} onChange={(e) => setCost({ ...cost, [p.id]: e.target.value })} aria-label="Costo in PF" />
+            <input className={cn(inputClass, "h-8 w-24")} type="number" placeholder="Fama" title="Punti di fama (vuoto = 5 per PF)" value={fame[p.id] ?? ""} onChange={(e) => setFame({ ...fame, [p.id]: e.target.value })} aria-label="Punti di fama" />
+            <input className={cn(inputClass, "h-8 w-24")} type="number" placeholder="Infamia" value={infamy[p.id] ?? ""} onChange={(e) => setInfamy({ ...infamy, [p.id]: e.target.value })} aria-label="Punti di infamia" />
             <input className={cn(inputClass, "h-8 min-w-0 flex-1")} maxLength={300} placeholder="Nota per il giocatore (facoltativa)" value={note[p.id] ?? ""} onChange={(e) => setNote({ ...note, [p.id]: e.target.value })} />
-            <Button type="button" size="xs" disabled={busy || (cost[p.id] ?? "") === ""} onClick={() => run(supabase.rpc("fame_bg_review", { p_id: p.id, p_approve: true, p_cost: Number(cost[p.id]), p_note: note[p.id] ?? "" }))}>
+            <Button type="button" size="xs" disabled={busy || (cost[p.id] ?? "") === ""} onClick={() =>
+                run(
+                  supabase.rpc("fame_bg_review", {
+                    p_id: p.id,
+                    p_approve: true,
+                    p_cost: Number(cost[p.id]),
+                    p_note: note[p.id] ?? "",
+                    p_fame: (fame[p.id] ?? "") === "" ? null : Number(fame[p.id]),
+                    p_infamy: Number(infamy[p.id] || 0),
+                  }),
+                )
+              }>
               Approva
             </Button>
             <Button type="button" size="xs" variant="ghost" disabled={busy} onClick={() => run(supabase.rpc("fame_bg_review", { p_id: p.id, p_approve: false, p_cost: null, p_note: note[p.id] ?? "" }))}>
@@ -523,16 +538,18 @@ function BgCatalog() {
     <CatalogEditor
       table="fame_bg_items"
       order={["category", "sort_order", "name"]}
-      hint="Le voci che i giocatori scelgono in creazione con i Punti Fama. Disattivata = non si sceglie più, chi l'ha già la tiene."
+      hint="Le voci che i giocatori scelgono in creazione. Costo PF = quanto la pagano con i Punti Fama; Fama e Infamia = quanto li rende famosi (cambiandole, cambiano per tutti quelli che le hanno). Disattivata = non si sceglie più, chi l'ha già la tiene."
       fields={[
         { key: "name", label: "Nome", type: "text", width: "w-64" },
         { key: "category", label: "Categoria", type: "text", width: "w-32" },
         { key: "cost_pf", label: "Costo PF", type: "number" },
+        { key: "fame_points", label: "Fama", type: "number" },
+        { key: "infamy_points", label: "Infamia", type: "number" },
         { key: "sort_order", label: "Ordine", type: "number" },
         { key: "active", label: "Attiva", type: "checkbox" },
         { key: "description", label: "Descrizione", type: "textarea" },
       ]}
-      empty={{ name: "", category: "Altro", cost_pf: 1, sort_order: 0, active: true, description: "" }}
+      empty={{ name: "", category: "Altro", cost_pf: 1, fame_points: 5, infamy_points: 0, sort_order: 0, active: true, description: "" }}
     />
   );
 }

@@ -46,6 +46,9 @@ export function FameCreation({ characterId }: { characterId: string }) {
   const categories = [...new Set(st.items.map((i) => i.category))];
   const items = st.items.filter((i) => !cat || i.category === cat);
   const proposals = st.mine.filter((m) => m.custom);
+  // fama che il background dà adesso (fino al tetto)
+  const bgFame = st.mine.filter((m) => m.status === "approvata").reduce((n, m) => n + (m.fame ?? 0), 0);
+  const bgShown = st.max_background > 0 ? Math.min(bgFame, st.max_background) : bgFame;
 
   return (
     <section className="flex flex-col gap-3 rounded-2xl border border-peach/30 bg-white/5 p-3">
@@ -62,6 +65,11 @@ export function FameCreation({ characterId }: { characterId: string }) {
           </>
         )}
         .
+      </p>
+      <p className="text-sm">
+        Fama che ti dà il background: <strong className="text-peach">{bgShown}</strong>
+        {st.max_background > 0 && <span className="text-muted-foreground"> (al massimo {st.max_background}: il resto si guadagna giocando)</span>}
+        {st.max_background > 0 && bgFame > st.max_background && <span className="text-flamingo"> · le voci scelte ne varrebbero {bgFame}</span>}
       </p>
       <p className="rounded-lg bg-peach/10 px-3 py-2 text-xs text-peach">
         Attenzione: quando lo staff approva la scheda i PF non spesi diventano PX per sempre, e da lì le voci di fama le cambia solo lo staff.
@@ -110,7 +118,10 @@ export function FameCreation({ characterId }: { characterId: string }) {
                     <strong className="font-medium">{i.name}</strong>
                     <span className="ml-auto shrink-0 text-xs text-peach">{i.cost} PF</span>
                   </span>
-                  <span className="block text-[0.7rem] text-lavender">{i.category}</span>
+                  <span className="block text-[0.7rem] text-lavender">
+                    {i.category} · <span className="text-sand">+{i.fame} fama</span>
+                    {i.infamy > 0 && <span className="text-flamingo"> · +{i.infamy} infamia</span>}
+                  </span>
                   {i.description && <span className="block text-xs text-muted-foreground">{i.description}</span>}
                 </span>
               </button>
@@ -126,7 +137,7 @@ export function FameCreation({ characterId }: { characterId: string }) {
             <p key={p.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-white/5 px-2.5 py-1.5 text-xs">
               <strong>{p.name}</strong>
               <span className={cn(p.status === "approvata" ? "text-mint" : p.status === "rifiutata" ? "text-destructive" : "text-peach")}>
-                {p.status === "approvata" ? `approvata · ${p.cost} PF` : p.status === "rifiutata" ? "rifiutata" : "in attesa dello staff"}
+                {p.status === "approvata" ? `approvata · ${p.cost} PF · +${p.fame ?? 0} fama` : p.status === "rifiutata" ? "rifiutata" : "in attesa dello staff"}
               </span>
               {p.note && <span className="text-muted-foreground">· {p.note}</span>}
               {p.status === "in_attesa" && (

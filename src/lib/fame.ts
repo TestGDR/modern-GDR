@@ -17,7 +17,17 @@ export type FameLevelInfo = {
   pct: number;
 };
 
-export type FameBackground = { id: string; name: string; description: string; category: string; cost: number | null; status: "approvata" | "in_attesa" | "rifiutata" };
+export type FameBackground = {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  cost: number | null;
+  status: "approvata" | "in_attesa" | "rifiutata";
+  /** quanto rende famosi (diverso dal costo in PF) */
+  fame: number | null;
+  infamy: number | null;
+};
 export type FameBadge = {
   id: string;
   badge_id: string;
@@ -41,6 +51,8 @@ export type FameOverview = {
   pf_pool: number;
   pf_converted: number;
   px_from_conversion: number;
+  /** fama massima che il background può dare (0 = nessun limite) */
+  max_background: number;
   is_staff: boolean;
   is_owner: boolean;
   background: FameBackground[];
@@ -57,9 +69,22 @@ export type FameCreationState = {
   rate: number;
   max_item: number;
   max_category: number;
+  max_background: number;
   custom: boolean;
-  items: { id: string; name: string; description: string; category: string; cost: number }[];
-  mine: { id: string; item_id: string | null; name: string; description: string; category: string; cost: number | null; status: FameBackground["status"]; note: string; custom: boolean }[];
+  items: { id: string; name: string; description: string; category: string; cost: number; fame: number; infamy: number }[];
+  mine: {
+    id: string;
+    item_id: string | null;
+    name: string;
+    description: string;
+    category: string;
+    cost: number | null;
+    status: FameBackground["status"];
+    note: string;
+    custom: boolean;
+    fame: number | null;
+    infamy: number | null;
+  }[];
 };
 
 /** Un'icona è un link https (immagine) o un'emoji */
