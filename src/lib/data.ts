@@ -326,7 +326,12 @@ export async function getThread(id: string) {
 }
 
 export type PostWithAuthor = ForumPost & {
-  author: { username: string; level: { name: string; color: string | null } | null } | null;
+  author: {
+    username: string;
+    level: { name: string; color: string | null } | null;
+    /** il personaggio del giocatore: ritratto e scheda come in chat */
+    character: { id: string; name: string; avatar_url: string | null } | null;
+  } | null;
   character: { id: string; name: string; avatar_url: string | null } | null;
 };
 
@@ -334,7 +339,7 @@ export async function getPosts(threadId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("forum_posts")
-    .select("*, author:profiles!forum_posts_author_id_fkey(username, level:user_levels(name, color)), character:characters(id, name, avatar_url)")
+    .select("*, author:profiles!forum_posts_author_id_fkey(username, level:user_levels(name, color), character:characters(id, name, avatar_url)), character:characters(id, name, avatar_url)")
     .eq("thread_id", threadId)
     .order("created_at")
     .limit(500)

@@ -65,7 +65,9 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]/[discus
 
       <ol className="flex flex-col gap-3">
         {posts.map((post) => {
-          const name = firstName(post.character?.name ?? post.author?.username) || "utente";
+          // i messaggi del forum sono del giocatore: ritratto e scheda del suo personaggio, come in chat
+          const pc = post.character ?? post.author?.character ?? null;
+          const name = firstName(pc?.name ?? post.author?.username) || "utente";
           const level = post.author?.level;
           const canEdit = moderator || post.author_id === player.userId;
           return (
@@ -76,14 +78,14 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]/[discus
             >
               {/* autore: ritratto e nome */}
               <div className="flex shrink-0 items-center gap-2 @xl:w-20 @xl:flex-col @xl:gap-1 @xl:text-center">
-                {post.character?.avatar_url ? (
+                {pc?.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={post.character.avatar_url} alt="" className="size-10 rounded-full object-cover @xl:size-16" />
+                  <img src={pc.avatar_url} alt="" className="size-10 rounded-full object-cover @xl:size-16" />
                 ) : (
                   <CharacterAvatar initials={initials(name)} className="size-10 ring-0 @xl:size-16" />
                 )}
-                {post.character ? (
-                  <Link href={`/scheda/${post.character.id}`} className="font-heading text-sm leading-tight tracking-wide break-words text-peach hover:underline">
+                {pc ? (
+                  <Link href={`/scheda/${pc.id}`} className="font-heading text-sm leading-tight tracking-wide break-words text-peach hover:underline">
                     {name}
                   </Link>
                 ) : (
