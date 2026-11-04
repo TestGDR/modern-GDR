@@ -310,6 +310,23 @@ function CharactersTab() {
                   </Button>
                 </>
               )}
+              {/* personaggio sbloccato che non ha mai avuto PX dalla fama: il giocatore può scegliere lui il background */}
+              {data.converted && data.px_from_conversion === 0 && ["bozza", "rifiutata"].includes(characters.find((c) => c.id === id)?.status ?? "") && (
+                <>
+                  <input className={cn(inputClass, "h-8 w-20")} type="number" min={0} value={pool} placeholder="10" onChange={(e) => setPool(e.target.value)} aria-label="PF da dare" />
+                  <Button
+                    type="button"
+                    size="xs"
+                    disabled={busy}
+                    onClick={() =>
+                      window.confirm("Riaprire i Punti Fama? Il giocatore sceglie il background in creazione e alla nuova approvazione i PF non spesi diventano PX.") &&
+                      run(supabase.rpc("fame_reopen", { p_character: id, p_pool: pool === "" ? null : Number(pool) })).then(() => setPool(""))
+                    }
+                  >
+                    Riapri i Punti Fama
+                  </Button>
+                </>
+              )}
             </div>
             <p className="text-[0.7rem] text-muted-foreground">
               Le voci aggiunte o tolte dallo staff contano subito nella fama; dopo l&apos;approvazione non cambiano più i PX.
