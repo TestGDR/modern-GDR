@@ -817,17 +817,17 @@ function ChosenOptions({ build, rules, characterId }: { build: CharacterBuild; r
     { title: "Sportive", items: chosen.filter((o) => o.scope === "sportiva") },
   ];
   return (
-    // un gruppo per riga, a tutta larghezza; dentro, le voci affiancate
+    // un gruppo sotto l'altro; dentro, le voci in elenco a tutta larghezza
     <div className="flex flex-col gap-5">
       {groups.map((g) =>
         g.items.length === 0 ? null : (
           <section key={g.title}>
             <h3 className="mb-2 font-heading text-lg tracking-wide text-peach">{g.title}</h3>
-            <ul className="grid gap-2 @lg:grid-cols-2 @4xl:grid-cols-3">
+            <ul className="flex flex-col divide-y divide-white/10 overflow-hidden rounded-xl bg-white/5">
               {g.items.map((o) => {
                 const d = build.optionDetails[o.id];
                 return (
-                  <li key={o.id} className="rounded-lg bg-white/5 px-3 py-2 text-sm">
+                  <li key={o.id} className="px-4 py-2.5 text-sm">
                     <p className="flex flex-wrap items-baseline gap-x-1.5 font-medium">
                       {o.name}
                       {o.max_level > 1 && <span className="text-xs text-peach">livello {d?.level ?? 1}</span>}
