@@ -14,7 +14,15 @@ export type SocialPerson = {
   id: string;
   name: string;
   avatar_url: string | null;
-  social: { handle: string; bio?: string } | null;
+  social: {
+    handle: string;
+    bio?: string;
+    /** pubblico PNG e follower comprati (crescono e calano da soli ogni giorno) */
+    npc_followers?: number;
+    bought_followers?: number;
+    boost_until?: string | null;
+    boost_mult?: number;
+  } | null;
 };
 
 export type SocialPost = {
@@ -28,6 +36,8 @@ export type SocialPost = {
   edited_at?: string | null;
   author: SocialPerson | null;
   social_reactions: { character_id: string; emoji: Reaction }[];
+  /** like del pubblico PNG (arrivano nei primi giorni) */
+  npc_likes?: number;
   social_comments: { count: number }[];
   social_tags: { character: SocialPerson | null }[];
 };
@@ -61,8 +71,8 @@ export type SocialNotification = {
 };
 
 /** Campi da chiedere al database per un personaggio */
-export const PERSON = "id, name, avatar_url, social:social_profiles(handle, bio)";
-export const POST_SELECT = `id, character_id, body, media, location, created_at, edited_at, author:characters!social_posts_character_id_fkey(${PERSON}), social_reactions(character_id, emoji), social_comments(count), social_tags(character:characters(${PERSON}))`;
+export const PERSON = "id, name, avatar_url, social:social_profiles(handle, bio, npc_followers, bought_followers, boost_until, boost_mult)";
+export const POST_SELECT = `id, character_id, body, media, location, created_at, edited_at, npc_likes, author:characters!social_posts_character_id_fkey(${PERSON}), social_reactions(character_id, emoji), social_comments(count), social_tags(character:characters(${PERSON}))`;
 
 /** Nome visibile: @nome se c'è, altrimenti il nome del personaggio */
 export function handleOf(p: SocialPerson | null | undefined) {

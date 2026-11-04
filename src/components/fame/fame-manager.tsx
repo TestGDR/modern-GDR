@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BadgeCheck, BookOpen, ClipboardList, Gem, Layers, Loader2, Plus, Save, Settings2, Star, Trash2, Users } from "lucide-react";
+import { BadgeCheck, BookOpen, ClipboardList, Gem, Layers, Loader2, Megaphone, Plus, Save, Settings2, Star, Trash2, Users } from "lucide-react";
 import { inputClass, textareaClass } from "@/components/admin/admin-ui";
 import { SettingRow } from "@/components/admin/settings-manager";
 import { FameIcon } from "@/components/fame/fame-icon";
@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 // Scritture dirette sulle tabelle (RLS: fama.gestire); i trigger del database
 // ricalcolano i totali, scrivono il registro e mandano le notifiche.
 
-type Tab = "personaggi" | "proposte" | "catalogo" | "badge" | "rarita" | "livelli" | "impostazioni" | "registro";
+type Tab = "personaggi" | "proposte" | "catalogo" | "badge" | "rarita" | "livelli" | "social" | "impostazioni" | "registro";
 const TABS: { key: Tab; label: string; icon: typeof Star }[] = [
   { key: "personaggi", label: "Personaggi", icon: Users },
   { key: "proposte", label: "Proposte", icon: ClipboardList },
@@ -25,6 +25,7 @@ const TABS: { key: Tab; label: string; icon: typeof Star }[] = [
   { key: "badge", label: "Badge", icon: BadgeCheck },
   { key: "rarita", label: "Rarità", icon: Gem },
   { key: "livelli", label: "Livelli", icon: Layers },
+  { key: "social", label: "Social", icon: Megaphone },
   { key: "impostazioni", label: "Impostazioni", icon: Settings2 },
   { key: "registro", label: "Registro", icon: Star },
 ];
@@ -57,6 +58,7 @@ export function FameManager({ settings }: { settings: GameSetting[] }) {
       {tab === "badge" && <BadgeCatalog />}
       {tab === "rarita" && <RarityCatalog />}
       {tab === "livelli" && <LevelsCatalog />}
+      {tab === "social" && <SocialPackages />}
       {tab === "impostazioni" && (
         <ul className="flex flex-col gap-3">
           {settings.map((s) => (
@@ -641,16 +643,57 @@ function LevelsCatalog() {
     { key: "color", label: "Colore", type: "color" },
     { key: "sort_order", label: "Ordine", type: "number" },
   ];
+  // solo la fama fa crescere il pubblico del social
+  const fameFields: Field[] = [...fields, { key: "social_followers_day", label: "Follower PNG al giorno", type: "number", width: "w-24" }];
   return (
     <div className="flex flex-col gap-4">
       <p className="text-xs text-muted-foreground">
         Ogni livello parte dalla sua soglia di punti; il primo dovrebbe essere da 0. Icona: emoji o link https (vuota = niente icona nei presenti).
       </p>
       <h3 className="font-heading text-lg tracking-wide text-peach">Fama</h3>
-      <CatalogEditor table="fame_levels" filter={{ key: "kind", value: "fama" }} order={["min_points"]} fields={fields} empty={{ kind: "fama", icon: "", name: "", min_points: 0, color: "#f2b39c", sort_order: 0 }} />
+      <CatalogEditor
+        table="fame_levels"
+        filter={{ key: "kind", value: "fama" }}
+        order={["min_points"]}
+        fields={fameFields}
+        hint="Follower PNG al giorno: quanto pubblico guadagna ogni giorno sul social chi è a questo livello (se pubblica)."
+        empty={{ kind: "fama", icon: "", name: "", min_points: 0, color: "#f2b39c", sort_order: 0, social_followers_day: 0 }}
+      />
       <h3 className="font-heading text-lg tracking-wide text-flamingo">Infamia</h3>
       <CatalogEditor table="fame_levels" filter={{ key: "kind", value: "infamia" }} order={["min_points"]} fields={fields} empty={{ kind: "infamia", icon: "", name: "", min_points: 0, color: "#ec8cb8", sort_order: 0 }} />
     </div>
+  );
+}
+
+/** Pacchetti del social: follower comprati e campagne sponsorizzate */
+function SocialPackages() {
+  return (
+    <CatalogEditor
+      table="social_packages"
+      order={["sort_order", "name"]}
+      hint="Follower = quanti follower comprati dà subito (calano ogni giorno e possono far scoprire l'acquisto). Campagna = per quanti giorni moltiplica crescita del pubblico e like dei post nuovi. Prezzo in dollari dal conto. Crescita per livello in Livelli, il resto in Impostazioni."
+      fields={[
+        { key: "name", label: "Nome", type: "text", width: "w-56" },
+        {
+          key: "kind",
+          label: "Tipo",
+          type: "select",
+          width: "w-32",
+          options: [
+            { value: "follower", label: "Follower" },
+            { value: "campagna", label: "Campagna" },
+          ],
+        },
+        { key: "amount", label: "Follower", type: "number", width: "w-24" },
+        { key: "days", label: "Giorni", type: "number" },
+        { key: "multiplier", label: "Moltiplicatore", type: "number" },
+        { key: "price", label: "Prezzo $", type: "number", width: "w-24" },
+        { key: "sort_order", label: "Ordine", type: "number" },
+        { key: "active", label: "In vendita", type: "checkbox" },
+        { key: "description", label: "Descrizione", type: "textarea" },
+      ]}
+      empty={{ name: "", kind: "follower", amount: 1000, days: 0, multiplier: 1, price: 100, sort_order: 0, active: true, description: "" }}
+    />
   );
 }
 

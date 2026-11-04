@@ -13,7 +13,7 @@ export default function Page() {
   return (
     <>
       <BackToPanel />
-      <PageHeader title="Fama" subtitle="Voci, badge, background, livelli e impostazioni della fama dei personaggi." />
+      <PageHeader title="Fama" subtitle="Voci, badge, background, livelli e impostazioni della fama dei personaggi, e la crescita del social." />
       <Suspense fallback={<LoadingBlocks />}>
         <Content />
       </Suspense>
@@ -23,6 +23,6 @@ export default function Page() {
 
 async function Content() {
   await requirePermission("fama.gestire");
-  const settings = (await getSettings()).filter((s) => s.key.startsWith("fama_"));
+  const settings = (await getSettings()).filter((s) => s.key.startsWith("fama_") || s.key.startsWith("social_"));
   return <FameManager settings={settings} />;
 }

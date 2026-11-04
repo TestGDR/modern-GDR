@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Grid3x3, Layers, MessageCircle, Pencil, SendHorizontal, UserRoundPlus } from "lucide-react";
+import { ArrowLeft, Grid3x3, Layers, Megaphone, MessageCircle, Pencil, SendHorizontal, UserRoundPlus } from "lucide-react";
+import { PromotePanel } from "@/components/social/promote-panel";
 import { Button } from "@/components/ui/button";
 import { usePersonSearch } from "@/components/social/composer";
 import { PostCard } from "@/components/social/post-card";
@@ -152,6 +153,7 @@ export function ProfileView({ id }: { id: string }) {
   const [stats, setStats] = useState({ posts: 0, followers: 0, following: 0 });
   const [tab, setTab] = useState<"post" | "tag">("post");
   const [editing, setEditing] = useState(false);
+  const [promote, setPromote] = useState(false);
 
   const load = useCallback(async () => {
     const [p, list, fr, fg, pc] = await Promise.all([
@@ -177,6 +179,10 @@ export function ProfileView({ id }: { id: string }) {
   if (person === undefined) return <p className="text-sm text-muted-foreground">Caricamento…</p>;
   if (person === null) return <p className="text-sm text-muted-foreground">Profilo non trovato.</p>;
   const isMe = me?.id === person.id;
+  // follower: i personaggi veri, più il pubblico PNG e quelli comprati
+  const npc = person.social?.npc_followers ?? 0;
+  const bought = person.social?.bought_followers ?? 0;
+  const followers = stats.followers + npc + bought;
 
   return (
     <div className="flex flex-col gap-4">
@@ -188,7 +194,7 @@ export function ProfileView({ id }: { id: string }) {
             <span className="text-xs text-muted-foreground">post</span>
           </span>
           <button type="button" onClick={() => go({ kind: "follows", id: person.id, which: "followers" })} className="hover:opacity-80">
-            <b className="block text-lg">{stats.followers}</b>
+            <b className="block text-lg">{followers.toLocaleString("it-IT")}</b>
             <span className="text-xs text-muted-foreground">follower</span>
           </button>
           <button type="button" onClick={() => go({ kind: "follows", id: person.id, which: "following" })} className="hover:opacity-80">
@@ -213,9 +219,14 @@ export function ProfileView({ id }: { id: string }) {
       ) : (
         <div className="flex gap-2">
           {isMe ? (
-            <Button type="button" variant="outline" size="sm" className="flex-1 rounded-full" onClick={() => setEditing(true)}>
-              <Pencil /> Modifica profilo
-            </Button>
+            <>
+              <Button type="button" variant="outline" size="sm" className="flex-1 rounded-full" onClick={() => setEditing(true)}>
+                <Pencil /> Modifica profilo
+              </Button>
+              <Button type="button" variant="outline" size="sm" className="flex-1 rounded-full" onClick={() => setPromote((v) => !v)} aria-expanded={promote}>
+                <Megaphone /> Promuovi
+              </Button>
+            </>
           ) : (
             <>
               <FollowButton id={person.id} className="flex-1" />
@@ -228,6 +239,16 @@ export function ProfileView({ id }: { id: string }) {
           )}
         </div>
       )}
+
+      {isMe && (
+        <p className="text-xs text-muted-foreground">
+          {stats.followers} personaggi · {npc.toLocaleString("it-IT")} pubblico{bought > 0 ? ` · ${bought.toLocaleString("it-IT")} comprati (calano ogni giorno)` : ""}
+          {person.social?.boost_until && new Date(person.social.boost_until) > new Date() && (
+            <span className="text-mint"> · campagna attiva ×{person.social.boost_mult} fino al {new Date(person.social.boost_until).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit" })}</span>
+          )}
+        </p>
+      )}
+      {isMe && promote && <PromotePanel characterId={person.id} onDone={() => load()} />}
 
       <div className="flex border-t border-white/10">
         {(

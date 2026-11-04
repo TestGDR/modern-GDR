@@ -28,6 +28,8 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
   const counts = REACTIONS.map((e) => ({ e, n: reactions.filter((r) => r.emoji === e).length }))
     .filter((x) => x.n > 0)
     .sort((a, b) => b.n - a.n);
+  // like totali: quelli dei giocatori più quelli del pubblico PNG
+  const totalLikes = reactions.length + (post.npc_likes ?? 0);
 
   async function react(emoji: Reaction | null) {
     if (!me) return;
@@ -192,10 +194,10 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
             <SendHorizontal className="size-5" />
           </button>
         )}
-        {counts.length > 0 && (
-          <span className="ml-auto flex items-center gap-1.5 pr-2 text-xs text-muted-foreground">
-            <span>{counts.slice(0, 3).map((c) => c.e).join("")}</span>
-            {reactions.length}
+        {totalLikes > 0 && (
+          <span className="ml-auto flex items-center gap-1.5 pr-2 text-xs text-muted-foreground" title={post.npc_likes ? `${reactions.length} dai personaggi, ${post.npc_likes.toLocaleString("it-IT")} dal pubblico` : undefined}>
+            <span>{counts.length ? counts.slice(0, 3).map((c) => c.e).join("") : "❤️"}</span>
+            {totalLikes.toLocaleString("it-IT")}
           </span>
         )}
       </div>
