@@ -329,6 +329,7 @@ function OrgPage({
                   <span className="block truncate text-xs text-muted-foreground">
                     {roleName(m.role_id)}
                     {m.mode && ` · ${JOB_KIND_LABEL[m.mode].toLowerCase()}`}
+                    {m.captain && <span className="font-semibold text-peach"> · Capitano</span>}
                   </span>
                 </span>
               </Link>

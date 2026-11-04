@@ -29,14 +29,17 @@ export async function loadGroupCategories(): Promise<GroupCategory[]> {
 export async function loadOrgs(kind: OrgKind): Promise<Org[]> {
   const t = ORG_TABLES[kind];
   const supabase = await createClient();
-  const [{ data: orgs }, { data: roles }, { data: members }] = await Promise.all([
+  const [{ data: orgs }, { data: roles }, { data: members }, { data: captains }] = await Promise.all([
     supabase.from(t.org).select("*").order("sort_order").order("name").overrideTypes<OrgRow[], { merge: false }>(),
     supabase.from(t.role).select("*").order("sort_order").order("name").overrideTypes<RoleRow[], { merge: false }>(),
     supabase
       .from(t.member)
       .select(`role_id, ${t.fk}, ${kind === "job" ? "mode, " : ""}character:characters(id, name, avatar_url)`)
       .overrideTypes<MemberRow[], { merge: false }>(),
+    // capitani delle squadre: nel gruppo hanno il loro ruolo sportivo, con la scritta «Capitano»
+    kind === "group" ? supabase.rpc("sport_captains") : Promise.resolve({ data: [] }),
   ]);
+  const captainOf = new Set(((captains ?? []) as { character_id: string; group_id: string }[]).map((c) => `${c.group_id}:${c.character_id}`));
   return (orgs ?? []).map((o) => ({
     id: o.id,
     name: o.name,
@@ -63,7 +66,14 @@ export async function loadOrgs(kind: OrgKind): Promise<Org[]> {
       })),
     members: (members ?? [])
       .filter((m) => (m.job_id ?? m.group_id) === o.id && m.character)
-      .map((m) => ({ character_id: m.character!.id, name: m.character!.name, avatar_url: m.character!.avatar_url, role_id: m.role_id, mode: m.mode ?? null }))
+      .map((m) => ({
+        character_id: m.character!.id,
+        name: m.character!.name,
+        avatar_url: m.character!.avatar_url,
+        role_id: m.role_id,
+        mode: m.mode ?? null,
+        captain: captainOf.has(`${o.id}:${m.character!.id}`),
+      }))
       .sort((a, b) => a.name.localeCompare(b.name, "it")),
   }));
 }

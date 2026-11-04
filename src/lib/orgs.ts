@@ -26,6 +26,8 @@ export type OrgMember = {
   role_id: string;
   /** Lavori: orario scelto */
   mode: JobKind | null;
+  /** Squadre: è il capitano */
+  captain?: boolean;
 };
 
 export type Org = {
