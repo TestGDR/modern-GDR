@@ -37,13 +37,20 @@ function Highlighted({ text, names }: { text: string; names: string[] }) {
   );
 }
 
-/** Il parlato tra < >, «caporali» o "virgolette" prende il colore scelto per il parlato */
+/**
+ * Il parlato tra < > o «caporali» prende il colore scelto per il parlato;
+ * il testo tra [ ] (pensieri, note) è in corsivo lilla. Le "virgolette" restano testo normale.
+ */
 export function FormattedText({ text, names = [] }: { text: string; names?: string[] }) {
-  const parts = text.split(/(<[^<>]*>|«[^»]*»|"[^"]*"|“[^”]*”)/g);
+  const parts = text.split(/(<[^<>]*>|«[^»]*»|\[[^[\]]*\])/g);
   return (
     <>
       {parts.map((part, i) =>
-        i % 2 === 1 ? (
+        i % 2 === 1 && part.startsWith("[") ? (
+          <span key={i} className="text-lavender italic">
+            <Highlighted text={part} names={names} />
+          </span>
+        ) : i % 2 === 1 ? (
           <span key={i} className="font-semibold" style={{ color: "var(--chat-speech, #fde68a)" }}>
             <Highlighted text={part} names={names} />
           </span>
