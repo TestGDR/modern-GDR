@@ -145,7 +145,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
 
   if (m.kind === "sussurro") {
     return (
-      <div className="group flex items-start gap-2 rounded-xl border border-lavender/30 bg-violet/25 px-3 py-2" style={{ fontSize: "var(--chat-other, 10pt)" }}>
+      <div className="group flex items-start gap-2 rounded-xl border border-orchid/40 bg-gradient-to-r from-violet/60 via-orchid/30 to-flamingo/15 px-3 py-2 shadow-[0_0_18px_-6px_var(--orchid)]" style={{ fontSize: "var(--chat-other, 10pt)" }}>
         <Lock className="mt-0.5 size-3.5 shrink-0 text-lavender" />
         <p className="min-w-0 flex-1">
           <span className="mr-2 text-xs text-muted-foreground">{time}</span>
@@ -162,7 +162,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
 
   if (m.kind === "fuori_gioco") {
     return (
-      <div className="group flex items-start gap-2 px-1 text-muted-foreground" style={{ fontSize: "var(--chat-other, 10pt)" }}>
+      <div className="group flex items-start gap-2 rounded-xl border border-mint/25 bg-gradient-to-r from-mint/15 via-dusk/30 to-transparent px-3 py-1.5 text-foreground/75" style={{ fontSize: "var(--chat-other, 10pt)" }}>
         <p className="min-w-0 flex-1">
           <span className="mr-2 text-xs">{time}</span>
           <span className="mr-1 rounded bg-white/10 px-1.5 py-0.5 text-[0.65rem] font-semibold tracking-wider uppercase">OFF</span>
