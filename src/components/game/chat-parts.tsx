@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, Dices, Lock, Pencil, Shirt, Swords, Trash2, UserPlus, X } from "lucide-react";
 import { CombatDetail } from "@/components/game/combat-panel";
 import { FloatingWindow } from "@/components/floating-window";
+import { SafeHtml } from "@/components/guide/safe-html";
 import { Button } from "@/components/ui/button";
 import { expelFromRoom, inviteToRoom, rollDice, setMasterMode } from "@/lib/actions/chat";
 import { createClient } from "@/lib/supabase/client";
@@ -601,7 +602,8 @@ export function LookWindow({ person, onClose }: { person: { name: string; avatar
       }
     >
       {person.appearance?.trim() ? (
-        <p className="text-sm leading-relaxed whitespace-pre-line text-foreground/90">{person.appearance}</p>
+        // testo dell'editor (immagini, grassetto…) ripulito; i testi vecchi restano testo semplice
+        <SafeHtml html={person.appearance} className="text-sm leading-relaxed text-foreground/90" />
       ) : (
         <p className="text-sm text-muted-foreground">Questo personaggio non ha ancora descritto il suo aspetto.</p>
       )}
