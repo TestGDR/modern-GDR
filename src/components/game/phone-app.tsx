@@ -64,8 +64,16 @@ type Props = {
 
 // Messaggi caricati per volta in una conversazione
 const PAGE = 50;
-const MSG_COLS =
-  "id, thread_id, sender_number_id, mode, body, created_at, deleted_at, reply_to_id, reply:phone_messages!phone_messages_reply_to_id_fkey(id, sender_number_id, body, mode, deleted_at)";
+const MSG_COLS = "id, thread_id, sender_number_id, mode, body, created_at, deleted_at, reply_to_id";
+
+/** Aggiunge ai messaggi quello che citano (letto a parte, così la chat si carica sempre) */
+async function withReplies(supabase: ReturnType<typeof createClient>, rows: PhoneMessage[]): Promise<PhoneMessage[]> {
+  const ids = [...new Set(rows.map((m) => m.reply_to_id).filter((id): id is number => typeof id === "number"))];
+  if (ids.length === 0) return rows;
+  const { data } = await supabase.from("phone_messages").select("id, sender_number_id, body, mode, deleted_at").in("id", ids);
+  const byId = new Map(((data ?? []) as NonNullable<PhoneMessage["reply"]>[]).map((r) => [r.id, r]));
+  return rows.map((m) => (m.reply_to_id ? { ...m, reply: byId.get(m.reply_to_id) ?? null } : m));
+}
 
 const inputCls =
   "h-10 w-full rounded-lg border border-input bg-night/40 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
@@ -183,8 +191,8 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
         .limit(PAGE + 1);
+      const rows = await withReplies(supabase, (data ?? []) as PhoneMessage[]);
       if (openThreadRef.current !== threadId) return;
-      const rows = (data ?? []) as unknown as PhoneMessage[];
       setHasMore(rows.length > PAGE);
       setThreadMessages(rows.slice(0, PAGE).reverse());
     },
@@ -202,8 +210,8 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
         .limit(PAGE + 1);
+      const rows = await withReplies(supabase, (data ?? []) as PhoneMessage[]);
       if (openThreadRef.current !== threadId) return;
-      const rows = (data ?? []) as unknown as PhoneMessage[];
       setHasMore(rows.length > PAGE);
       setThreadMessages((prev) => [...rows.slice(0, PAGE).reverse(), ...prev.filter((m) => m.thread_id === threadId)]);
     },
@@ -771,7 +779,7 @@ function ThreadView({
           .order("created_at")
           .order("id")
           .range(page * 1000, page * 1000 + 999);
-        const rows = (data ?? []) as unknown as PhoneMessage[];
+        const rows = (data ?? []) as PhoneMessage[];
         all.push(...rows);
         if (rows.length < 1000) break;
       }
