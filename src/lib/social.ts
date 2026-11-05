@@ -35,7 +35,7 @@ export type SocialPost = {
   /** ultima modifica (testo, luogo o foto) */
   edited_at?: string | null;
   author: SocialPerson | null;
-  social_reactions: { character_id: string; emoji: Reaction }[];
+  social_reactions: { character_id: string; emoji: Reaction; character?: { name: string; social: { handle: string } | null } | null }[];
   /** like del pubblico PNG (arrivano nei primi giorni) */
   npc_likes?: number;
   social_comments: { count: number }[];
@@ -126,7 +126,7 @@ export function fromRomeInput(v: string) {
 /** Campi da chiedere al database per un personaggio */
 export const PERSON = "id, name, avatar_url, social:social_profiles(handle, bio, npc_followers, bought_followers, boost_until, boost_mult)";
 export const EVENT_SELECT = `id, character_id, title, description, cover_url, starts_at, ends_at, room_id, place, visibility, has_password, created_at, organizer:characters!social_events_character_id_fkey(${PERSON}), room:rooms(id, name), social_event_guests(character_id, status)`;
-export const POST_SELECT = `id, character_id, body, media, location, created_at, edited_at, npc_likes, author:characters!social_posts_character_id_fkey(${PERSON}), social_reactions(character_id, emoji), social_comments(count), social_tags(character:characters(${PERSON})), event_id, event:social_events(id, title)`;
+export const POST_SELECT = `id, character_id, body, media, location, created_at, edited_at, npc_likes, author:characters!social_posts_character_id_fkey(${PERSON}), social_reactions(character_id, emoji, character:characters(name, social:social_profiles(handle))), social_comments(count), social_tags(character:characters(${PERSON})), event_id, event:social_events(id, title)`;
 
 /** Nome visibile: @nome se c'è, altrimenti il nome del personaggio */
 export function handleOf(p: SocialPerson | null | undefined) {

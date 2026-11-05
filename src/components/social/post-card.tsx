@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CalendarDays, MapPin, MessageCircle, MoreHorizontal, Pencil, SendHorizontal, SmilePlus, Trash2 } from "lucide-react";
 import { Avatar, Caption, Carousel, PersonName, useSocial } from "@/components/social/social-ui";
 import { PERSON, REACTIONS, socialTime, type Reaction, type SocialComment, type SocialPost } from "@/lib/social";
+import { firstName } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /** Un post: autore, carosello, reazioni, testo, tag e commenti */
@@ -30,6 +31,23 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
     .sort((a, b) => b.n - a.n);
   // like totali: quelli dei giocatori più quelli del pubblico PNG
   const totalLikes = reactions.length + (post.npc_likes ?? 0);
+  // al passaggio del mouse: chi ha reagito (@nome), poi il pubblico
+  const likeNames = reactions.map((r) => {
+    const who =
+      r.character_id === me?.id
+        ? me.handle
+          ? `@${me.handle}`
+          : firstName(me.name)
+        : r.character?.social?.handle
+          ? `@${r.character.social.handle}`
+          : firstName(r.character?.name) || "utente";
+    return `${r.emoji} ${who}`;
+  });
+  const likeTitle = [
+    ...likeNames.slice(0, 20),
+    ...(likeNames.length > 20 ? [`e altri ${likeNames.length - 20}`] : []),
+    ...(post.npc_likes ? [`+ ${post.npc_likes.toLocaleString("it-IT")} dal pubblico`] : []),
+  ].join("\n");
 
   async function react(emoji: Reaction | null) {
     if (!me) return;
@@ -200,7 +218,7 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
           </button>
         )}
         {totalLikes > 0 && (
-          <span className="ml-auto flex items-center gap-1.5 pr-2 text-xs text-muted-foreground" title={post.npc_likes ? `${reactions.length} dai personaggi, ${post.npc_likes.toLocaleString("it-IT")} dal pubblico` : undefined}>
+          <span className="ml-auto flex items-center gap-1.5 pr-2 text-xs text-muted-foreground" title={likeTitle || undefined}>
             <span>{counts.length ? counts.slice(0, 3).map((c) => c.e).join("") : "❤️"}</span>
             {totalLikes.toLocaleString("it-IT")}
           </span>
