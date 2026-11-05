@@ -17,7 +17,7 @@ export type SocialPerson = {
   social: {
     handle: string;
     bio?: string;
-    /** pubblico PNG e follower comprati (crescono e calano da soli ogni giorno) */
+    /** pubblico PNG (cresce e cala da solo ogni giorno) e follower comprati (crescono con la fama, non calano) */
     npc_followers?: number;
     bought_followers?: number;
     boost_until?: string | null;

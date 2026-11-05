@@ -43,7 +43,7 @@ export function PromotePanel({ characterId, onDone }: { characterId: string; onD
         r.kind === "follower"
           ? r.caught
             ? "Fatto, ma qualcuno se n'è accorto: «Follower comprati» è finito nella tua infamia."
-            : `Fatto: ${p.amount.toLocaleString("it-IT")} follower in più (calano un po' ogni giorno).`
+            : `Fatto: ${p.amount.toLocaleString("it-IT")} follower in più.`
           : `Campagna attiva per ${p.days} giorni: crescita e like ×${p.multiplier}.`,
     });
     onDone();
@@ -55,7 +55,7 @@ export function PromotePanel({ characterId, onDone }: { characterId: string; onD
         <Megaphone className="size-4 text-peach" /> Promuovi il profilo
       </h3>
       <p className="text-xs text-muted-foreground">
-        Il tuo pubblico cresce da solo ogni giorno in base alla tua fama, se pubblichi. Qui puoi spingerlo pagando dal conto: i follower comprati calano col tempo e
+        Il tuo pubblico cresce da solo ogni giorno in base alla tua fama, se pubblichi. Qui puoi spingerlo pagando dal conto: i follower comprati non calano e crescono ogni giorno con la tua fama, ma
         qualcuno potrebbe accorgersene.
       </p>
       {msg && <p className={msg.ok ? "text-sm text-mint" : "text-sm text-flamingo"}>{msg.text}</p>}

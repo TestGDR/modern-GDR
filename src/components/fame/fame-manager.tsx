@@ -671,7 +671,7 @@ function SocialPackages() {
     <CatalogEditor
       table="social_packages"
       order={["sort_order", "name"]}
-      hint="Follower = quanti follower comprati dà subito (calano ogni giorno e possono far scoprire l'acquisto). Campagna = per quanti giorni moltiplica crescita del pubblico e like dei post nuovi. Prezzo in dollari dal conto. Crescita per livello in Livelli, il resto in Impostazioni."
+      hint="Follower = quanti follower comprati dà subito (non calano mai e crescono ogni giorno con la fama, vedi Impostazioni; possono far scoprire l'acquisto). Campagna = per quanti giorni moltiplica crescita del pubblico e like dei post nuovi. Prezzo in dollari dal conto. Crescita per livello in Livelli, il resto in Impostazioni."
       fields={[
         { key: "name", label: "Nome", type: "text", width: "w-56" },
         {

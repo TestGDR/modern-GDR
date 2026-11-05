@@ -237,7 +237,7 @@ export function ProfileView({ id }: { id: string }) {
 
       {isMe && (
         <p className="text-xs text-muted-foreground">
-          {stats.followers} personaggi · {npc.toLocaleString("it-IT")} pubblico{bought > 0 ? ` · ${bought.toLocaleString("it-IT")} comprati (calano ogni giorno)` : ""}
+          {stats.followers} personaggi · {npc.toLocaleString("it-IT")} pubblico{bought > 0 ? ` · ${bought.toLocaleString("it-IT")} comprati` : ""}
           {person.social?.boost_until && new Date(person.social.boost_until) > new Date() && (
             <span className="text-mint"> · campagna attiva ×{person.social.boost_mult} fino al {new Date(person.social.boost_until).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit" })}</span>
           )}
