@@ -80,7 +80,10 @@ function InfoText({ paragraphs }: { paragraphs: string[] }) {
   return (
     <div className="flex flex-col gap-3 text-left text-sm leading-relaxed text-foreground/90">
       {paragraphs.map((p) => (
-        <p key={p}>{p}</p>
+        <p key={p}>
+          {/* **testo** = grassetto */}
+          {p.split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : part))}
+        </p>
       ))}
     </div>
   );
