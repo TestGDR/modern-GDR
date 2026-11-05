@@ -24,6 +24,10 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
   const mine = reactions.find((r) => r.character_id === me?.id)?.emoji ?? null;
   const isMine = me?.id === post.character_id;
   const tags = post.social_tags.map((t) => t.character).filter((c) => c !== null);
+  // post scritto (senza foto): il testo è il contenuto, grande, come un post di Facebook
+  const textOnly = post.media.length === 0;
+  const [expanded, setExpanded] = useState(false);
+  const LONG = 600;
 
   // conteggio per emoji, dalla più usata
   const counts = REACTIONS.map((e) => ({ e, n: reactions.filter((r) => r.emoji === e).length }))
@@ -182,6 +186,16 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
       </header>
 
       <Carousel media={post.media} />
+      {textOnly && !editPost && current.body && (
+        <div className="px-4 pt-1 pb-1 text-[0.95rem] leading-relaxed">
+          <Caption text={current.body.length > LONG && !expanded ? `${current.body.slice(0, LONG).trimEnd()}…` : current.body} />
+          {current.body.length > LONG && (
+            <button type="button" onClick={() => setExpanded((v) => !v)} className="ml-1 text-sm text-muted-foreground hover:text-foreground">
+              {expanded ? "Meno" : "Altro"}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* reazioni e commenti */}
       <div className="flex items-center gap-1 px-2 pt-2">
@@ -260,7 +274,8 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
             </div>
           </form>
         ) : (
-          current.body && (
+          current.body &&
+          !textOnly && (
             <p>
               <PersonName person={post.author} className="mr-1.5" />
               <Caption text={current.body} />

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, Grid3x3, Layers, Megaphone, MessageCircle, Pencil, SendHorizontal, UserRoundPlus } from "lucide-react";
+import { ArrowLeft, CalendarDays, Grid3x3, Layers, PenLine, Megaphone, MessageCircle, Pencil, SendHorizontal, UserRoundPlus } from "lucide-react";
 import { ProfileEvents } from "@/components/social/events";
 import { PromotePanel } from "@/components/social/promote-panel";
 import { Button } from "@/components/ui/button";
@@ -146,7 +146,7 @@ export function ProfileView({ id }: { id: string }) {
   const [person, setPerson] = useState<SocialPerson | null | undefined>(undefined);
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [stats, setStats] = useState({ posts: 0, followers: 0, following: 0 });
-  const [tab, setTab] = useState<"post" | "tag" | "eventi">("post");
+  const [tab, setTab] = useState<"post" | "scritti" | "tag" | "eventi">("post");
   const [editing, setEditing] = useState(false);
   const [promote, setPromote] = useState(false);
 
@@ -249,6 +249,7 @@ export function ProfileView({ id }: { id: string }) {
         {(
           [
             ["post", "Post", Grid3x3],
+            ["scritti", "Scritti", PenLine],
             ["tag", "Taggato", UserRoundPlus],
             ["eventi", "Eventi", CalendarDays],
           ] as const
@@ -265,11 +266,23 @@ export function ProfileView({ id }: { id: string }) {
       </div>
       {tab === "eventi" ? (
         <ProfileEvents id={person.id} />
-      ) : posts.length === 0 ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">{tab === "post" ? "Nessun post." : "Nessun post in cui è taggato."}</p>
+      ) : tab === "scritti" ? (
+        posts.filter((p) => p.media.length === 0).length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Nessun post scritto.</p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {posts
+              .filter((p) => p.media.length === 0)
+              .map((p) => (
+                <PostCard key={p.id} post={p} onChanged={load} />
+              ))}
+          </div>
+        )
+      ) : posts.filter((p) => tab !== "post" || p.media.length > 0).length === 0 ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">{tab === "post" ? "Nessun post con foto." : "Nessun post in cui è taggato."}</p>
       ) : (
         <ul className="grid grid-cols-3 gap-0.5">
-          {posts.map((p) => (
+          {posts.filter((p) => tab !== "post" || p.media.length > 0).map((p) => (
             <li key={p.id}>
               <button type="button" onClick={() => go({ kind: "post", id: p.id })} className="relative block aspect-square w-full overflow-hidden bg-white/5" aria-label="Apri il post">
                 {p.media[0] ? (

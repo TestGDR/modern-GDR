@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, CalendarDays, ImagePlus, MapPin, Tag, X } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarDays, ImagePlus, MapPin, PenLine, Tag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, MediaItem, useSocial } from "@/components/social/social-ui";
 import { detectMedia, handleOf, PERSON, type Media, type SocialPerson } from "@/lib/social";
+import { cn } from "@/lib/utils";
 
 type MyEvent = { id: string; title: string; starts_at: string };
 
@@ -62,6 +63,8 @@ export function Composer({ onPublished, eventId }: { onPublished: (id: string) =
       alive = false;
     };
   }, [supabase, me]);
+  // "foto" = post con foto o video; "testo" = post scritto, come su Facebook
+  const [kind, setKind] = useState<"foto" | "testo">("foto");
   const [media, setMedia] = useState<Media[]>([]);
   const [link, setLink] = useState("");
   const [body, setBody] = useState("");
@@ -91,12 +94,13 @@ export function Composer({ onPublished, eventId }: { onPublished: (id: string) =
 
   async function publish() {
     if (!me) return;
+    if (kind === "testo" && !body.trim()) return setError("Scrivi il testo del post.");
     if (media.length === 0 && !body.trim()) return setError("Aggiungi una foto, un video o del testo.");
     setBusy(true);
     setError(null);
     const { data, error: e } = await supabase
       .from("social_posts")
-      .insert({ character_id: me.id, body: body.trim().slice(0, 2200), media, location: location.trim().slice(0, 60) || null, event_id: eventChoice || null })
+      .insert({ character_id: me.id, body: body.trim().slice(0, 2200), media: kind === "testo" ? [] : media, location: location.trim().slice(0, 60) || null, event_id: eventChoice || null })
       .select("id")
       .single<{ id: string }>();
     if (e || !data) {
@@ -113,7 +117,29 @@ export function Composer({ onPublished, eventId }: { onPublished: (id: string) =
     <div className="flex flex-col gap-4">
       <h2 className="font-heading text-3xl tracking-wide text-sunset">Nuovo post</h2>
 
+      <div className="flex gap-2">
+        {(
+          [
+            ["foto", "Foto o video", ImagePlus],
+            ["testo", "Post scritto", PenLine],
+          ] as const
+        ).map(([k, label, Icon]) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setKind(k)}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-sm",
+              kind === k ? "border-peach/60 bg-white/15 font-semibold text-white" : "border-white/15 text-muted-foreground hover:bg-white/5",
+            )}
+          >
+            <Icon className="size-4" /> {label}
+          </button>
+        ))}
+      </div>
+
       {/* media */}
+      {kind === "foto" && (
       <section className="flex flex-col gap-2">
         <p className="text-xs text-muted-foreground">Foto e video tramite link (immagini, video .mp4 / .webm, YouTube). Con più link diventa un carosello.</p>
         <form
@@ -149,16 +175,21 @@ export function Composer({ onPublished, eventId }: { onPublished: (id: string) =
           </ul>
         )}
       </section>
+      )}
 
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
         maxLength={2200}
-        rows={4}
-        placeholder="Scrivi una didascalia… (usa @nome per citare qualcuno)"
-        aria-label="Didascalia"
-        className="w-full rounded-xl border border-white/15 bg-night/50 px-3 py-2 text-sm outline-none focus-visible:border-peach/60"
+        rows={kind === "testo" ? 8 : 4}
+        placeholder={kind === "testo" ? "A cosa stai pensando? (usa @nome per citare qualcuno)" : "Scrivi una didascalia… (usa @nome per citare qualcuno)"}
+        aria-label={kind === "testo" ? "Testo del post" : "Didascalia"}
+        className={cn(
+          "w-full rounded-xl border border-white/15 bg-night/50 px-3 py-2 outline-none focus-visible:border-peach/60",
+          kind === "testo" ? "text-base leading-relaxed" : "text-sm",
+        )}
       />
+      {kind === "testo" && <p className="-mt-2 text-right text-xs text-muted-foreground">{body.length} / 2200</p>}
 
       <label className="flex items-center gap-2">
         <MapPin className="size-4 shrink-0 text-muted-foreground" />
