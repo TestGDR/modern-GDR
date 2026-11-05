@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isAvailability, type Availability } from "@/lib/availability";
 import { firstName } from "@/lib/format";
-import { readLastActivity } from "@/lib/last-activity";
+import { readLastActivity, writeLastActivity } from "@/lib/last-activity";
 import { createClient } from "@/lib/supabase/client";
 
 // Presenti online (dal Westeros: presence.ts).
 // - canale "online" di Supabase: chi entra o esce si vede subito
 // - segnale nel database (touch_online) ogni 60 secondi
 // - elenco riletto dal database (recent_online) ogni 20 secondi
-// Online = ha fatto un'azione nel sito nell'ultima ora. Si sparisce subito solo con Esci.
+// Online = ha fatto un'azione nel sito entro il tempo dell'uscita per inattività (2 ore). Si sparisce subito solo con Esci.
 // Nome e ritratto li mette il database: il browser manda solo posto e disponibilità.
 
 export type OnlinePlayer = {
@@ -131,7 +131,10 @@ export function usePresence(info: PresenceInfo) {
     const pollTimer = setInterval(refresh, POLL_MS);
     const onBack = () => {
       if (document.visibilityState !== "visible") return;
-      beat().then(refresh);
+      // tornare sulla pagina (o riavere la rete) è un'azione: si ricompare subito tra i presenti
+      writeLastActivity(Date.now());
+      lastBeat = Date.now();
+      beat(true).then(refresh);
       const ch = supabase.getChannels().find((c) => c.topic === "realtime:online");
       if (!ch || ch.state !== "joined") setAttempt((a) => a + 1);
     };
