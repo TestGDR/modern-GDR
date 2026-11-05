@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Dumbbell, Loader2, Medal, Trophy } from "lucide-react";
 import { inputClass } from "@/components/admin/admin-ui";
 import { MyCallups } from "@/components/sport/callups";
+import { ChampionshipView } from "@/components/sport/championship";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { firstName } from "@/lib/format";
 import {
@@ -34,7 +35,6 @@ import type {
   SportPosition,
   SportRosterEntry,
   SportSeason,
-  SportStanding,
   SportTeam,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -410,7 +410,6 @@ export function TeamView({ sport, catalog }: { sport: Sport; catalog: Catalog })
   const [seasonId, setSeasonId] = useState("");
   const [events, setEvents] = useState<SportEvent[]>([]);
   const [eventTeams, setEventTeams] = useState<SportEventTeam[]>([]);
-  const [standings, setStandings] = useState<SportStanding[]>([]);
   const [roster, setRoster] = useState<RosterRow[]>([]);
   const [awards, setAwards] = useState<(SportAward & { characters: { name: string } | null })[]>([]);
   const [open, setOpen] = useState<string | null>(null);
@@ -437,15 +436,13 @@ export function TeamView({ sport, catalog }: { sport: Sport; catalog: Catalog })
     let alive = true;
     Promise.all([
       supabase.from("sport_events").select("*").eq("season_id", seasonId).order("starts_at"),
-      supabase.rpc("sport_standings", { p_season: seasonId }),
       supabase.from("sport_awards").select("*, characters(name)").eq("season_id", seasonId),
-    ]).then(async ([e, st, aw]) => {
+    ]).then(async ([e, aw]) => {
       const evs = (e.data ?? []) as SportEvent[];
       const et = evs.length ? await supabase.from("sport_event_teams").select("*").in("event_id", evs.map((x) => x.id)) : { data: [] };
       if (!alive) return;
       setEvents(evs);
       setEventTeams((et.data ?? []) as SportEventTeam[]);
-      setStandings((st.data ?? []) as SportStanding[]);
       setAwards((aw.data ?? []) as typeof awards);
     });
     return () => {
@@ -473,36 +470,10 @@ export function TeamView({ sport, catalog }: { sport: Sport; catalog: Catalog })
       )}
       {!seasonId && <p className="text-sm text-muted-foreground">Nessuna stagione in calendario per ora.</p>}
 
-      {standings.length > 0 && (
+      {seasonId && (
         <section>
-          <h3 className="mb-1 font-heading text-lg tracking-wide text-peach">Classifica della Conference</h3>
-          <table className="w-full text-sm">
-            <thead className="text-xs text-muted-foreground">
-              <tr>
-                <th className="text-left font-normal">Squadra</th>
-                {isRace ? <th className="font-normal">Punti</th> : <><th className="font-normal">V</th><th className="font-normal">S</th>{sport.allows_draw && <th className="font-normal">P</th>}<th className="font-normal">Diff.</th></>}
-              </tr>
-            </thead>
-            <tbody>
-              {standings.map((s, i) => (
-                <tr key={s.team_id} className={cn("border-t border-white/5", s.is_player_school && "text-peach")}>
-                  <td className="py-0.5">
-                    {i + 1}. {s.name}
-                  </td>
-                  {isRace ? (
-                    <td className="text-center">{s.points}</td>
-                  ) : (
-                    <>
-                      <td className="text-center">{s.won}</td>
-                      <td className="text-center">{s.lost}</td>
-                      {sport.allows_draw && <td className="text-center">{s.drawn}</td>}
-                      <td className="text-center">{s.diff > 0 ? `+${s.diff}` : s.diff}</td>
-                    </>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <h3 className="mb-1 font-heading text-lg tracking-wide text-peach">Campionato</h3>
+          <ChampionshipView key={seasonId} seasonId={seasonId} />
         </section>
       )}
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { inputClass, textareaClass } from "@/components/admin/admin-ui";
 import { CallupsTab } from "@/components/sport/callups";
+import { ChampionshipManager } from "@/components/sport/championship";
 import { SportIcon } from "@/components/sport/sport-icon";
 import { Button } from "@/components/ui/button";
 import { firstName } from "@/lib/format";
@@ -52,9 +53,10 @@ type Lookup = {
   attrs: { id: string; code: string; name: string }[];
   skills: { id: string; name: string }[];
 };
-type Tab = "eventi" | "convoca" | "roster" | "allenamenti" | "sport" | "squadre" | "premi";
+type Tab = "eventi" | "campionato" | "convoca" | "roster" | "allenamenti" | "sport" | "squadre" | "premi";
 const TABS: [Tab, string][] = [
   ["eventi", "Stagioni ed eventi"],
+  ["campionato", "Campionato"],
   ["convoca", "Convoca"],
   ["roster", "Roster"],
   ["allenamenti", "Allenamenti"],
@@ -138,7 +140,7 @@ export function SportManager({ isAdmin = false }: { isAdmin?: boolean }) {
           </button>
         ))}
       </nav>
-      {(tab === "eventi" || tab === "convoca" || tab === "roster" || tab === "allenamenti" || tab === "premi") && (
+      {(tab === "eventi" || tab === "campionato" || tab === "convoca" || tab === "roster" || tab === "allenamenti" || tab === "premi") && (
         <select className={cn(inputClass, "w-64")} value={sportId} onChange={(e) => setSportId(e.target.value)}>
           {lookup.sports.map((s) => (
             <option key={s.id} value={s.id}>
@@ -149,12 +151,58 @@ export function SportManager({ isAdmin = false }: { isAdmin?: boolean }) {
         </select>
       )}
       {tab === "eventi" && sport && <EventsTab key={sport.id} sport={sport} lookup={lookup} />}
+      {tab === "campionato" && sport && <ChampionshipTab key={sport.id} sport={sport} />}
       {tab === "convoca" && isAdmin && sport && <CallupsTab key={sport.id} sport={sport} />}
       {tab === "roster" && sport && <RosterTab key={sport.id} sport={sport} lookup={lookup} />}
       {tab === "allenamenti" && sport && <TrainingsTab key={sport.id} sport={sport} lookup={lookup} />}
       {tab === "sport" && <SportsTab lookup={lookup} reload={load} />}
       {tab === "squadre" && <TeamsTab lookup={lookup} reload={load} />}
       {tab === "premi" && sport && <AwardsTab key={sport.id} sport={sport} />}
+    </div>
+  );
+}
+
+/* ------------------------------ Campionato ------------------------------ */
+
+/** Fasi, regole, classifica, qualificazione e tabelloni della stagione scelta */
+function ChampionshipTab({ sport }: { sport: Sport }) {
+  const supabase = useMemo(() => createClient(), []);
+  const [seasons, setSeasons] = useState<SportSeason[]>([]);
+  const [seasonId, setSeasonId] = useState("");
+  const [roster, setRoster] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    let alive = true;
+    Promise.all([
+      supabase.from("sport_seasons").select("*").eq("sport_id", sport.id).order("created_at", { ascending: false }),
+      supabase.from("sport_roster").select("character_id, characters(name)").eq("sport_id", sport.id).is("left_at", null),
+    ]).then(([s, r]) => {
+      if (!alive) return;
+      const list = (s.data ?? []) as SportSeason[];
+      setSeasons(list);
+      setSeasonId((cur) => cur || (list.find((x) => x.status !== "closed") ?? list[0])?.id || "");
+      setRoster(
+        ((r.data ?? []) as unknown as { character_id: string; characters: { name: string } | null }[]).map((x) => ({
+          id: x.character_id,
+          name: x.characters?.name ?? "—",
+        })),
+      );
+    });
+    return () => {
+      alive = false;
+    };
+  }, [supabase, sport.id]);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <select className={cn(inputClass, "w-56")} value={seasonId} onChange={(e) => setSeasonId(e.target.value)} aria-label="Stagione">
+        {seasons.length === 0 && <option value="">Nessuna stagione</option>}
+        {seasons.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.label} · {s.status === "planning" ? "in preparazione" : s.status === "active" ? "in corso" : "chiusa"}
+          </option>
+        ))}
+      </select>
+      {seasonId && <ChampionshipManager key={seasonId} seasonId={seasonId} roster={roster} />}
     </div>
   );
 }
