@@ -177,7 +177,8 @@ export function ProfileView({ id }: { id: string }) {
   // follower: i personaggi veri, più il pubblico PNG e quelli comprati
   const npc = person.social?.npc_followers ?? 0;
   const bought = person.social?.bought_followers ?? 0;
-  const followers = stats.followers + npc + bought;
+  const bg = person.social?.bg_followers ?? 0;
+  const followers = stats.followers + npc + bought + bg;
 
   return (
     <div className="flex flex-col gap-4">
@@ -237,7 +238,8 @@ export function ProfileView({ id }: { id: string }) {
 
       {isMe && (
         <p className="text-xs text-muted-foreground">
-          {stats.followers} personaggi · {npc.toLocaleString("it-IT")} pubblico{bought > 0 ? ` · ${bought.toLocaleString("it-IT")} comprati` : ""}
+          {stats.followers} personaggi · {npc.toLocaleString("it-IT")} pubblico{bg > 0 ? ` · ${bg.toLocaleString("it-IT")} dal tuo passato` : ""}
+          {bought > 0 ? ` · ${bought.toLocaleString("it-IT")} comprati` : ""}
           {person.social?.boost_until && new Date(person.social.boost_until) > new Date() && (
             <span className="text-mint"> · campagna attiva ×{person.social.boost_mult} fino al {new Date(person.social.boost_until).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit" })}</span>
           )}

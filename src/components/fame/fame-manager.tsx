@@ -557,18 +557,19 @@ function BgCatalog() {
     <CatalogEditor
       table="fame_bg_items"
       order={["category", "sort_order", "name"]}
-      hint="Le voci che i giocatori scelgono in creazione. Costo PF = quanto la pagano con i Punti Fama; Fama e Infamia = quanto li rende famosi (cambiandole, cambiano per tutti quelli che le hanno). Disattivata = non si sceglie più, chi l'ha già la tiene."
+      hint="Le voci che i giocatori scelgono in creazione. Costo PF = quanto la pagano con i Punti Fama; Fama e Infamia = quanto li rende famosi; Follower = follower fissi sul social (es. Influencer 50.000). Cambiandoli, cambiano per tutti quelli che le hanno. Disattivata = non si sceglie più, chi l'ha già la tiene."
       fields={[
         { key: "name", label: "Nome", type: "text", width: "w-64" },
         { key: "category", label: "Categoria", type: "text", width: "w-32" },
         { key: "cost_pf", label: "Costo PF", type: "number" },
         { key: "fame_points", label: "Fama", type: "number" },
         { key: "infamy_points", label: "Infamia", type: "number" },
+        { key: "social_followers", label: "Follower", type: "number" },
         { key: "sort_order", label: "Ordine", type: "number" },
         { key: "active", label: "Attiva", type: "checkbox" },
         { key: "description", label: "Descrizione", type: "textarea" },
       ]}
-      empty={{ name: "", category: "Altro", cost_pf: 1, fame_points: 5, infamy_points: 0, sort_order: 0, active: true, description: "" }}
+      empty={{ name: "", category: "Altro", cost_pf: 1, fame_points: 5, infamy_points: 0, social_followers: 0, sort_order: 0, active: true, description: "" }}
     />
   );
 }

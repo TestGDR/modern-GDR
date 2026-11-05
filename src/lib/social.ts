@@ -20,6 +20,8 @@ export type SocialPerson = {
     /** pubblico PNG (cresce e cala da solo ogni giorno) e follower comprati (crescono con la fama, non calano) */
     npc_followers?: number;
     bought_followers?: number;
+    /** follower del background di fama (Influencer…): fissi */
+    bg_followers?: number;
     boost_until?: string | null;
     boost_mult?: number;
   } | null;
@@ -124,7 +126,7 @@ export function fromRomeInput(v: string) {
 }
 
 /** Campi da chiedere al database per un personaggio */
-export const PERSON = "id, name, avatar_url, social:social_profiles(handle, bio, npc_followers, bought_followers, boost_until, boost_mult)";
+export const PERSON = "id, name, avatar_url, social:social_profiles(handle, bio, npc_followers, bought_followers, bg_followers, boost_until, boost_mult)";
 export const EVENT_SELECT = `id, character_id, title, description, cover_url, starts_at, ends_at, room_id, place, visibility, has_password, created_at, organizer:characters!social_events_character_id_fkey(${PERSON}), room:rooms(id, name), social_event_guests(character_id, status)`;
 export const POST_SELECT = `id, character_id, body, media, location, created_at, edited_at, npc_likes, author:characters!social_posts_character_id_fkey(${PERSON}), social_reactions(character_id, emoji, character:characters(name, social:social_profiles(handle))), social_comments(count), social_tags(character:characters(${PERSON})), event_id, event:social_events(id, title)`;
 
