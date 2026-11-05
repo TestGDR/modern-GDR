@@ -19,9 +19,11 @@ import {
   PhoneCall,
   PhoneOff,
   Plus,
+  Reply,
   SendHorizontal,
   Trash2,
   UserPlus,
+  X,
   Users,
   Video,
 } from "lucide-react";
@@ -62,7 +64,8 @@ type Props = {
 
 // Messaggi caricati per volta in una conversazione
 const PAGE = 50;
-const MSG_COLS = "id, thread_id, sender_number_id, mode, body, created_at, deleted_at";
+const MSG_COLS =
+  "id, thread_id, sender_number_id, mode, body, created_at, deleted_at, reply_to_id, reply:phone_messages!phone_messages_reply_to_id_fkey(id, sender_number_id, body, mode, deleted_at)";
 
 const inputCls =
   "h-10 w-full rounded-lg border border-input bg-night/40 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
@@ -181,7 +184,7 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
         .order("id", { ascending: false })
         .limit(PAGE + 1);
       if (openThreadRef.current !== threadId) return;
-      const rows = (data ?? []) as PhoneMessage[];
+      const rows = (data ?? []) as unknown as PhoneMessage[];
       setHasMore(rows.length > PAGE);
       setThreadMessages(rows.slice(0, PAGE).reverse());
     },
@@ -200,7 +203,7 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
         .order("id", { ascending: false })
         .limit(PAGE + 1);
       if (openThreadRef.current !== threadId) return;
-      const rows = (data ?? []) as PhoneMessage[];
+      const rows = (data ?? []) as unknown as PhoneMessage[];
       setHasMore(rows.length > PAGE);
       setThreadMessages((prev) => [...rows.slice(0, PAGE).reverse(), ...prev.filter((m) => m.thread_id === threadId)]);
     },
@@ -718,6 +721,16 @@ function ThreadView({
 }) {
   const [text, setText] = useState("");
   const [mode, setMode] = useState<"testo" | "vocale">("testo");
+  // messaggio a cui si sta rispondendo (citazione)
+  const [replyTo, setReplyTo] = useState<PhoneMessage | null>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  // il messaggio citato: dalla lettura del database o, per quelli appena arrivati, dall'elenco
+  const quoted = (m: PhoneMessage) => m.reply ?? (m.reply_to_id ? (messages.find((x) => x.id === m.reply_to_id) ?? null) : null);
+  const goTo = (id: number) => {
+    const el = document.querySelector(`[data-phone-msg="${id}"]`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    el?.animate([{ opacity: 0.4 }, { opacity: 1 }], { duration: 700 });
+  };
   const [sending, setSending] = useState(false);
   const [panel, setPanel] = useState<"none" | "members" | "menu">("none");
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -758,7 +771,7 @@ function ThreadView({
           .order("created_at")
           .order("id")
           .range(page * 1000, page * 1000 + 999);
-        const rows = (data ?? []) as PhoneMessage[];
+        const rows = (data ?? []) as unknown as PhoneMessage[];
         all.push(...rows);
         if (rows.length < 1000) break;
       }
@@ -783,9 +796,12 @@ function ThreadView({
     const body = text.trim();
     if (!body || sending) return;
     setSending(true);
-    const ok = await rpc("phone_send", { p_thread: thread.id, p_from: me.id, p_body: body, p_mode: mode });
+    const ok = await rpc("phone_send", { p_thread: thread.id, p_from: me.id, p_body: body, p_mode: mode, p_reply: replyTo?.id ?? null });
     setSending(false);
-    if (ok) setText("");
+    if (ok) {
+      setText("");
+      setReplyTo(null);
+    }
   }
 
   return (
@@ -918,7 +934,7 @@ function ThreadView({
                     {m.body} · {formatTime(m.created_at)}
                   </li>
                 ) : (
-                  <li className={cn("group flex max-w-[85%] flex-col", mine ? "items-end self-end" : "items-start self-start")}>
+                  <li data-phone-msg={m.id} className={cn("group flex max-w-[85%] flex-col", mine ? "items-end self-end" : "items-start self-start")}>
                     <div
                       className={cn(
                         "rounded-2xl px-3 py-2 text-sm",
@@ -933,6 +949,22 @@ function ThreadView({
                         </p>
                       ) : (
                         <>
+                          {(() => {
+                            const q = quoted(m);
+                            if (!m.reply_to_id) return null;
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => q && goTo(q.id)}
+                                className="mb-1 block w-full rounded-lg border-l-2 border-peach bg-night/40 px-2 py-1 text-left text-xs hover:bg-night/60"
+                              >
+                                <span className="block font-semibold text-peach">{q ? (q.sender_number_id === me.id ? "Tu" : nameOf(q.sender_number_id)) : "Messaggio"}</span>
+                                <span className="line-clamp-2 break-words text-muted-foreground">
+                                  {!q ? "Messaggio non più disponibile" : q.deleted_at ? "Messaggio eliminato" : q.body}
+                                </span>
+                              </button>
+                            );
+                          })()}
                           {MODE_LABEL[m.mode] && (
                             <p className="mb-0.5 flex items-center gap-1 text-[0.7rem] font-medium text-mint">
                               {MODE_LABEL[m.mode]!.icon} {MODE_LABEL[m.mode]!.label}
@@ -942,6 +974,20 @@ function ThreadView({
                         </>
                       )}
                       <p className="mt-0.5 flex items-center justify-end gap-1 text-[0.65rem] text-muted-foreground">
+                        {!m.deleted_at && !inbox?.closed && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReplyTo(m);
+                              textRef.current?.focus();
+                            }}
+                            className="mr-1 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100 hover:text-foreground"
+                            aria-label="Rispondi al messaggio"
+                            title="Rispondi"
+                          >
+                            <Reply className="size-3" />
+                          </button>
+                        )}
                         {mine && !m.deleted_at && (
                           <button
                             type="button"
@@ -1000,8 +1046,23 @@ function ThreadView({
             </>
           )}
         </div>
+        {replyTo && (
+          <div className="flex items-start gap-2 rounded-xl border-l-2 border-peach bg-night/40 px-2 py-1.5 text-xs">
+            <Reply className="mt-0.5 size-3.5 shrink-0 text-peach" />
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold text-peach">
+                Rispondi a {replyTo.sender_number_id === me.id ? "te stesso" : nameOf(replyTo.sender_number_id)}
+              </span>
+              <span className="line-clamp-2 break-words text-muted-foreground">{replyTo.body}</span>
+            </span>
+            <button type="button" onClick={() => setReplyTo(null)} className="rounded-full p-0.5 hover:bg-white/10" aria-label="Annulla la risposta">
+              <X className="size-3.5" />
+            </button>
+          </div>
+        )}
         <div className="flex items-end gap-2">
           <textarea
+            ref={textRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {

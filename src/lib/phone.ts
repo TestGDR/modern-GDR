@@ -57,6 +57,9 @@ export type PhoneMessage = {
   created_at: string;
   /** Eliminato dal mittente: al posto del testo "Messaggio eliminato" */
   deleted_at?: string | null;
+  /** Risposta a un messaggio (citazione, come su WhatsApp) */
+  reply_to_id?: number | null;
+  reply?: { id: number; sender_number_id: string | null; body: string; mode: PhoneMode; deleted_at: string | null } | null;
 };
 
 export type PhoneCallStatus = "squilla" | "attiva" | "terminata" | "rifiutata" | "persa";
