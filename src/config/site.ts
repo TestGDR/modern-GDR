@@ -10,7 +10,7 @@ export const siteConfig = {
 export const credits = [
   "Neon Campus è un gioco di ruolo play by chat amatoriale e gratuito, ideato e gestito dal suo staff.",
   "Logo, grafica e ambientazione sono originali e realizzati per Neon Campus grazie all'aiuto di Claude Code e ChatGPT.",
-  "Si ringrazia la comunità dei Play By Chat, che negli anni ci ha dato modo di prendere idee, elaborarle e svilupparle per cercare di creare qualcosa di personale. Alcune funzioni presenti nel sito prendono ispirazione da quelle di altri Play By Chat che abbiamo visto crescere e modificarsi nel corso degli anni, e che ringraziamo (e che non elenchiamo perché sarebbero troppe da dover elencare).",
+  "Si ringrazia la comunità dei Play By Chat che negli anni ci ha dato modo di prendere idee, elaborarle e svilupparle per cercare di creare qualcosa di personale. Alcune funzioni presenti nel sito prendono ispirazione da quelle di altri Play By Chat che abbiamo visto crescere e modificarsi nel corso degli anni. Elencarle tutte è impossibile, ma sicuramente ringraziamo i ragazzi di BBTL, Nhie, Brightest Star e altri dai quali alcuni dei tool presenti sono stati presi e modificati.",
   "A queste comunità (alcune delle quali sono chiuse e altre hanno solo cambiato nome e indirizzo nel corso del tempo) resta tutto il merito e la paternità dell'idea originale dalla quale abbiamo preso spunto per elaborare la nostra, pertanto non ci attribuiamo l'originalità di alcune funzioni.",
 ];
 
