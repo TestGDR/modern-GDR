@@ -69,7 +69,7 @@ export default function Home() {
         </section>
 
         <footer className="border-t border-border bg-night px-5 py-4 text-center text-xs text-muted-foreground">
-          {siteConfig.name} · Un gioco di ruolo amatoriale ambientato in una Miami immaginaria.
+          {siteConfig.name} · Un gioco di ruolo amatoriale ambientato in una San Diego immaginaria
         </footer>
       </div>
     </AuthModalProvider>
