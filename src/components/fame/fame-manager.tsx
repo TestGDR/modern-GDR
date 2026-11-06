@@ -139,6 +139,14 @@ function CharactersTab() {
   const [pool, setPool] = useState("");
   // correzione dello staff: punti in più o in meno, con il motivo
   const [fix, setFix] = useState({ points: "-5", kind: "fama", reason: "", visible: false });
+  // esito del ricalcolo (quanti personaggi)
+  const [recalcMsg, setRecalcMsg] = useState<string | null>(null);
+  const recalc = async (character: string | null) => {
+    setRecalcMsg(null);
+    const res = await supabase.rpc("fame_recalc_staff", { p_character: character });
+    const ok = await run(Promise.resolve(res));
+    if (ok) setRecalcMsg(character ? "Fama e infamia ricalcolate." : `Ricalcolati ${Number(res.data ?? 0)} personaggi.`);
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -157,12 +165,16 @@ function CharactersTab() {
           size="sm"
           variant="ghost"
           disabled={busy}
-          onClick={() => window.confirm("Ricalcolare fama e infamia di tutti i personaggi?") && run(supabase.rpc("fame_recalc_staff", { p_character: null }))}
+          onClick={() => {
+            if (window.confirm("Ricalcolare fama e infamia di tutti i personaggi?")) void recalc(null);
+          }}
         >
+          {busy ? <Loader2 className="animate-spin" /> : null}
           Ricalcola tutti
         </Button>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
+      {recalcMsg && !error && <p className="text-sm text-mint">{recalcMsg}</p>}
       {id && !data && <Loader2 className="animate-spin text-muted-foreground" />}
       {data && (
         <>
@@ -211,7 +223,7 @@ function CharactersTab() {
               >
                 Applica la correzione
               </Button>
-              <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => run(supabase.rpc("fame_recalc_staff", { p_character: id }))} title="Ricalcola i totali di questo personaggio">
+              <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => void recalc(id)} title="Ricalcola i totali di questo personaggio">
                 Ricalcola
               </Button>
             </div>
