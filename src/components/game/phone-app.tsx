@@ -312,7 +312,7 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
       if (!numberId) return "";
       const p = profiles[numberId];
       if (!p) return "Numero sconosciuto";
-      return contactByDigits.get(p.digits)?.name ?? p.display_name;
+      return contactByDigits.get(p.digits)?.name ?? `~ ${p.display_name}`;
     },
     [profiles, contactByDigits],
   );
@@ -653,6 +653,7 @@ function ChatList({
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
                     <span className="truncate font-medium">{v.name}</span>
+                    {!t.is_group && v.name.startsWith("~") && v.sub && <span className="shrink-0 text-xs text-muted-foreground">{v.sub}</span>}
                     {t.is_group && <Users className="size-3.5 shrink-0 text-muted-foreground" />}
                     {last && <span className="ml-auto shrink-0 text-xs text-muted-foreground">{listTime(last.created_at)}</span>}
                   </span>
@@ -823,6 +824,9 @@ function ThreadView({
           <p className="truncate font-medium">{view.name}</p>
           <p className="truncate text-xs text-muted-foreground">{view.sub}</p>
         </button>
+        {!thread.is_group && view.other && profiles[view.other] && !contacts.some((c) => c.digits === profiles[view.other!].digits) && (
+          <AddContactButton supabase={supabase} me={me} digits={profiles[view.other].digits} suggested={profiles[view.other].display_name} onAdded={onChanged} />
+        )}
         {!thread.is_group && (
           <>
             <button
@@ -907,7 +911,7 @@ function ThreadView({
       {call && <CallBanner call={call} me={me.id} name={view.name} rpc={rpc} />}
 
       {panel === "members" && thread.is_group && (
-        <GroupPanel thread={thread} me={me} members={members} profiles={profiles} contacts={contacts} nameOf={nameOf} rpc={rpc} onChanged={onChanged} onLeft={onBack} />
+        <GroupPanel supabase={supabase} thread={thread} me={me} members={members} profiles={profiles} contacts={contacts} nameOf={nameOf} rpc={rpc} onChanged={onChanged} onLeft={onBack} />
       )}
 
       <div ref={scrollRef} onScroll={onThreadScroll} onLoadCapture={onImageLoad} className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
@@ -950,7 +954,16 @@ function ThreadView({
                         m.mode !== "testo" && "border border-mint/30",
                       )}
                     >
-                      {thread.is_group && !mine && <p className="mb-0.5 text-xs font-semibold text-peach">{nameOf(m.sender_number_id)}</p>}
+                      {thread.is_group && !mine && (
+                        <SenderLabel
+                          supabase={supabase}
+                          me={me}
+                          name={nameOf(m.sender_number_id)}
+                          profile={m.sender_number_id ? (profiles[m.sender_number_id] ?? null) : null}
+                          saved={!!m.sender_number_id && !!profiles[m.sender_number_id] && contacts.some((c) => c.digits === profiles[m.sender_number_id!].digits)}
+                          onAdded={onChanged}
+                        />
+                      )}
                       {m.deleted_at ? (
                         <p className="flex items-center gap-1.5 text-muted-foreground italic">
                           <Ban className="size-3.5" /> Messaggio eliminato
@@ -1179,6 +1192,7 @@ function CallBanner({ call, me, name, rpc }: { call: Call; me: string; name: str
 }
 
 function GroupPanel({
+  supabase,
   thread,
   me,
   members,
@@ -1189,6 +1203,7 @@ function GroupPanel({
   onChanged,
   onLeft,
 }: {
+  supabase: Supabase;
   thread: PhoneThread;
   me: PhoneNumber;
   members: PhoneMember[];
@@ -1222,6 +1237,9 @@ function GroupPanel({
             <Avatar name={nameOf(m.number_id)} url={profiles[m.number_id]?.avatar_url ?? null} size="size-7" />
             <span className="flex-1 truncate">{m.number_id === me.id ? "Tu" : nameOf(m.number_id)}</span>
             <span className="text-xs text-muted-foreground">{profiles[m.number_id] ? formatPhone(profiles[m.number_id].digits) : ""}</span>
+            {m.number_id !== me.id && profiles[m.number_id] && !contacts.some((c) => c.digits === profiles[m.number_id].digits) && (
+              <AddContactButton supabase={supabase} me={me} digits={profiles[m.number_id].digits} suggested={profiles[m.number_id].display_name} onAdded={onChanged} compact />
+            )}
           </li>
         ))}
       </ul>
@@ -1267,6 +1285,78 @@ function GroupPanel({
         <LogOut /> Esci dal gruppo
       </Button>
     </div>
+  );
+}
+
+/* ------------------------------ Numeri non in rubrica ------------------------------ */
+
+/** Salva in rubrica un numero che non c'è (chiede il nome, proposto quello del profilo) */
+function AddContactButton({
+  supabase,
+  me,
+  digits,
+  suggested,
+  onAdded,
+  compact = false,
+}: {
+  supabase: Supabase;
+  me: PhoneNumber;
+  digits: string;
+  suggested: string;
+  onAdded: () => void;
+  compact?: boolean;
+}) {
+  const [busy, setBusy] = useState(false);
+  async function add() {
+    const name = window.prompt(`Nome in rubrica per ${formatPhone(digits)}:`, suggested)?.trim();
+    if (!name) return;
+    setBusy(true);
+    const { error } = await supabase.from("phone_contacts").insert({ number_id: me.id, digits, name: name.slice(0, 40) });
+    setBusy(false);
+    if (error) return window.alert(error.code === "23505" ? "Questo numero è già in rubrica." : "Non salvato. Riprova.");
+    onAdded();
+  }
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={add}
+      className={cn(
+        "flex shrink-0 items-center gap-1 rounded-full text-mint hover:bg-white/10 disabled:opacity-40",
+        compact ? "p-1" : "px-2 py-1 text-xs font-medium",
+      )}
+      title={`Aggiungi ${formatPhone(digits)} alla rubrica`}
+      aria-label={`Aggiungi ${formatPhone(digits)} alla rubrica`}
+    >
+      <UserPlus className="size-4" />
+      {!compact && <span className="hidden sm:inline">Aggiungi a rubrica</span>}
+    </button>
+  );
+}
+
+/** Nome di chi scrive in un gruppo: se non è in rubrica, anche il numero (toccandolo si salva) */
+function SenderLabel({
+  supabase,
+  me,
+  name,
+  profile,
+  saved,
+  onAdded,
+}: {
+  supabase: Supabase;
+  me: PhoneNumber;
+  name: string;
+  profile: PhoneProfile | null;
+  saved: boolean;
+  onAdded: () => void;
+}) {
+  if (saved || !profile) return <p className="mb-0.5 text-xs font-semibold text-peach">{name}</p>;
+  return (
+    <p className="mb-0.5 flex flex-wrap items-center gap-x-1.5 text-xs">
+      <span className="font-semibold text-peach">{name}</span>
+      <span className="text-muted-foreground">{formatPhone(profile.digits)}</span>
+      <AddContactButton supabase={supabase} me={me} digits={profile.digits} suggested={profile.display_name} onAdded={onAdded} compact />
+    </p>
   );
 }
 
