@@ -189,6 +189,22 @@ export type Npc = {
   review_note: string;
   active: boolean;
   created_at: string;
+  /** categoria dei PNG della città (Docenti, Personalità influenti…) */
+  category: string;
+  created_by: string | null;
+};
+
+/** Legame tra un personaggio e un PNG della città (npc_links) */
+export type NpcLink = {
+  id: string;
+  npc_id: string;
+  character_id: string;
+  relation: string;
+  note: string;
+  secret: boolean;
+  status: "proposto" | "approvato" | "rifiutato";
+  review_note: string;
+  created_at: string;
 };
 
 /* ---------- Combattimento (tutto scritto dalle funzioni combat_*) ---------- */
