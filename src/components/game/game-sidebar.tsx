@@ -363,7 +363,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
     setNote(clean);
   }
 
-  // Gruppi per posto: prima il mio, poi le chat in ordine di nome, la mappa in fondo
+  // Gruppi per posto: le chat in ordine di nome, la mappa sempre in fondo
   // chi è in cerca di gioco va in cima a tutto, fuori dai gruppi (il gruppo resta e lo conta)
   const seekers = list.filter((c) => c.availability === "cerca");
   const groups = [...new Set(list.map((c) => c.placeKey))]
@@ -372,7 +372,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
       const chatId = key.startsWith("chat:") ? key.slice(5) : null;
       return { key, chatId, name: chatId ? all[0]?.place || "Chat" : "Mappa", count: all.length, members: all.filter((c) => c.availability !== "cerca") };
     })
-    .sort((a, b) => (a.key === placeKey ? -1 : b.key === placeKey ? 1 : !a.chatId ? 1 : !b.chatId ? -1 : a.name.localeCompare(b.name, "it")));
+    .sort((a, b) => (!a.chatId ? 1 : !b.chatId ? -1 : a.name.localeCompare(b.name, "it")));
 
   // Riga di un presente nell'elenco esteso: nome e, sotto, il suo messaggio OFF;
   // a destra le icone (livello OFF, poi le altre che verranno) e il messaggio OFF
@@ -478,7 +478,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
         )}
       </div>
       {open && (
-        <FloatingWindow label="Presenti online" onClose={() => setOpen(false)} initialWidth={700} header={<h2 className="pb-4 font-heading text-3xl tracking-wide">Presenti online</h2>}>
+        <FloatingWindow label="Presenti online" onClose={() => setOpen(false)} initialWidth={700} initialHeight={600} header={<h2 className="pb-4 font-heading text-3xl tracking-wide">Presenti online</h2>}>
           <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
             <span className="text-muted-foreground">La tua disponibilità:</span>
             {(Object.keys(AVAILABILITY) as Availability[]).map((a) => (
