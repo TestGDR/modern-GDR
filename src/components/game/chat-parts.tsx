@@ -183,7 +183,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
           <span className="ml-auto text-xs text-muted-foreground">{time}</span>
           {tools}
         </header>
-        <p className="whitespace-pre-line" style={{ color: "var(--chat-action, #e4dfdb)", fontSize: "var(--chat-font, 11pt)", fontFamily: "var(--chat-family, inherit)", lineHeight: "var(--chat-line, 1.625)" }}>
+        <p className="whitespace-pre-line text-justify" style={{ color: "var(--chat-action, #e4dfdb)", fontSize: "var(--chat-font, 11pt)", fontFamily: "var(--chat-family, inherit)", lineHeight: "var(--chat-line, 1.625)" }}>
           <FormattedText text={m.content} names={names} />
           {edited}
         </p>
@@ -230,7 +230,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
           <span className="ml-auto text-xs text-muted-foreground">{time}</span>
           {tools}
         </header>
-        <p className="whitespace-pre-line" style={{ color: "var(--chat-action, #e4dfdb)", fontSize: "var(--chat-font, 11pt)", fontFamily: "var(--chat-family, inherit)", lineHeight: "var(--chat-line, 1.625)" }}>
+        <p className="whitespace-pre-line text-justify" style={{ color: "var(--chat-action, #e4dfdb)", fontSize: "var(--chat-font, 11pt)", fontFamily: "var(--chat-family, inherit)", lineHeight: "var(--chat-line, 1.625)" }}>
           <FormattedText text={m.content} names={names} />
           {edited}
         </p>
