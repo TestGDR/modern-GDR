@@ -98,20 +98,21 @@ function ItemList({
 }) {
   if (items.length === 0) return <p className="text-sm text-muted-foreground">{empty}</p>;
   return (
-    <ul className="grid gap-2 @lg:grid-cols-2">
+    // elenco uno sotto l'altro, a tutta larghezza
+    <ul className="flex w-full flex-col gap-2">
       {items.map((it) => (
-        <li key={it.id} className={cn("flex items-center gap-3 rounded-xl border p-2.5", it.carried ? "border-peach/30 bg-peach/5" : "border-white/10 bg-white/5")}>
+        <li key={it.id} className={cn("flex w-full items-center gap-3 rounded-xl border p-2.5", it.carried ? "border-peach/30 bg-peach/5" : "border-white/10 bg-white/5")}>
           {it.image_url ? (
             // immagine scelta dallo staff nel catalogo
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={it.image_url} alt="" className="size-10 shrink-0 rounded-lg object-cover" />
+            <img src={it.image_url} alt="" className="size-14 shrink-0 rounded-lg object-cover" />
           ) : (
-            <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-white/5">
-              <Package className="size-4 text-muted-foreground" />
+            <span className="grid size-14 shrink-0 place-items-center rounded-lg bg-white/5">
+              <Package className="size-5 text-muted-foreground" />
             </span>
           )}
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-medium">{it.name}</span>
+            <span className="block text-sm font-medium break-words">{it.name}</span>
             <span className="block text-xs text-muted-foreground">
               {CATEGORY_LABEL[it.category]}
               {it.charges_left !== null && ` · ${it.charges_left} ${it.charges_left === 1 ? "carica" : "cariche"}`}
