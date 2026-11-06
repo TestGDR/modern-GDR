@@ -19,6 +19,12 @@ export type FameLevelInfo = {
   description?: string | null;
   /** pettegolezzi: bonus al dado nei luoghi pubblici */
   gossip_bonus?: number | null;
+  /** follower sul social (tutti) */
+  followers?: number;
+  /** livello raggiunto grazie ai follower, non ai punti */
+  by_followers?: boolean;
+  min_followers?: number | null;
+  next_followers?: number | null;
 };
 
 export type FameBackground = {

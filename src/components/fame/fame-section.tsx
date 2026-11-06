@@ -185,7 +185,19 @@ export function FameSection({ characterId }: { characterId: string }) {
 }
 
 /** Nome del livello, punti e barra verso il successivo */
-type GuideLevel = { id: string; kind: "fama" | "infamia"; name: string; min_points: number; icon: string; color: string; description: string; gossip_bonus: number };
+type GuideLevel = {
+  id: string;
+  kind: "fama" | "infamia";
+  name: string;
+  min_points: number;
+  min_followers: number | null;
+  icon: string;
+  color: string;
+  description: string;
+  gossip_bonus: number;
+};
+
+const fmt = (n: number) => n.toLocaleString("it-IT");
 
 /** Tutti i livelli di fama e infamia con le indicazioni per giocarli */
 function LevelsGuide() {
@@ -196,7 +208,7 @@ function LevelsGuide() {
     if (!open || levels) return;
     supabase
       .from("fame_levels")
-      .select("id, kind, name, min_points, icon, color, description, gossip_bonus")
+      .select("id, kind, name, min_points, min_followers, icon, color, description, gossip_bonus")
       .order("kind")
       .order("min_points")
       .then(({ data }) => setLevels((data ?? []) as GuideLevel[]));
@@ -218,7 +230,9 @@ function LevelsGuide() {
                     <p className="flex flex-wrap items-center gap-2">
                       <FameIcon icon={l.icon} label={l.name} />
                       <strong style={{ color: l.color }}>{l.name}</strong>
-                      <span className="text-xs text-muted-foreground">da {l.min_points} punti</span>
+                      <span className="text-xs text-muted-foreground">
+                        da {l.min_points} punti{l.min_followers ? ` oppure ${fmt(l.min_followers)} follower` : ""}
+                      </span>
                       {l.gossip_bonus > 0 && <span className="text-xs text-lavender">· pettegolezzi in pubblico +{l.gossip_bonus}</span>}
                     </p>
                     {l.description && <p className="mt-1 text-xs leading-relaxed whitespace-pre-line text-foreground/80">{l.description}</p>}
@@ -260,8 +274,13 @@ export function LevelBar({ title, level, infamy = false }: { title: string; leve
         />
       </div>
       <p className="text-xs text-muted-foreground">
-        {level.next_name ? `Mancano ${level.missing} punti a «${level.next_name}»` : "Livello più alto raggiunto"}
+        {level.next_name
+          ? `Mancano ${level.missing} punti a «${level.next_name}»${level.next_followers ? ` (oppure ${fmt(level.next_followers)} follower)` : ""}`
+          : "Livello più alto raggiunto"}
       </p>
+      {level.by_followers && (
+        <p className="text-xs text-lavender">Livello raggiunto con i follower del social ({fmt(level.followers ?? 0)}).</p>
+      )}
       {level.description && <p className="border-t border-white/10 pt-1.5 text-xs leading-relaxed whitespace-pre-line text-foreground/80">{level.description}</p>}
     </div>
   );

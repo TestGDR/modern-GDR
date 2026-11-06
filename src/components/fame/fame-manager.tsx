@@ -706,12 +706,17 @@ function LevelsCatalog() {
     { key: "description", label: "Come si gioca", type: "textarea" },
   ];
   // solo la fama fa crescere il pubblico del social
-  const fameFields: Field[] = [...fields, { key: "social_followers_day", label: "Follower PNG al giorno", type: "number", width: "w-24" }];
+  const fameFields: Field[] = [
+    ...fields,
+    { key: "min_followers", label: "Oppure follower", type: "number", width: "w-28" },
+    { key: "social_followers_day", label: "Follower PNG al giorno", type: "number", width: "w-24" },
+  ];
   return (
     <div className="flex flex-col gap-4">
       <p className="text-xs text-muted-foreground">
         Ogni livello parte dalla sua soglia di punti; il primo dovrebbe essere da 0. Icona: emoji o link https (vuota = niente icona nei presenti). «Come si gioca» compare in scheda → Fama.
         Pettegolezzi +: quanto si somma al dado dei pettegolezzi a fine giocata in una chat pubblica (vale il più alto tra fama e infamia).
+        Oppure follower: con questi follower sul social (tutti, anche comprati) si è almeno a questo livello anche con meno punti; 0 = solo con i punti.
       </p>
       <h3 className="font-heading text-lg tracking-wide text-peach">Fama</h3>
       <CatalogEditor
@@ -720,7 +725,7 @@ function LevelsCatalog() {
         order={["min_points"]}
         fields={fameFields}
         hint="Follower PNG al giorno: quanto pubblico guadagna ogni giorno sul social chi è a questo livello (se pubblica)."
-        empty={{ kind: "fama", icon: "", name: "", min_points: 0, color: "#f2b39c", sort_order: 0, gossip_bonus: 0, description: "", social_followers_day: 0 }}
+        empty={{ kind: "fama", icon: "", name: "", min_points: 0, color: "#f2b39c", sort_order: 0, gossip_bonus: 0, description: "", min_followers: 0, social_followers_day: 0 }}
       />
       <h3 className="font-heading text-lg tracking-wide text-flamingo">Infamia</h3>
       <CatalogEditor table="fame_levels" filter={{ key: "kind", value: "infamia" }} order={["min_points"]} fields={fields} empty={{ kind: "infamia", icon: "", name: "", min_points: 0, color: "#ec8cb8", sort_order: 0, gossip_bonus: 0, description: "" }} />
