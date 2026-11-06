@@ -105,6 +105,7 @@ export function FameSection({ characterId }: { characterId: string }) {
             {data.fame && <LevelBar title="Fama" level={data.fame} />}
             {data.infamy && <LevelBar title="Infamia" level={data.infamy} infamy />}
           </div>
+          <LevelsGuide />
           {data.is_owner && data.converted && data.pf_converted > 0 && (
             <p className="text-xs text-muted-foreground">
               All&apos;approvazione {data.pf_converted} Punti Fama non spesi sono diventati {data.px_from_conversion} PX.
@@ -184,6 +185,56 @@ export function FameSection({ characterId }: { characterId: string }) {
 }
 
 /** Nome del livello, punti e barra verso il successivo */
+type GuideLevel = { id: string; kind: "fama" | "infamia"; name: string; min_points: number; icon: string; color: string; description: string; gossip_bonus: number };
+
+/** Tutti i livelli di fama e infamia con le indicazioni per giocarli */
+function LevelsGuide() {
+  const supabase = useMemo(() => createClient(), []);
+  const [levels, setLevels] = useState<GuideLevel[] | null>(null);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open || levels) return;
+    supabase
+      .from("fame_levels")
+      .select("id, kind, name, min_points, icon, color, description, gossip_bonus")
+      .order("kind")
+      .order("min_points")
+      .then(({ data }) => setLevels((data ?? []) as GuideLevel[]));
+  }, [supabase, open, levels]);
+  return (
+    <details className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+      <summary className="cursor-pointer font-medium">Come si gioca la fama: tutti i livelli</summary>
+      {!levels ? (
+        <Loader2 className="mt-2 animate-spin text-muted-foreground" />
+      ) : (
+        <div className="mt-2 flex flex-col gap-3">
+          {(["fama", "infamia"] as const).map((k) => (
+            <section key={k} className="flex flex-col gap-1.5">
+              <h4 className={cn("font-heading text-lg tracking-wide", k === "fama" ? "text-peach" : "text-flamingo")}>{k === "fama" ? "Fama" : "Infamia"}</h4>
+              {levels
+                .filter((l) => l.kind === k)
+                .map((l) => (
+                  <div key={l.id} className="rounded-xl bg-night/30 px-3 py-2">
+                    <p className="flex flex-wrap items-center gap-2">
+                      <FameIcon icon={l.icon} label={l.name} />
+                      <strong style={{ color: l.color }}>{l.name}</strong>
+                      <span className="text-xs text-muted-foreground">da {l.min_points} punti</span>
+                      {l.gossip_bonus > 0 && <span className="text-xs text-lavender">· pettegolezzi in pubblico +{l.gossip_bonus}</span>}
+                    </p>
+                    {l.description && <p className="mt-1 text-xs leading-relaxed whitespace-pre-line text-foreground/80">{l.description}</p>}
+                  </div>
+                ))}
+            </section>
+          ))}
+          <p className="text-[0.7rem] text-muted-foreground">
+            Pettegolezzi: a fine giocata in una chat pubblica il bonus del tuo livello (il più alto tra fama e infamia) si somma al dado: più sei conosciuto, più è facile che qualcuno ti noti.
+          </p>
+        </div>
+      )}
+    </details>
+  );
+}
+
 export function LevelBar({ title, level, infamy = false }: { title: string; level: FameLevelInfo; infamy?: boolean }) {
   return (
     <div className="flex flex-col gap-1.5 rounded-2xl border border-white/10 bg-white/5 p-3">
@@ -211,6 +262,7 @@ export function LevelBar({ title, level, infamy = false }: { title: string; leve
       <p className="text-xs text-muted-foreground">
         {level.next_name ? `Mancano ${level.missing} punti a «${level.next_name}»` : "Livello più alto raggiunto"}
       </p>
+      {level.description && <p className="border-t border-white/10 pt-1.5 text-xs leading-relaxed whitespace-pre-line text-foreground/80">{level.description}</p>}
     </div>
   );
 }

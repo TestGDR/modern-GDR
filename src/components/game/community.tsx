@@ -361,6 +361,23 @@ function GossipPanel({ canManage, characterId, onChanged }: { canManage: boolean
   const [pendingRoll, setPendingRoll] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<"scoperti" | "non-visti" | null>(null);
   const [rolling, setRolling] = useState(false);
+  // dove eravate: in una chat pubblica la fama fa notare di più
+  const [rooms, setRooms] = useState<{ id: string; name: string; access: string; location: { name: string } | null }[]>([]);
+  const [rollRoom, setRollRoom] = useState("");
+  useEffect(() => {
+    let alive = true;
+    supabase
+      .from("rooms")
+      .select("id, name, access, location:locations(name)")
+      .neq("access", "password")
+      .order("sort_order")
+      .then(({ data }) => {
+        if (alive) setRooms((data ?? []) as unknown as { id: string; name: string; access: string; location: { name: string } | null }[]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [supabase]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -383,7 +400,7 @@ function GossipPanel({ canManage, characterId, onChanged }: { canManage: boolean
     if (!characterId) return;
     setError(null);
     setRolling(true);
-    const { data, error: err } = await supabase.rpc("gossip_roll", { p_character: characterId });
+    const { data, error: err } = await supabase.rpc("gossip_roll", { p_character: characterId, p_room: rollRoom || null });
     setRolling(false);
     if (err) return setError(err.message);
     const row = ((data ?? []) as { id: string; seen: boolean }[])[0];
@@ -430,6 +447,25 @@ function GossipPanel({ canManage, characterId, onChanged }: { canManage: boolean
                   <p className="text-xs text-muted-foreground">
                     Alla fine di una giocata tira il dado: se siete stati scoperti scrivete cosa è successo e lo mandate allo staff; altrimenti il tiro finisce in archivio come «Visto e non visto».
                   </p>
+                  <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                    Dove eravate?
+                    <select value={rollRoom} onChange={(e) => setRollRoom(e.target.value)} className="h-9 rounded-lg border border-input bg-night/40 px-2 text-sm text-foreground outline-none">
+                      <option value="">In un luogo privato (casa, camera, posto appartato)</option>
+                      {[...new Set(rooms.map((r) => r.location?.name ?? "Altro"))].map((loc) => (
+                        <optgroup key={loc} label={loc}>
+                          {rooms
+                            .filter((r) => (r.location?.name ?? "Altro") === loc)
+                            .map((r) => (
+                              <option key={r.id} value={r.id}>
+                                {r.name}
+                                {r.access === "pubblica" ? "" : " (su invito)"}
+                              </option>
+                            ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                    <span>Nelle chat pubbliche chi è famoso (o famigerato) viene notato più facilmente.</span>
+                  </label>
                   <Button type="button" size="sm" onClick={roll} disabled={rolling} className="self-start rounded-full">
                     <Dices /> {rolling ? "Tiro…" : "Tira il dado"}
                   </Button>

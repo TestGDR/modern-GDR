@@ -15,6 +15,10 @@ export type FameLevelInfo = {
   next_min: number | null;
   missing: number | null;
   pct: number;
+  /** come si gioca questo livello */
+  description?: string | null;
+  /** pettegolezzi: bonus al dado nei luoghi pubblici */
+  gossip_bonus?: number | null;
 };
 
 export type FameBackground = {
