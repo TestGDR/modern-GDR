@@ -137,9 +137,12 @@ function CharactersTab() {
   const [give, setGive] = useState({ badge: "", reason: "" });
   const [bgItem, setBgItem] = useState("");
   const [pool, setPool] = useState("");
+  // correzione dello staff: punti in più o in meno, con il motivo
+  const [fix, setFix] = useState({ points: "-5", kind: "fama", reason: "", visible: false });
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
       <select className={cn(inputClass, "sm:max-w-sm")} value={id} onChange={(e) => setId(e.target.value)} aria-label="Personaggio">
         <option value="">Scegli un personaggio…</option>
         {characters.map((c) => (
@@ -149,6 +152,16 @@ function CharactersTab() {
           </option>
         ))}
       </select>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          disabled={busy}
+          onClick={() => window.confirm("Ricalcolare fama e infamia di tutti i personaggi?") && run(supabase.rpc("fame_recalc_staff", { p_character: null }))}
+        >
+          Ricalcola tutti
+        </Button>
+      </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       {id && !data && <Loader2 className="animate-spin text-muted-foreground" />}
       {data && (
@@ -157,6 +170,52 @@ function CharactersTab() {
             {data.fame && <LevelBar title="Fama" level={data.fame} />}
             {data.infamy && <LevelBar title="Infamia" level={data.infamy} infamy />}
           </div>
+
+          {/* correzione */}
+          <section className="glass flex flex-col gap-2 rounded-2xl border border-flamingo/30 p-3">
+            <h3 className="font-heading text-lg tracking-wide text-flamingo">Correggi la fama</h3>
+            <p className="text-xs text-muted-foreground">
+              Per un errore: aggiunge una voce «Correzione dello staff» con i punti indicati (negativi per togliere, positivi per ridare). Fama e infamia non scendono mai sotto zero.
+              In alternativa puoi modificare o eliminare la voce sbagliata qui sotto.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-[6rem_8rem_1fr]">
+              <input className={inputClass} type="number" min={-1000} max={1000} value={fix.points} onChange={(e) => setFix({ ...fix, points: e.target.value })} aria-label="Punti della correzione" />
+              <select className={inputClass} value={fix.kind} onChange={(e) => setFix({ ...fix, kind: e.target.value })} aria-label="Fama o infamia">
+                <option value="fama">Fama</option>
+                <option value="infamia">Infamia</option>
+              </select>
+              <input className={inputClass} maxLength={1000} placeholder="Motivo (es. voce data due volte per errore)" value={fix.reason} onChange={(e) => setFix({ ...fix, reason: e.target.value })} />
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <label className="flex items-center gap-1.5">
+                <input type="checkbox" checked={fix.visible} onChange={(e) => setFix({ ...fix, visible: e.target.checked })} /> La vede il giocatore (con avviso)
+              </label>
+              <Button
+                type="button"
+                size="sm"
+                className="ml-auto"
+                disabled={busy || fix.reason.trim().length < 3 || !Number.isInteger(Number(fix.points)) || Number(fix.points) === 0}
+                onClick={async () => {
+                  const ok = await run(
+                    supabase.from("fame_entries").insert({
+                      character_id: id,
+                      title: "Correzione dello staff",
+                      description: fix.reason.trim(),
+                      points: Number(fix.points),
+                      kind: fix.kind,
+                      is_public: fix.visible,
+                    }),
+                  );
+                  if (ok) setFix({ points: "-5", kind: "fama", reason: "", visible: false });
+                }}
+              >
+                Applica la correzione
+              </Button>
+              <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => run(supabase.rpc("fame_recalc_staff", { p_character: id }))} title="Ricalcola i totali di questo personaggio">
+                Ricalcola
+              </Button>
+            </div>
+          </section>
 
           {/* voce libera */}
           <section className="glass flex flex-col gap-2 rounded-2xl p-3">
