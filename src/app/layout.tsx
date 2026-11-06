@@ -33,6 +33,12 @@ export const metadata: Metadata = {
     template: `%s · ${siteConfig.name}`,
   },
   description: siteConfig.description,
+  // iPhone e iPad: «Aggiungi alla schermata Home» apre il gioco a schermo intero
+  appleWebApp: {
+    capable: true,
+    title: siteConfig.name,
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {
