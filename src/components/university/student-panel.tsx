@@ -115,7 +115,7 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
   return (
     <div className="flex flex-col gap-6">
       <StatusCard data={data} required={num(catalog?.settings.uni_crediti_laurea, 120)} />
-      {extras && <MajorMinorCard extras={extras} characterId={characterId} canAct={canAct} busy={busy} run={run} />}
+      {extras && !data.character.graduate && <MajorMinorCard extras={extras} characterId={characterId} canAct={canAct} busy={busy} run={run} />}
       {error && <p className="rounded-xl bg-destructive/15 px-3 py-2 text-sm text-destructive">{error}</p>}
 
       {data.character.graduate ? (
@@ -178,7 +178,11 @@ function StatusCard({ data, required }: { data: AcademicOverview; required: numb
           {STATUS_LABEL[record.academic_status]}
         </span>
         {record.honors && <span className="rounded-full bg-peach/20 px-2.5 py-0.5 text-xs font-semibold text-peach">{record.honors}</span>}
-        {record.new && <span className="text-xs text-muted-foreground">Carriera non ancora iniziata: parte alla prima iscrizione.</span>}
+        {data.character.graduate ? (
+          <span className="rounded-full bg-lavender/20 px-2.5 py-0.5 text-xs font-semibold text-lavender">Graduate (magistrale)</span>
+        ) : (
+          record.new && <span className="text-xs text-muted-foreground">Carriera non ancora iniziata: parte alla prima iscrizione.</span>
+        )}
       </div>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {items.map((i) => (
@@ -300,14 +304,16 @@ function MajorMinorCard({
               </Button>
             )}
           </p>
-          <ul className="flex flex-wrap gap-1.5">
-            {premed.courses.map((c) => (
-              <li key={c.id} className={cn("flex items-center gap-1 rounded-full px-2 py-0.5 text-xs", c.passed ? "bg-mint/15 text-mint" : "bg-night/40 text-muted-foreground")}>
-                {c.passed && <Check className="size-3" />}
-                <span className="font-mono">{c.code}</span> {c.name}
-              </li>
-            ))}
-          </ul>
+          {premed.enrolled ? (
+            <PremedCourses courses={premed.courses} />
+          ) : (
+            <details className="text-xs">
+              <summary className="cursor-pointer text-muted-foreground">Facoltativo, con qualsiasi Major: vedi i corsi</summary>
+              <div className="mt-1.5">
+                <PremedCourses courses={premed.courses} />
+              </div>
+            </details>
+          )}
           <p className="text-[0.7rem] text-muted-foreground">
             Medicina negli Stati Uniti si studia dopo il college: chi vuole entrarci segue il Pre-Med con qualsiasi Major e supera questi corsi con almeno C−.
             {premed.enrolled
@@ -318,6 +324,19 @@ function MajorMinorCard({
         </div>
       )}
     </div>
+  );
+}
+
+function PremedCourses({ courses }: { courses: NonNullable<AcademicExtras["premed"]>["courses"] }) {
+  return (
+    <ul className="flex flex-wrap gap-1.5">
+      {courses.map((c) => (
+        <li key={c.id} className={cn("flex items-center gap-1 rounded-full px-2 py-0.5 text-xs", c.passed ? "bg-mint/15 text-mint" : "bg-night/40 text-muted-foreground")}>
+          {c.passed && <Check className="size-3" />}
+          <span className="font-mono">{c.code}</span> {c.name}
+        </li>
+      ))}
+    </ul>
   );
 }
 
