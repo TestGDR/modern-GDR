@@ -30,6 +30,7 @@ export function NpcsApp({ me, canManage }: { me: { id: string; name: string } | 
   const [tab, setTab] = useState<Tab>("citta");
   const [category, setCategory] = useState("");
   const [editing, setEditing] = useState<NpcRow | "new" | null>(null);
+  const [linkTo, setLinkTo] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -50,14 +51,15 @@ export function NpcsApp({ me, canManage }: { me: { id: string; name: string } | 
   if (!npcs) return <p className="text-sm text-muted-foreground">Carico…</p>;
   const approved = (n: NpcRow) => n.status === "approvato" && n.active;
   const proposedByMe = (n: NpcRow) => n.kind === "ambiente" && !!myUser && n.created_by === myUser && n.status !== "approvato";
-  const city = npcs.filter((n) => n.kind === "ambiente" && (approved(n) || canManage || proposedByMe(n)));
+  const inCity = (n: NpcRow) => n.kind === "ambiente" || n.in_city;
+  const city = npcs.filter((n) => inCity(n) && (approved(n) || canManage || proposedByMe(n) || (!!me && n.owner_character_id === me.id)));
   const categories = [...new Set(city.map((n) => n.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, "it"));
   const myLinks = links.filter((l) => me && l.character_id === me.id);
   const linkedIds = new Set(myLinks.map((l) => l.npc_id));
   const lists: Record<Tab, NpcRow[]> = {
     citta: city.filter((n) => !category || n.category === category),
     giocatori: npcs.filter((n) => n.kind === "giocatore" && approved(n)),
-    miei: npcs.filter((n) => (me && n.owner_character_id === me.id) || proposedByMe(n) || (n.kind === "ambiente" && linkedIds.has(n.id))),
+    miei: npcs.filter((n) => (me && n.owner_character_id === me.id) || proposedByMe(n) || (inCity(n) && linkedIds.has(n.id))),
     approvare: npcs.filter((n) => n.status === "proposto"),
   };
   const linksToReview = canManage ? links.filter((l) => l.status === "proposto") : [];
@@ -168,6 +170,35 @@ export function NpcsApp({ me, canManage }: { me: { id: string; name: string } | 
           )}
         </>
       )}
+      {tab === "miei" && me && !editing && (
+        <div className="glass flex flex-col gap-2 rounded-2xl p-3 text-sm">
+          <label className="flex flex-col gap-1 text-xs">
+            Collega un PNG della città al tuo personaggio
+            <select value={linkTo} onChange={(e) => setLinkTo(e.target.value)} className={field}>
+              <option value="">Scegli un PNG…</option>
+              {city
+                .filter((n) => approved(n) && n.owner_character_id !== me.id && !linkedIds.has(n.id))
+                .map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.name}
+                    {n.role ? ` · ${n.role}` : ""}
+                  </option>
+                ))}
+            </select>
+          </label>
+          {linkTo && (
+            <LinkForm
+              npc={npcs.find((n) => n.id === linkTo)!}
+              characterId={me.id}
+              link={null}
+              onDone={() => {
+                setLinkTo("");
+                void load();
+              }}
+            />
+          )}
+        </div>
+      )}
       {tab === "miei" && (
         <p className="text-xs text-muted-foreground">
           I PNG legati al tuo personaggio (un mentore, un coinquilino, un ex, un nemico…) e quelli della città a cui sei legato. Proponi nome e carattere: lo staff li approva e da lì li
@@ -238,9 +269,9 @@ function NpcCard({
   const status =
     n.status === "proposto" ? { label: "Da approvare", cls: "bg-peach/20 text-peach" } : n.status === "rifiutato" ? { label: "Non approvato", cls: "bg-destructive/20 text-destructive" } : null;
   const myLink = me ? links.find((l) => l.character_id === me.id) : undefined;
-  const city = n.kind === "ambiente";
+  const city = n.kind === "ambiente" || n.in_city;
   // il proprietario modifica i suoi; i PNG della città proposti dal giocatore solo finché non sono approvati
-  const canEdit = canManage || (mine && (!city || n.status !== "approvato"));
+  const canEdit = canManage || (mine && (n.kind !== "ambiente" || n.status !== "approvato"));
   return (
     <li className={cn("glass flex flex-col gap-2 rounded-2xl p-3", !n.active && "opacity-60")}>
       <div className="flex items-start gap-3">
@@ -256,6 +287,7 @@ function NpcCard({
           <p className="flex flex-wrap gap-1 pt-1 text-[0.7rem]">
             {city && n.category && <span className="rounded-full bg-lavender/20 px-2 py-0.5 text-lavender">{n.category}</span>}
             {n.kind === "giocatore" && n.owner && <span className="rounded-full bg-white/10 px-2 py-0.5">di {firstName(n.owner.name)}</span>}
+            {n.kind === "giocatore" && n.in_city && <span className="rounded-full bg-mint/15 px-2 py-0.5 text-mint">anche della città</span>}
             {n.secret && (
               <span className="flex items-center gap-1 rounded-full bg-orchid/25 px-2 py-0.5 text-orchid">
                 <EyeOff className="size-3" /> segreto
@@ -297,7 +329,7 @@ function NpcCard({
         </div>
       )}
 
-      {city && me && n.status === "approvato" && n.active && (
+      {city && me && n.owner_character_id !== me.id && n.status === "approvato" && n.active && (
         <div className="border-t border-white/10 pt-2">
           {linking ? (
             <LinkForm
@@ -430,6 +462,7 @@ function NpcForm({
     name: npc?.name ?? "",
     role: npc?.role ?? "",
     category: npc?.category ?? "",
+    in_city: npc?.in_city ?? false,
     description: npc?.description ?? "",
     avatar_url: npc?.avatar_url ?? "",
     secret: npc?.secret ?? false,
@@ -446,7 +479,8 @@ function NpcForm({
     const row = {
       name: f.name.trim(),
       role: f.role.trim(),
-      category: city ? f.category.trim() : "",
+      category: city || f.in_city ? f.category.trim() : "",
+      in_city: city ? false : f.in_city,
       description: f.description.trim(),
       avatar_url: avatar || null,
       secret: f.secret,
@@ -483,7 +517,13 @@ function NpcForm({
             className={field}
           />
         </label>
-        {city && (
+        {!city && (
+          <label className="flex items-center gap-2 text-sm sm:col-span-2">
+            <input type="checkbox" checked={f.in_city} onChange={(e) => set("in_city", e.target.checked)} /> Anche della città (compare tra i PNG della città e altri
+            personaggi possono legarsi a lui)
+          </label>
+        )}
+        {(city || f.in_city) && (
           <label className={cn(label, "sm:col-span-2")}>
             Categoria
             <input value={f.category} maxLength={40} list="npc-categories" onChange={(e) => set("category", e.target.value)} placeholder="es. Docenti" className={field} />

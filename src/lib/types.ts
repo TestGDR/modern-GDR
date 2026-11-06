@@ -192,6 +192,8 @@ export type Npc = {
   /** categoria dei PNG della città (Docenti, Personalità influenti…) */
   category: string;
   created_by: string | null;
+  /** PNG di un giocatore che è anche della città */
+  in_city: boolean;
 };
 
 /** Legame tra un personaggio e un PNG della città (npc_links) */
