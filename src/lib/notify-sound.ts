@@ -18,6 +18,13 @@ export const SOUNDS: SoundDef[] = [
   { id: "file-chat1", label: "Chat 1", groups: ["chat", "on"], file: "/sounds/chat1.mp3" },
   { id: "file-chat2", label: "Chat 2", groups: ["chat", "on"], file: "/sounds/chat2.mp3" },
   { id: "file-chat3", label: "Chat 3", groups: ["chat", "on"], file: "/sounds/chat3.mp3" },
+  // suoni nuovi: valgono per chat, telefono e messaggi OFF
+  { id: "file-suono1", label: "Suono 1", groups: ["chat", "on", "off"], file: "/sounds/suono1.mp3" },
+  { id: "file-suono2", label: "Suono 2", groups: ["chat", "on", "off"], file: "/sounds/suono2.mp3" },
+  { id: "file-suono3", label: "Suono 3", groups: ["chat", "on", "off"], file: "/sounds/suono3.mp3" },
+  { id: "file-suono4", label: "Suono 4", groups: ["chat", "on", "off"], file: "/sounds/suono4.mp3" },
+  { id: "file-suono5", label: "Suono 5", groups: ["chat", "on", "off"], file: "/sounds/suono5.mp3" },
+  { id: "file-suono6", label: "Suono 6", groups: ["chat", "on", "off"], file: "/sounds/suono6.mp3" },
 ];
 
 export const soundsOf = (group: SoundGroup) => SOUNDS.filter((s) => s.groups.includes(group));
