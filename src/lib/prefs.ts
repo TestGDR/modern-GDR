@@ -25,7 +25,11 @@ export type Prefs = {
   /** colore dei nomi degli altri personaggi in chat */
   name_color: string;
   chat_avatars: ChatAvatars;
+  /** grafica del sito: tramonto (giorno) o notte */
+  theme: Theme;
 };
+
+export type Theme = "giorno" | "notte";
 
 export type ChatFontFamily = "normale" | "libro" | "macchina" | "elegante";
 export type ChatLine = "compatta" | "normale" | "ampia";
@@ -64,6 +68,7 @@ export const DEFAULT_PREFS: Prefs = {
   chat_line: "normale",
   name_color: "#f2b39c",
   chat_avatars: "grandi",
+  theme: "giorno",
 };
 
 /** Grandezze del testo della chat, in pt */
@@ -72,7 +77,18 @@ export const CHAT_FONT_SIZES = [9, 10, 11, 12, 13, 14, 15, 16, 18];
 // le ultime lette o salvate nel database (per tornarci uscendo dall'anteprima)
 let saved: Prefs | null = null;
 const COLUMNS =
-  "sounds_on, volume, sound_on, sound_off, sound_chat, chat_sound_on, chat_font_pt, speech_color, action_color, chat_other_pt, chat_font_family, chat_line, name_color, chat_avatars";
+  "sounds_on, volume, sound_on, sound_off, sound_chat, chat_sound_on, chat_font_pt, speech_color, action_color, chat_other_pt, chat_font_family, chat_line, name_color, chat_avatars, theme";
+
+/** Mette la grafica sulla pagina e ne tiene una copia tecnica nel browser (per il primo disegno, vedi layout.tsx) */
+function setThemeAttr(theme: Theme) {
+  if (typeof document === "undefined") return;
+  document.documentElement.dataset.theme = theme;
+  try {
+    localStorage.setItem("gdr_grafica", theme);
+  } catch {
+    // archivio del browser non disponibile: si vede il giorno finché non arrivano le preferenze
+  }
+}
 
 /** Applica le preferenze alla pagina: variabili CSS e suoni */
 export function applyPrefs(p: Prefs) {
@@ -86,6 +102,7 @@ export function applyPrefs(p: Prefs) {
   root.setProperty("--chat-line", CHAT_LINES.find((l) => l.id === p.chat_line)?.css ?? "1.625");
   root.setProperty("--chat-name", p.name_color);
   document.documentElement.dataset.chatAvatars = p.chat_avatars;
+  setThemeAttr(p.theme);
   setSoundPrefs({
     on: p.sounds_on,
     volume: p.volume,
@@ -119,5 +136,15 @@ export async function savePrefs(supabase: SupabaseClient, p: Prefs) {
   if (!data.user) return false;
   const { error } = await supabase.from("user_prefs").upsert({ user_id: data.user.id, ...p, updated_at: new Date().toISOString() });
   if (!error) saved = p;
+  return !error;
+}
+
+/** Cambia solo la grafica (giorno/notte) e la salva subito */
+export async function saveTheme(supabase: SupabaseClient, theme: Theme) {
+  setThemeAttr(theme);
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return false;
+  const { error } = await supabase.from("user_prefs").upsert({ user_id: data.user.id, theme, updated_at: new Date().toISOString() });
+  if (!error && saved) saved = { ...saved, theme };
   return !error;
 }

@@ -101,8 +101,28 @@ export function MapView({ maps, districts, groups, rooms, activity, initialDistr
           )}
         >
             {map.image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={map.image_url} alt={map.name} className="block h-auto max-h-[min(800px,calc(100dvh-15.5rem-var(--map-extra)))] w-auto max-w-full select-none lg:max-h-[min(800px,calc(100dvh-17.5rem-var(--map-extra)))]" draggable={false} />
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={map.image_url}
+                  alt={map.name}
+                  className={cn(
+                    "block h-auto max-h-[min(800px,calc(100dvh-15.5rem-var(--map-extra)))] w-auto max-w-full select-none lg:max-h-[min(800px,calc(100dvh-17.5rem-var(--map-extra)))]",
+                    map.night_image_url && "theme-day",
+                  )}
+                  draggable={false}
+                />
+                {/* modalità notte: la stessa mappa di notte */}
+                {map.night_image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={map.night_image_url}
+                    alt={map.name}
+                    className="theme-night h-auto max-h-[min(800px,calc(100dvh-15.5rem-var(--map-extra)))] w-auto max-w-full select-none lg:max-h-[min(800px,calc(100dvh-17.5rem-var(--map-extra)))]"
+                    draggable={false}
+                  />
+                )}
+              </>
             ) : (
               <MiamiIllustration className="block h-auto w-full" />
             )}

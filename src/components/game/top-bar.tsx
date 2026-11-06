@@ -4,6 +4,7 @@ import { GuideButton } from "@/components/guide/guide-app";
 import { MenuButton } from "@/components/game/game-sidebar";
 import { MessageButtons } from "@/components/game/message-buttons";
 import { NewsButton } from "@/components/game/news-panel";
+import { ThemeToggle } from "@/components/game/theme-toggle";
 import { CommunityButtons } from "@/components/game/community";
 import { IdleLogout } from "@/components/game/site-watch";
 import { getChatSettings } from "@/lib/data";
@@ -67,7 +68,10 @@ export function TopBar({ admin, messages }: { admin: React.ReactNode; messages: 
         {admin}
       </div>
       <div className="flex shrink-0 items-center gap-1 sm:gap-4">{messages}</div>
-      <div className="min-w-[4.75rem] flex-1 basis-0 sm:min-w-10" />
+      {/* a destra: grafica giorno/notte */}
+      <div className="flex min-w-[4.75rem] flex-1 basis-0 items-center justify-end sm:min-w-10">
+        <ThemeToggle />
+      </div>
     </header>
   );
 }

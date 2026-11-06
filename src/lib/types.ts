@@ -119,6 +119,8 @@ export type GameMap = {
   description: string;
   /** Senza immagine si vede la Miami disegnata */
   image_url: string | null;
+  /** Immagine di notte (modalità notte); senza, si usa quella del giorno */
+  night_image_url: string | null;
   sort_order: number;
   active: boolean;
 };

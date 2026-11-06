@@ -153,6 +153,70 @@
   }
 }
 
+/*
+  Modalità notte (scelta dai presenti online, user_prefs.theme):
+  blu profondo della notte, luci arancio delle strade, neon rosa e viola dei grattacieli.
+  Stessi nomi dei colori del giorno, così tutto il sito cambia da solo.
+*/
+:root[data-theme="notte"] {
+  --night: #0b1233;
+  --dusk: #141e4a;
+  --violet: #4c5fc0;
+  --lavender: #a9b8f2;
+  --orchid: #b48be6;
+  --flamingo: #ff74bd;
+  --peach: #ffb46b;
+  --sand: #ffdca6;
+  --mint: #7fdcf0;
+  --palm: #16204d;
+
+  --foreground: #eef1ff;
+  --card: rgb(22 32 80 / 0.62);
+  --card-foreground: #eef1ff;
+  --popover: #141e4a;
+  --popover-foreground: #eef1ff;
+  --primary-foreground: #0b1233;
+  --secondary: rgb(169 184 242 / 0.14);
+  --secondary-foreground: #eef1ff;
+  --muted: rgb(169 184 242 / 0.1);
+  --muted-foreground: #a9b5df;
+  --accent: rgb(255 180 107 / 0.14);
+  --accent-foreground: #ffe2c4;
+  --border: rgb(169 184 242 / 0.14);
+  --input: rgb(169 184 242 / 0.18);
+  --sidebar: rgb(12 20 56 / 0.8);
+  --sidebar-foreground: #eef1ff;
+  --sidebar-primary-foreground: #0b1233;
+  --sidebar-accent: rgb(255 116 189 / 0.14);
+  --sidebar-accent-foreground: #ffd3ea;
+  --sidebar-border: rgb(169 184 242 / 0.12);
+}
+/* Elementi solo di giorno o solo di notte (sfondo, immagine della mappa) */
+.theme-night {
+  display: none !important;
+}
+:root[data-theme="notte"] .theme-night {
+  display: block !important;
+}
+:root[data-theme="notte"] .theme-day {
+  display: none !important;
+}
+/* Stelle del cielo notturno */
+.night-stars {
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgb(255 255 255 / 0.8), transparent),
+    radial-gradient(1px 1px at 27% 8%, rgb(255 255 255 / 0.6), transparent),
+    radial-gradient(1.5px 1.5px at 41% 26%, rgb(255 255 255 / 0.7), transparent),
+    radial-gradient(1px 1px at 58% 12%, rgb(255 255 255 / 0.5), transparent),
+    radial-gradient(1px 1px at 69% 31%, rgb(255 255 255 / 0.6), transparent),
+    radial-gradient(1.5px 1.5px at 83% 21%, rgb(255 255 255 / 0.7), transparent),
+    radial-gradient(1px 1px at 92% 9%, rgb(255 255 255 / 0.5), transparent),
+    radial-gradient(1px 1px at 7% 38%, rgb(255 255 255 / 0.4), transparent),
+    radial-gradient(1px 1px at 35% 44%, rgb(255 255 255 / 0.35), transparent),
+    radial-gradient(1px 1px at 76% 47%, rgb(255 255 255 / 0.35), transparent);
+  background-size: 420px 420px;
+}
+
 /* Ritratti in chat (Impostazioni della chat) */
 :root[data-chat-avatars="piccoli"] .chat-avatar > img,
 :root[data-chat-avatars="piccoli"] .chat-avatar > span {

@@ -40,12 +40,20 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+// Grafica giorno/notte prima del primo disegno: copia tecnica della preferenza (quella vera è nel database,
+// user_prefs.theme, e applyPrefs la rimette appena arriva), così chi ha scelto la notte non vede lampi di giorno
+const THEME_SCRIPT = `try{if(localStorage.getItem("gdr_grafica")==="notte")document.documentElement.dataset.theme="notte"}catch(e){}`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="it"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${bebas.variable} ${pacifico.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );
