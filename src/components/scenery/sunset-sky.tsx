@@ -56,11 +56,10 @@ export function DuskBackdrop() {
         <Palm className="absolute -bottom-4 -left-20 h-[60vh] text-[#3b2b66]/80" lean={24} />
         <Palm className="absolute -right-20 -bottom-4 h-[50vh] text-[#3b2b66]/70" lean={-22} />
       </div>
-      {/* notte: blu profondo, stelle, luna e luci della città all'orizzonte */}
+      {/* notte: blu profondo, stelle e luci della città all'orizzonte */}
       <div className="theme-night absolute inset-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#060a22_0%,#0b1438_45%,#122055_80%,#1a2a66_100%)]" />
         <div className="night-stars absolute inset-0" />
-        <div className="absolute top-[7%] right-[9%] size-16 rounded-full bg-[radial-gradient(circle_at_40%_40%,#fffdf2_0%,#e9ecff_45%,#c9d2f5_70%)] shadow-[0_0_60px_18px_rgb(200_215_255/0.25)]" />
         <div className="absolute -bottom-48 left-1/2 size-[70vmax] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgb(255_176_102/0.16)_0%,rgb(179_139_224/0.10)_35%,transparent_65%)]" />
         <Palm className="absolute -bottom-4 -left-20 h-[60vh] text-[#070c26]/90" lean={24} />
         <Palm className="absolute -right-20 -bottom-4 h-[50vh] text-[#070c26]/85" lean={-22} />
