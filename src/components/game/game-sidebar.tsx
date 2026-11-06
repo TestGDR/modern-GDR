@@ -441,17 +441,22 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
         <Users className="size-5 text-mint" />
         <span className="rounded-full bg-mint/15 px-2 py-0.5 text-xs text-mint">{players ? list.length : "…"}</span>
       </button>
-      <div className="hidden max-h-[250px] flex-col gap-2 rounded-2xl bg-white/5 p-3 lg:flex">
-        {/* Il titolo apre l'elenco esteso; il nome apre la scheda */}
-        <button type="button" onClick={() => setOpen(true)} className="flex items-center gap-2 rounded-lg text-left text-sm font-medium transition-colors hover:text-mint" title="Tutti i presenti online">
+      <div className="hidden max-h-[250px] flex-col gap-2 overflow-hidden rounded-2xl bg-white/5 pb-3 lg:flex">
+        {/* Il titolo (al centro, su una fascia sua) apre l'elenco esteso; il nome apre la scheda */}
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex shrink-0 items-center justify-center gap-2 border-b border-white/10 bg-gradient-to-r from-violet/40 via-orchid/30 to-violet/40 px-3 py-2 text-sm font-medium transition-colors hover:text-mint"
+          title="Tutti i presenti online"
+        >
           <Users className="size-4 text-mint" />
           Online
-          <span className="ml-auto rounded-full bg-mint/15 px-2 py-0.5 text-xs text-mint" title={`${list.length} online in tutto il gioco`}>
+          <span className="rounded-full bg-mint/15 px-2 py-0.5 text-xs text-mint" title={`${list.length} online in tutto il gioco`}>
             {players ? list.length : "…"}
           </span>
         </button>
         {here.length > 0 ? (
-          <span className="-mr-1 flex min-h-0 flex-col gap-0.5 overflow-y-auto pr-1">
+          <span className="flex min-h-0 flex-col gap-0.5 overflow-y-auto px-3">
             {here.map((c) => {
               const inner = (
                 <>
@@ -474,7 +479,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
             })}
           </span>
         ) : (
-          <span className="text-xs text-muted-foreground">{players ? placeKey === "mappa" ? "Nessuno in mappa." : "Nessuno in questa chat." : "Caricamento…"}</span>
+          <span className="px-3 text-xs text-muted-foreground">{players ? placeKey === "mappa" ? "Nessuno in mappa." : "Nessuno in questa chat." : "Caricamento…"}</span>
         )}
       </div>
       {open && (
