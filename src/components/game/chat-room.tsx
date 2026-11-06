@@ -278,7 +278,9 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
     })();
   }, [meId, canJoin, joined, busyInId, roomId, router]);
 
-  // Uscita automatica lasciando la chat (mappa, altra chat); le finestre aperte sopra non contano
+  // Uscita automatica lasciando la chat (mappa, altra chat); le finestre aperte sopra non contano.
+  // Si aspetta qualche secondo e si esce solo se l'indirizzo è davvero cambiato: se la chat si è
+  // solo ridisegnata (aggiornamento, finestra aperta sopra, rete lenta) si resta in giocata.
   useEffect(() => {
     if (!meId) return;
     if (pendingLeave?.roomId === roomId) {
@@ -286,10 +288,24 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
       pendingLeave = null;
     }
     return () => {
-      pendingLeave = { roomId, timer: setTimeout(() => {
-        pendingLeave = null;
-        leaveChat(roomId, meId);
-      }, 400) };
+      pendingLeave = {
+        roomId,
+        timer: setTimeout(() => {
+          pendingLeave = null;
+          const here = `/chat/${roomId}`;
+          const path = window.location.pathname;
+          let under: string | null = null;
+          try {
+            under = sessionStorage.getItem("gdr_pagina_sotto");
+          } catch {
+            // archivio del browser non disponibile
+          }
+          // ancora in questa chat, o in una finestra aperta sopra di lei
+          const overThisChat = under?.split("?")[0] === here && path !== "/mappa" && !path.startsWith("/chat/");
+          if (path === here || overThisChat) return;
+          leaveChat(roomId, meId);
+        }, 3000),
+      };
     };
   }, [meId, roomId]);
 
