@@ -117,7 +117,7 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
   return (
     <div className="flex flex-col gap-6">
       <StatusCard data={data} required={num(catalog?.settings.uni_crediti_laurea, 120)} />
-      {extras && !data.character.graduate && <StartCareerCard extras={extras} />}
+      {extras && !data.character.graduate && <StartCareerCard extras={extras} characterId={characterId} canAct={canAct} busy={busy} run={run} />}
       {extras && !data.character.graduate && <MajorMinorCard extras={extras} characterId={characterId} canAct={canAct} busy={busy} run={run} />}
       {error && <p className="rounded-xl bg-destructive/15 px-3 py-2 text-sm text-destructive">{error}</p>}
 
@@ -168,9 +168,24 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
 
 /* ------------------------------ Anni già frequentati ------------------------------ */
 
-// Corsi riconosciuti e media di partenza di chi è creato dopo il primo anno
-function StartCareerCard({ extras }: { extras: AcademicExtras }) {
-  const { recognized, start_gpa, start_gpa_credits, start_rolls } = extras;
+// Corsi riconosciuti e voti degli anni passati di chi è creato dopo il primo anno
+const PROFILE_LABEL = { eccellente: "Carriera eccellente", buona: "Buona carriera", sufficiente: "Sufficiente", limiti: "Carriera ai limiti" } as const;
+const band = (b: number[] | undefined) => (b && b.length === 2 ? `${gpa(b[0])}–${gpa(b[1])}` : "");
+
+function StartCareerCard({
+  extras,
+  characterId,
+  canAct,
+  busy,
+  run,
+}: {
+  extras: AcademicExtras;
+  characterId: string;
+  canAct: boolean;
+  busy: boolean;
+  run: (fn: string, args: Record<string, unknown>) => Promise<void>;
+}) {
+  const { recognized, start_gpa, start_gpa_credits, start_rolls, profile } = extras;
   if (recognized.length === 0 && start_gpa === null) return null;
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm">
@@ -179,37 +194,86 @@ function StartCareerCard({ extras }: { extras: AcademicExtras }) {
         <p>
           Media di partenza <strong className="text-mint">{gpa(start_gpa)}</strong>{" "}
           <span className="text-muted-foreground">
-            su {start_gpa_credits} crediti: entra nel GPA cumulativo insieme ai voti dei corsi che segui in gioco.
+            su {start_gpa_credits} crediti{profile?.chosen ? ` · ${PROFILE_LABEL[profile.current]}` : ""}: entra nel GPA cumulativo insieme ai voti dei corsi che segui in gioco.
           </span>
         </p>
       )}
+      {profile?.can_choose && canAct && <ProfileChooser profile={profile} characterId={characterId} busy={busy} run={run} />}
       {recognized.length > 0 && (
         <>
           <p className="text-xs text-muted-foreground">
-            Corsi obbligatori del Major già superati negli anni precedenti: valgono come prerequisiti e per la laurea, senza voto e senza crediti in più.
+            Corsi obbligatori di Major, Minor e Pre-Med già superati negli anni precedenti: valgono come prerequisiti e per la laurea, senza crediti in più.
           </p>
           <ul className="flex flex-wrap gap-1">
             {recognized.map((c) => (
               <li key={c.id} className="flex items-center gap-1 rounded-full bg-mint/15 px-2 py-0.5 text-xs text-mint" title={c.name}>
                 <Check className="size-3" /> {c.code}
+                {c.letter_grade && <strong className="ml-0.5 text-foreground">{grade(c.letter_grade)}</strong>}
               </li>
             ))}
           </ul>
         </>
       )}
-      {start_rolls.length > 0 && (
+      {start_rolls.length > 0 && start_rolls[0].label !== undefined && (
         <details className="text-xs text-muted-foreground">
-          <summary className="cursor-pointer">I tiri della media di partenza</summary>
+          <summary className="cursor-pointer">I voti degli anni passati</summary>
           <ul className="mt-1 flex flex-col gap-0.5">
-            {start_rolls.map((r) => (
-              <li key={r.semester}>
-                Semestre {r.semester} · {r.course}: {r.attr} + {r.skill} + d10 {r.d10}
-                {r.bonus ? ` + Major ${r.bonus}` : ""} = {r.total} contro CD {r.cd} → <strong className="text-foreground">{grade(r.letter)}</strong>
+            {start_rolls.map((r, i) => (
+              <li key={i}>
+                {r.label} ({r.credits} cr, livello {r.level}): {r.attr} + {r.skill} + d10 {r.d10}
+                {r.bonus ? ` + Major ${r.bonus}` : ""} = {r.total} contro CD {r.cd} → <strong className="text-foreground">{grade(r.letter)}</strong> ({gpa(r.points)})
               </li>
             ))}
           </ul>
         </details>
       )}
+    </div>
+  );
+}
+
+/** I già iscritti scelgono una volta com'è andata la carriera negli anni passati */
+function ProfileChooser({
+  profile,
+  characterId,
+  busy,
+  run,
+}: {
+  profile: NonNullable<AcademicExtras["profile"]>;
+  characterId: string;
+  busy: boolean;
+  run: (fn: string, args: Record<string, unknown>) => Promise<void>;
+}) {
+  const choices = [
+    ...profile.options.map((o) => ({ id: o.id as string | null, name: o.name, cost: o.cost_px, band: o.band, description: o.description })),
+    { id: null, name: "Sufficiente", cost: 0, band: profile.sufficiente, description: "Una carriera nella media, senza infamia e senza lode." },
+  ].sort((a, b) => b.band[0] - a.band[0]);
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-peach/30 bg-peach/10 p-2.5">
+      <p className="text-xs">
+        <strong className="text-peach">Com&apos;è andata negli anni passati?</strong> Scegli una volta sola: ogni corso degli anni già frequentati riceve un voto in
+        quella fascia (dove cadi lo decidono caratteristica, abilità e dado). Hai {profile.px} PX.
+      </p>
+      <div className="grid gap-1.5 sm:grid-cols-2">
+        {choices.map((c) => (
+          <button
+            key={c.name}
+            type="button"
+            disabled={busy || c.cost > profile.px}
+            title={c.description}
+            onClick={() =>
+              window.confirm(
+                `Scegliere «${c.name}» (media ${band(c.band)})${c.cost > 0 ? ` per ${c.cost} PX` : c.cost < 0 ? `: ricevi fino a ${-c.cost} PX` : ""}? Non si può cambiare.`,
+              ) && run("academic_choose_profile", { p_character: characterId, p_option: c.id })
+            }
+            className="flex flex-col items-start rounded-lg border border-white/10 bg-night/40 px-2.5 py-1.5 text-left text-xs hover:bg-white/10 disabled:opacity-50"
+          >
+            <span className="font-semibold text-foreground">{c.name}</span>
+            <span className="text-muted-foreground">
+              Media {band(c.band)} · {c.cost > 0 ? `${c.cost} PX` : c.cost < 0 ? `+${-c.cost} PX` : "gratis"}
+            </span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
