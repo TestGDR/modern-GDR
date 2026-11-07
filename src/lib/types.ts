@@ -175,7 +175,7 @@ export type Room = {
   sort_order: number;
 };
 
-export type MessageKind = "azione" | "fuori_gioco" | "master" | "dado" | "sistema" | "sussurro" | "combattimento" | "png";
+export type MessageKind = "azione" | "fuori_gioco" | "master" | "dado" | "sistema" | "sussurro" | "combattimento" | "png" | "incidente";
 
 /** Personaggio non giocante (tabella npcs) */
 export type Npc = {

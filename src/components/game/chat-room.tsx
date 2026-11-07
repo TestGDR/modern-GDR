@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowLeft, ChevronDown, Crown, Dices, Eye, EyeOff, LayoutGrid, NotebookPen, Package, Save, SendHorizontal, SlidersHorizontal, Swords, Users } from "lucide-react";
+import { ArrowDown, ArrowLeft, Bandage, ChevronDown, Crown, Dices, Eye, EyeOff, LayoutGrid, NotebookPen, Package, Save, SendHorizontal, SlidersHorizontal, Swords, Users } from "lucide-react";
 import { ItemsPanel } from "@/components/game/chat-items";
 import { ChatToolWindow, NotepadPanel, SaveChatPanel } from "@/components/game/chat-tools";
 import { ChatPrefsPanel } from "@/components/game/prefs-panel";
@@ -19,6 +19,7 @@ import {
   type DiceSkill,
 } from "@/components/game/chat-parts";
 import { CombatPanel } from "@/components/game/combat-panel";
+import { IncidentPanel } from "@/components/game/incident-panel";
 import { NeedsCharacter } from "@/components/game/needs-character";
 import { SafetyLight } from "@/components/game/safety-light";
 import { Button } from "@/components/ui/button";
@@ -52,7 +53,7 @@ type Props = {
 const byTime = (a: Message, b: Message) => a.created_at.localeCompare(b.created_at) || a.id - b.id;
 
 /** Comandi della chat: ognuno si apre nella sua finestra */
-type Tool = "scontro" | "oggetti" | "dadi" | "master" | "note" | "salva" | "impostazioni";
+type Tool = "scontro" | "incidente" | "oggetti" | "dadi" | "master" | "note" | "salva" | "impostazioni";
 
 /**
  * Stanza di chat (dal Westeros: ChatRoom.tsx). Tempo reale con Supabase,
@@ -440,6 +441,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
     { id: "note", label: "Blocco note", icon: <NotebookPen />, show: true },
     { id: "dadi", label: "Dadi", icon: <Dices />, show: canDice },
     { id: "scontro", label: "Combattimento", icon: <Swords />, show: true },
+    { id: "incidente", label: "Incidente", icon: <Bandage />, show: true },
     { id: "oggetti", label: "Oggetti", icon: <Package />, show: true },
     { id: "salva", label: "Salva chat", icon: <Save />, show: true },
     { id: "master", label: "Master", icon: <Crown />, show: canNarrate || canModerate },
@@ -602,6 +604,11 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
           {tools.includes("dadi") && (
             <ChatToolWindow title="Tiro Interlock" icon={<Dices className="size-5" />} width={460} onClose={() => closeTool("dadi")}>
               <DicePanel roomId={roomId} characterId={me.id} attributes={attributes} skills={skills} onClose={() => closeTool("dadi")} onError={setError} />
+            </ChatToolWindow>
+          )}
+          {tools.includes("incidente") && (
+            <ChatToolWindow title="Incidente" icon={<Bandage className="size-5" />} tone="text-flamingo" width={480} onClose={() => closeTool("incidente")}>
+              <IncidentPanel roomId={roomId} me={me} present={present} isMaster={canNarrate || canCombat} onDone={() => closeTool("incidente")} onError={setError} />
             </ChatToolWindow>
           )}
           {tools.includes("oggetti") && (

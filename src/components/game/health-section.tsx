@@ -13,6 +13,7 @@ const SEVERITY_LABEL: Record<WoundSeverity, string> = { lieve: "Lieve", moderata
 const ZONE_LABEL: Record<CombatZone, string> = { testa: "Testa", tronco: "Tronco", braccio: "Braccio", gamba: "Gamba" };
 // cosa pesa la penalità di una ferita, per zona
 const PENALTY_ON: Record<CombatZone, string> = { braccio: "Rissa, Parare e armi", gamba: "Schivare", testa: "decide lo staff", tronco: "sforzi fisici (decide lo staff)" };
+// fuori dal combattimento la penalità della ferita peggiore vale su tutti i tiri (trait_mods)
 
 /** PF, recupero e ferite: li vedono il proprietario e lo staff (character_health_get) */
 export function HealthSection({ characterId, canManage }: { characterId: string; canManage: boolean }) {
@@ -73,7 +74,7 @@ export function HealthSection({ characterId, canManage }: { characterId: string;
                 <span className="text-peach">{SEVERITY_LABEL[w.severity]}</span>
                 {w.penalty < 0 && (
                   <span className="text-xs text-muted-foreground">
-                    {w.penalty} a {PENALTY_ON[w.zone]}
+                    {w.penalty} a {PENALTY_ON[w.zone]} in combattimento, a tutti i tiri fuori
                   </span>
                 )}
                 <span className="ml-auto text-xs text-muted-foreground">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Dices, Lock, Pencil, Shirt, Swords, Trash2, UserPlus, X } from "lucide-react";
+import { Bandage, Check, Dices, Lock, Pencil, Shirt, Swords, Trash2, UserPlus, X } from "lucide-react";
 import { CombatDetail } from "@/components/game/combat-panel";
 import { FloatingWindow } from "@/components/floating-window";
 import { SafeHtml } from "@/components/guide/safe-html";
@@ -122,6 +122,22 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
   }
 
   if (m.kind === "combattimento") return <CombatRow message={m} time={time} canSeeRolls={canSeeRolls} tools={tools} />;
+
+  // incidente fuori dal combattimento (incident_roll): esito per tutti
+  if (m.kind === "incidente") {
+    return (
+      <div className="group flex items-start gap-2 rounded-xl border border-flamingo/30 bg-flamingo/10 px-3 py-2" style={{ fontSize: "var(--chat-other, 10pt)" }}>
+        <Bandage className="mt-0.5 size-4 shrink-0 text-flamingo" />
+        <p className="min-w-0 flex-1">
+          <span className="mr-2 text-xs text-muted-foreground">{time}</span>
+          <span className={cn(/ferita (grave|molto grave)|a terra/.test(m.content) && "font-semibold text-destructive", /senza un graffio/.test(m.content) && "font-semibold text-mint")}>
+            {m.content}
+          </span>
+        </p>
+        {tools}
+      </div>
+    );
+  }
 
   if (m.kind === "dado") {
     return (
