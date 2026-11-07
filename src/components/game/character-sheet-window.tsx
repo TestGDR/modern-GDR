@@ -43,6 +43,7 @@ import { SheetMusic } from "@/components/game/sheet-music";
 import { SheetStatus } from "@/components/game/status-icons";
 import { OptionRequestPanel } from "@/components/game/option-request";
 import { ActionPointsBox } from "@/components/game/action-points-box";
+import { XpGrantBox } from "@/components/admin/xp-grant-manager";
 import { AdminSheetPanel } from "@/components/game/admin-sheet";
 import { useCloseModal } from "@/components/game/page-modal";
 import { PrefsPanel } from "@/components/game/prefs-panel";
@@ -718,6 +719,7 @@ function SkillList({ character, build, rules, canGrow, canAssignPx }: { characte
         </div>
       </div>
       {(canGrow || canAssignPx) && <ActionPointsBox characterId={character.id} canAdjust={canAssignPx} />}
+      {canAssignPx && <XpGrantBox characterId={character.id} />}
       {canGrow && (
         <p className="text-xs text-muted-foreground">
           Con i PX da spendere alzi un&apos;abilità di un livello con il pulsante <strong className="text-peach">+</strong>: costa 10 × il nuovo livello e non supera mai la caratteristica.
