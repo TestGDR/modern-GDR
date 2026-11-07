@@ -3,50 +3,23 @@
 import { useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import {
-  Check,
-  Lock,
-  LockOpen,
-  Megaphone,
-  Pencil,
-  Pin,
-  PinOff,
-  Send,
-  Share2,
-  Star,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Check, Lock, LockOpen, Megaphone, Pencil, Pin, PinOff, Send, Share2, Star, Trash2, X } from "lucide-react";
 import { SafeHtml, plainToHtml } from "@/components/guide/safe-html";
 import { Button } from "@/components/ui/button";
-import {
-  deletePost,
-  deleteThread,
-  editPost,
-  highlightThread,
-  moveThread,
-  renameThread,
-  setThreadFlag,
-} from "@/lib/actions/forum";
+import { deletePost, deleteThread, editPost, highlightThread, moveThread, renameThread, setThreadFlag } from "@/lib/actions/forum";
 import { firstName } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 // l'editor si carica solo nel browser, quando serve
-const RichEditor = dynamic(
-  () => import("@/components/guide/rich-editor").then((m) => m.RichEditor),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-40 animate-pulse rounded-2xl bg-white/5" />
-    ),
-  },
-);
+const RichEditor = dynamic(() => import("@/components/guide/rich-editor").then((m) => m.RichEditor), {
+  ssr: false,
+  loading: () => <div className="h-40 animate-pulse rounded-2xl bg-white/5" />,
+});
 
 type ModResult = { ok: true; slug?: string } | { ok: false; error: string };
 
-const barBtn =
-  "h-8 rounded-lg border border-white/15 bg-white/5 px-3 text-xs text-foreground hover:bg-white/10 disabled:opacity-50";
+const barBtn = "h-8 rounded-lg border border-white/15 bg-white/5 px-3 text-xs text-foreground hover:bg-white/10 disabled:opacity-50";
 
 /** Barra di moderazione della discussione (chi ha forum.moderare / forum.segnalare) */
 export function ThreadModeration({
@@ -57,14 +30,7 @@ export function ThreadModeration({
   canHighlight,
   firstPost,
 }: {
-  thread: {
-    id: string;
-    title: string;
-    board_id: string;
-    is_pinned: boolean;
-    is_important: boolean;
-    is_locked: boolean;
-  };
+  thread: { id: string; title: string; board_id: string; is_pinned: boolean; is_important: boolean; is_locked: boolean };
   boardSlug: string;
   /** Sezioni in cui si può spostare (nome della categoria · nome della sezione) */
   boards: { id: string; label: string }[];
@@ -78,10 +44,7 @@ export function ThreadModeration({
   const [renaming, setRenaming] = useState(false);
   const [title, setTitle] = useState(thread.title);
 
-  function run(
-    fn: () => Promise<ModResult>,
-    after?: (r: ModResult & { ok: true }) => void,
-  ) {
+  function run(fn: () => Promise<ModResult>, after?: (r: ModResult & { ok: true }) => void) {
     setError(null);
     start(async () => {
       const r = await fn();
@@ -96,63 +59,19 @@ export function ThreadModeration({
         <span className="text-xs text-muted-foreground">Moderazione:</span>
         {canModerate && (
           <>
-            <button
-              type="button"
-              disabled={pending}
-              className={barBtn}
-              onClick={() =>
-                run(() =>
-                  setThreadFlag(thread.id, "is_pinned", !thread.is_pinned),
-                )
-              }
-            >
-              {thread.is_pinned ? (
-                <PinOff className="mr-1 inline size-3.5" />
-              ) : (
-                <Pin className="mr-1 inline size-3.5" />
-              )}
+            <button type="button" disabled={pending} className={barBtn} onClick={() => run(() => setThreadFlag(thread.id, "is_pinned", !thread.is_pinned))}>
+              {thread.is_pinned ? <PinOff className="mr-1 inline size-3.5" /> : <Pin className="mr-1 inline size-3.5" />}
               {thread.is_pinned ? "Togli da in alto" : "Fissa in alto"}
             </button>
-            <button
-              type="button"
-              disabled={pending}
-              className={barBtn}
-              onClick={() =>
-                run(() =>
-                  setThreadFlag(
-                    thread.id,
-                    "is_important",
-                    !thread.is_important,
-                  ),
-                )
-              }
-            >
+            <button type="button" disabled={pending} className={barBtn} onClick={() => run(() => setThreadFlag(thread.id, "is_important", !thread.is_important))}>
               <Star className="mr-1 inline size-3.5" />
               {thread.is_important ? "Non importante" : "Rendi importante"}
             </button>
-            <button
-              type="button"
-              disabled={pending}
-              className={barBtn}
-              onClick={() =>
-                run(() =>
-                  setThreadFlag(thread.id, "is_locked", !thread.is_locked),
-                )
-              }
-            >
-              {thread.is_locked ? (
-                <LockOpen className="mr-1 inline size-3.5" />
-              ) : (
-                <Lock className="mr-1 inline size-3.5" />
-              )}
+            <button type="button" disabled={pending} className={barBtn} onClick={() => run(() => setThreadFlag(thread.id, "is_locked", !thread.is_locked))}>
+              {thread.is_locked ? <LockOpen className="mr-1 inline size-3.5" /> : <Lock className="mr-1 inline size-3.5" />}
               {thread.is_locked ? "Riapri" : "Chiudi"}
             </button>
-            <button
-              type="button"
-              disabled={pending}
-              className={barBtn}
-              onClick={() => setRenaming((v) => !v)}
-            >
+            <button type="button" disabled={pending} className={barBtn} onClick={() => setRenaming((v) => !v)}>
               <Pencil className="mr-1 inline size-3.5" /> Rinomina
             </button>
             <select
@@ -161,13 +80,7 @@ export function ThreadModeration({
               value=""
               onChange={(e) => {
                 const target = boards.find((b) => b.id === e.target.value);
-                if (
-                  !target ||
-                  !window.confirm(
-                    `Spostare la discussione in «${target.label}»?`,
-                  )
-                )
-                  return;
+                if (!target || !window.confirm(`Spostare la discussione in «${target.label}»?`)) return;
                 run(
                   () => moveThread(thread.id, target.id),
                   (r) => router.replace(`/forum/${r.slug}/${thread.id}`),
@@ -187,18 +100,9 @@ export function ThreadModeration({
           </>
         )}
         {canHighlight && firstPost && (
-          <button
-            type="button"
-            disabled={pending}
-            className={barBtn}
-            onClick={() =>
-              run(() => highlightThread(firstPost.id, !firstPost.highlighted))
-            }
-          >
+          <button type="button" disabled={pending} className={barBtn} onClick={() => run(() => highlightThread(firstPost.id, !firstPost.highlighted))}>
             <Megaphone className="mr-1 inline size-3.5" />
-            {firstPost.highlighted
-              ? "Togli la segnalazione"
-              : "Segnala a tutti"}
+            {firstPost.highlighted ? "Togli la segnalazione" : "Segnala a tutti"}
           </button>
         )}
         {canModerate && (
@@ -207,12 +111,7 @@ export function ThreadModeration({
             disabled={pending}
             className="ml-auto h-8 rounded-lg px-2 text-xs text-destructive hover:bg-destructive/10"
             onClick={() => {
-              if (
-                !window.confirm(
-                  `Eliminare la discussione «${thread.title}» con tutti i suoi messaggi? Non si torna indietro.`,
-                )
-              )
-                return;
+              if (!window.confirm(`Eliminare la discussione «${thread.title}» con tutti i suoi messaggi? Non si torna indietro.`)) return;
               run(
                 () => deleteThread(thread.id),
                 () => router.replace(`/forum/${boardSlug}`),
@@ -241,21 +140,10 @@ export function ThreadModeration({
             aria-label="Nuovo titolo"
             className="h-9 min-w-0 flex-1 rounded-lg border border-input bg-night/40 px-3 text-sm outline-none focus-visible:border-ring"
           />
-          <Button
-            type="submit"
-            size="sm"
-            disabled={pending}
-            className="rounded-full"
-          >
+          <Button type="submit" size="sm" disabled={pending} className="rounded-full">
             <Check /> Salva
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => setRenaming(false)}
-            aria-label="Annulla"
-          >
+          <Button type="button" size="sm" variant="ghost" onClick={() => setRenaming(false)} aria-label="Annulla">
             <X />
           </Button>
         </form>
@@ -301,20 +189,10 @@ export function PostBody({
         <RichEditor value={value} onChange={setValue} minHeight="min-h-48" />
         {error && <p className="text-xs text-destructive">{error}</p>}
         <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setEditing(false)}
-          >
+          <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>
             Annulla
           </Button>
-          <Button
-            type="submit"
-            size="sm"
-            disabled={pending}
-            className="rounded-full"
-          >
+          <Button type="submit" size="sm" disabled={pending} className="rounded-full">
             <Check /> {pending ? "Salvataggio…" : "Salva"}
           </Button>
         </div>
@@ -330,31 +208,24 @@ export function PostBody({
           {share && <SharePost title={share.title} href={share.href} />}
           {canEdit && (
             <>
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                Modifica
-              </button>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => {
-                  if (!window.confirm("Eliminare questo messaggio?")) return;
-                  setError(null);
-                  start(async () => {
-                    const r = await deletePost(postId);
-                    if (!r.ok) setError(r.error);
-                  });
-                }}
-                className={cn(
-                  "text-destructive hover:underline",
-                  pending && "opacity-50",
-                )}
-              >
-                Elimina
-              </button>
+          <button type="button" onClick={() => setEditing(true)} className="text-muted-foreground hover:text-foreground">
+            Modifica
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => {
+              if (!window.confirm("Eliminare questo messaggio?")) return;
+              setError(null);
+              start(async () => {
+                const r = await deletePost(postId);
+                if (!r.ok) setError(r.error);
+              });
+            }}
+            className={cn("text-destructive hover:underline", pending && "opacity-50")}
+          >
+            Elimina
+          </button>
             </>
           )}
         </div>
@@ -373,11 +244,7 @@ function SharePost({ title, href }: { title: string; href: string }) {
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => (setOpen(true), setMsg(null))}
-        className="mr-auto flex items-center gap-1 text-muted-foreground hover:text-foreground"
-      >
+      <button type="button" onClick={() => (setOpen(true), setMsg(null))} className="mr-auto flex items-center gap-1 text-muted-foreground hover:text-foreground">
         <Share2 className="size-3.5" /> Condividi
       </button>
     );
@@ -391,30 +258,16 @@ function SharePost({ title, href }: { title: string; href: string }) {
         start(async () => {
           const supabase = createClient();
           const who = name.trim();
-          if (who.length < 2)
-            return setMsg({
-              ok: false,
-              text: "Scrivi il nome del personaggio.",
-            });
+          if (who.length < 2) return setMsg({ ok: false, text: "Scrivi il nome del personaggio." });
           const { data } = await supabase.rpc("find_player", { p_name: who });
           const row = ((data ?? []) as { user_id: string; name: string }[])[0];
-          if (!row)
-            return setMsg({ ok: false, text: `Nessuno si chiama «${who}».` });
+          if (!row) return setMsg({ ok: false, text: `Nessuno si chiama «${who}».` });
           const { data: me } = await supabase.auth.getUser();
-          if (me.user?.id === row.user_id)
-            return setMsg({
-              ok: false,
-              text: "Non puoi mandarlo a te stesso.",
-            });
+          if (me.user?.id === row.user_id) return setMsg({ ok: false, text: "Non puoi mandarlo a te stesso." });
           const body = `📌 Post del forum «${title}»\n${href}${note.trim() ? `\n\n${note.trim()}` : ""}`;
-          const { error } = await supabase
-            .from("private_messages")
-            .insert({ kind: "off", recipient_id: row.user_id, body });
+          const { error } = await supabase.from("private_messages").insert({ kind: "off", recipient_id: row.user_id, body });
           if (error) return setMsg({ ok: false, text: "Invio non riuscito." });
-          setMsg({
-            ok: true,
-            text: `Mandato a ${firstName(row.name)} nei messaggi OFF.`,
-          });
+          setMsg({ ok: true, text: `Mandato a ${firstName(row.name)} nei messaggi OFF.` });
           setName("");
           setNote("");
         });
@@ -423,12 +276,7 @@ function SharePost({ title, href }: { title: string; href: string }) {
       <div className="flex items-center gap-2">
         <Share2 className="size-3.5 shrink-0 text-peach" />
         <span className="font-medium">Condividi nei messaggi OFF</span>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="ml-auto rounded-full p-0.5 text-muted-foreground hover:text-foreground"
-          aria-label="Chiudi"
-        >
+        <button type="button" onClick={() => setOpen(false)} className="ml-auto rounded-full p-0.5 text-muted-foreground hover:text-foreground" aria-label="Chiudi">
           <X className="size-3.5" />
         </button>
       </div>
@@ -448,19 +296,8 @@ function SharePost({ title, href }: { title: string; href: string }) {
         aria-label="Messaggio"
       />
       <div className="flex items-center gap-2">
-        {msg && (
-          <span
-            className={cn("text-xs", msg.ok ? "text-mint" : "text-destructive")}
-          >
-            {msg.text}
-          </span>
-        )}
-        <Button
-          type="submit"
-          size="xs"
-          disabled={pending}
-          className="ml-auto rounded-full"
-        >
+        {msg && <span className={cn("text-xs", msg.ok ? "text-mint" : "text-destructive")}>{msg.text}</span>}
+        <Button type="submit" size="xs" disabled={pending} className="ml-auto rounded-full">
           <Send /> {pending ? "Invio…" : "Manda"}
         </Button>
       </div>
