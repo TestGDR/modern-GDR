@@ -651,6 +651,16 @@ export type AcademicExtras = {
   tutor_max: number;
   /** iscrizioni del semestre aperto con il tutor privato */
   tutored: number[];
+  /** corsi obbligatori degli anni già frequentati, riconosciuti senza voto */
+  recognized: { id: string; code: string; name: string; credits: number; level: number }[];
+  /** media dei crediti di partenza (tiri alla prima iscrizione) */
+  start_gpa: number | null;
+  start_gpa_credits: number;
+  start_rolls: { semester: number; course: string; attr: number; skill: number; d10: number; bonus: number; total: number; cd: number; score: number; letter: string; points: number }[];
+  /** arrivato a semestre in corso: può ancora iscriversi, cambiare corsi e impegno */
+  late_open: boolean;
+  /** arrivato a semestre in corso: compiti che avrebbe già potuto fare (recupero) */
+  homework_due: number | null;
 };
 
 export type AcademicOverview = {

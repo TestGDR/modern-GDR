@@ -40,6 +40,8 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
   // ora dell'ultimo caricamento, per sapere se il prossimo compito si può già fare
   const [now, setNow] = useState(0);
   const [extras, setExtras] = useState<AcademicExtras | null>(null);
+  // arrivato a semestre in corso: mostra l'elenco dei corsi per cambiarli
+  const [editLate, setEditLate] = useState(false);
 
   const load = useCallback(async () => {
     const [{ data: o, error: e }, { data: h }, { data: x }] = await Promise.all([
@@ -115,6 +117,7 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
   return (
     <div className="flex flex-col gap-6">
       <StatusCard data={data} required={num(catalog?.settings.uni_crediti_laurea, 120)} />
+      {extras && !data.character.graduate && <StartCareerCard extras={extras} />}
       {extras && !data.character.graduate && <MajorMinorCard extras={extras} characterId={characterId} canAct={canAct} busy={busy} run={run} />}
       {error && <p className="rounded-xl bg-destructive/15 px-3 py-2 text-sm text-destructive">{error}</p>}
 
@@ -127,7 +130,15 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
             <span className="font-sans text-xs tracking-normal text-muted-foreground">{TERM_STATUS_LABEL[term.status]}</span>
           </h3>
           {status === "suspended" && <p className="text-sm text-destructive">Sei in sospensione accademica: salti questo semestre.</p>}
-          {term.status === "registration_open" && canAct && catalog ? (
+          {term.status === "in_progress" && canAct && extras?.late_open && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-mint/10 px-3 py-2 text-sm text-mint">
+              Sei arrivato a semestre in corso: è come se lo frequentassi dall&apos;inizio. Puoi ancora scegliere i corsi e l&apos;impegno e recuperare i compiti delle settimane passate.
+              <Button type="button" size="xs" variant="secondary" className="ml-auto rounded-full" onClick={() => setEditLate((v) => !v)}>
+                {editLate ? "Torna ai compiti" : "Scegli i corsi"}
+              </Button>
+            </div>
+          )}
+          {(term.status === "registration_open" || (term.status === "in_progress" && extras?.late_open && (editLate || data.current.length === 0))) && canAct && catalog ? (
             <Registration data={data} catalog={catalog} extras={extras} busy={busy} run={run} />
           ) : (
             <>
@@ -151,6 +162,54 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
       )}
 
       <Transcript data={data} byId={byId} catalog={catalog} homework={homework} />
+    </div>
+  );
+}
+
+/* ------------------------------ Anni già frequentati ------------------------------ */
+
+// Corsi riconosciuti e media di partenza di chi è creato dopo il primo anno
+function StartCareerCard({ extras }: { extras: AcademicExtras }) {
+  const { recognized, start_gpa, start_gpa_credits, start_rolls } = extras;
+  if (recognized.length === 0 && start_gpa === null) return null;
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm">
+      <strong className="text-peach">Anni già frequentati</strong>
+      {start_gpa !== null && (
+        <p>
+          Media di partenza <strong className="text-mint">{gpa(start_gpa)}</strong>{" "}
+          <span className="text-muted-foreground">
+            su {start_gpa_credits} crediti: entra nel GPA cumulativo insieme ai voti dei corsi che segui in gioco.
+          </span>
+        </p>
+      )}
+      {recognized.length > 0 && (
+        <>
+          <p className="text-xs text-muted-foreground">
+            Corsi obbligatori del Major già superati negli anni precedenti: valgono come prerequisiti e per la laurea, senza voto e senza crediti in più.
+          </p>
+          <ul className="flex flex-wrap gap-1">
+            {recognized.map((c) => (
+              <li key={c.id} className="flex items-center gap-1 rounded-full bg-mint/15 px-2 py-0.5 text-xs text-mint" title={c.name}>
+                <Check className="size-3" /> {c.code}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {start_rolls.length > 0 && (
+        <details className="text-xs text-muted-foreground">
+          <summary className="cursor-pointer">I tiri della media di partenza</summary>
+          <ul className="mt-1 flex flex-col gap-0.5">
+            {start_rolls.map((r) => (
+              <li key={r.semester}>
+                Semestre {r.semester} · {r.course}: {r.attr} + {r.skill} + d10 {r.d10}
+                {r.bonus ? ` + Major ${r.bonus}` : ""} = {r.total} contro CD {r.cd} → <strong className="text-foreground">{grade(r.letter)}</strong>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }
@@ -390,6 +449,7 @@ function Registration({
   const max = effort === "intense" ? num(s.uni_crediti_max_intenso, 15) : num(s.uni_crediti_max, 18);
   const min = num(s.uni_crediti_min, 12);
   const reqPoints = num(s.uni_voto_minimo_requisiti, 1.7);
+  const recognized = new Set((extras?.recognized ?? []).map((c) => c.id));
   const block = num(s.uni_blocco_livelli, 1) === 1;
   const standing = data.record.class_standing;
   const required = new Set(data.required);
@@ -415,11 +475,12 @@ function Registration({
   // perché non ci si può iscrivere (null = si può)
   function blocked(c: Course): string | null {
     if (mine.some((e) => e.course_id === c.id)) return "Iscritto";
+    if (recognized.has(c.id)) return "Riconosciuto";
     const last = data.passed[c.id];
     if (last !== undefined && last >= reqPoints) return "Superato";
     if (block && c.level === 300 && standing !== "junior" && standing !== "senior") return "Da Junior";
     if (block && c.level === 400 && standing !== "senior") return "Da Senior";
-    const missing = catalog.prereqs.filter((p) => p.course_id === c.id && (data.passed[p.prerequisite_id] ?? -1) < (minPoints[p.min_grade] ?? 1.7));
+    const missing = catalog.prereqs.filter((p) => p.course_id === c.id && (data.passed[p.prerequisite_id] ?? (recognized.has(p.prerequisite_id) ? 4 : -1)) < (minPoints[p.min_grade] ?? 1.7));
     if (missing.length) return `Serve ${missing.map((p) => codeOf.get(p.prerequisite_id)).join(", ")}`;
     if (credits + c.credits > max) return "Crediti";
     return null;
@@ -550,7 +611,7 @@ function Registration({
                   </span>
                 </span>
                 {why ? (
-                  <span className={cn("shrink-0 text-xs", why === "Iscritto" || why === "Superato" ? "text-mint" : "text-muted-foreground")}>{why}</span>
+                  <span className={cn("shrink-0 text-xs", why === "Iscritto" || why === "Superato" || why === "Riconosciuto" ? "text-mint" : "text-muted-foreground")}>{why}</span>
                 ) : (
                   <Button type="button" size="xs" disabled={busy} onClick={() => run("academic_enroll", { p_term: term.id, p_character: data.character.id, p_course: c.id })} className="rounded-full">
                     <Plus /> Iscriviti
@@ -591,6 +652,8 @@ function CurrentCourses({
   const maxHw = num(homeworkRules?.uni_compiti_max, 3);
   const maxPts = num(homeworkRules?.uni_compiti_punti_max, 3);
   const days = num(homeworkRules?.uni_compiti_giorni, 7);
+  // arrivato a semestre in corso: recupera i compiti delle settimane passate
+  const due = extras?.homework_due ?? null;
   return (
     <div className="flex flex-col gap-2">
       {onHomework && (
@@ -635,7 +698,7 @@ function CurrentCourses({
               {mine.length > 0 && <span className="truncate">· {mine.map((h) => (h.points > 0 ? `✓${h.points > 1 ? h.points : ""}` : "✗")).join(" ")}</span>}
               {mine.length >= maxHw ? (
                 <span className="ml-auto">fatti tutti</span>
-              ) : nextAt && nextAt.getTime() > now ? (
+              ) : nextAt && nextAt.getTime() > now && !(due !== null && mine.length < due) ? (
                 <span className="ml-auto">prossimo dal {nextAt.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}</span>
               ) : (
                 <Button type="button" size="xs" disabled={busy} onClick={() => onHomework(e)} className="ml-auto rounded-full">
