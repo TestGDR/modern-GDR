@@ -44,6 +44,7 @@ import { SheetStatus } from "@/components/game/status-icons";
 import { OptionRequestPanel } from "@/components/game/option-request";
 import { ActionPointsBox } from "@/components/game/action-points-box";
 import { XpGrantBox } from "@/components/admin/xp-grant-manager";
+import { PxHistory } from "@/components/game/px-history";
 import { AdminSheetPanel } from "@/components/game/admin-sheet";
 import { useCloseModal } from "@/components/game/page-modal";
 import { PrefsPanel } from "@/components/game/prefs-panel";
@@ -686,6 +687,8 @@ function SkillList({ character, build, rules, canGrow, canAssignPx }: { characte
   const router = useRouter();
   const [growing, startGrow] = useTransition();
   const [growMsg, setGrowMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  // due linguette: abilità (con i punti della settimana) e PX (assegna PX per lo staff, storico)
+  const [tab, setTab] = useState<"abilita" | "px">("abilita");
   // +1 livello pagando i PX (10 × il nuovo livello), mai oltre la caratteristica
   function grow(skillId: string, name: string, next: number, cost: number) {
     if (!window.confirm(`Portare ${name} a ${next} per ${cost} PX?`)) return;
@@ -718,8 +721,33 @@ function SkillList({ character, build, rules, canGrow, canAssignPx }: { characte
           <p className="font-heading text-3xl tracking-wide text-white">{total}</p>
         </div>
       </div>
+      <div className="flex gap-1 border-b border-white/10" role="tablist" aria-label="Abilità e PX">
+        {(
+          [
+            ["abilita", "Abilità"],
+            ["px", "PX: guadagni e spese"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            onClick={() => setTab(id)}
+            className={cn("-mb-px border-b-2 px-3 py-1.5 font-heading text-lg tracking-wide", tab === id ? "border-flamingo text-peach" : "border-transparent text-muted-foreground hover:text-foreground")}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === "px" ? (
+        <>
+          {canAssignPx && <XpGrantBox characterId={character.id} />}
+          <PxHistory characterId={character.id} pxNow={character.px} />
+        </>
+      ) : (
+        <>
       {(canGrow || canAssignPx) && <ActionPointsBox characterId={character.id} canAdjust={canAssignPx} />}
-      {canAssignPx && <XpGrantBox characterId={character.id} />}
       {canGrow && (
         <p className="text-xs text-muted-foreground">
           Con i PX da spendere alzi un&apos;abilità di un livello con il pulsante <strong className="text-peach">+</strong>: costa 10 × il nuovo livello e non supera mai la caratteristica.
@@ -798,6 +826,8 @@ function SkillList({ character, build, rules, canGrow, canAssignPx }: { characte
           </section>
         );
       })}
+        </>
+      )}
     </div>
   );
 }
