@@ -201,6 +201,106 @@
 :root[data-theme="notte"] .theme-day {
   display: none !important;
 }
+/*
+  Skin «Tramonto» (user_prefs.skin, scelta in scheda → Modifica · Principale):
+  prugna e bordeaux, accenti rosso corallo e arancio, sfondo neutro con un bagliore
+  caldo in basso, barra in alto con la riga di luce, mappa incorniciata d'arancio.
+  Vale solo di giorno: di notte resta la notte.
+*/
+.skin-sunset {
+  display: none !important;
+}
+:root[data-skin="tramonto"]:not([data-theme="notte"]) .skin-sunset {
+  display: block !important;
+}
+:root[data-skin="tramonto"]:not([data-theme="notte"]) .skin-classic {
+  display: none !important;
+}
+:root[data-skin="tramonto"]:not([data-theme="notte"]) {
+  --night: #200f2b;
+  --dusk: #3d1b37;
+  --violet: #7d2b45;
+  --lavender: #e8b9cc;
+  --orchid: #d4729c;
+  --flamingo: #fe4a5a;
+  --peach: #ffb35a;
+  --sand: #ffd9a8;
+  --mint: #7fe0c4;
+  --palm: #2a1230;
+
+  --foreground: #f7e9ef;
+  --card: rgb(69 29 58 / 0.78);
+  --card-foreground: #f7e9ef;
+  --popover: #3d1b37;
+  --popover-foreground: #f7e9ef;
+  --primary-foreground: #2a0f1c;
+  --secondary: rgb(232 185 204 / 0.14);
+  --secondary-foreground: #f7e9ef;
+  --muted: rgb(232 185 204 / 0.1);
+  --muted-foreground: #d7b2c3;
+  --accent: rgb(255 179 90 / 0.14);
+  --accent-foreground: #ffe0bf;
+  --border: rgb(255 110 130 / 0.2);
+  --input: rgb(255 110 130 / 0.22);
+  --sidebar: #200f2b;
+  --sidebar-foreground: #f7e9ef;
+  --sidebar-accent: rgb(254 74 90 / 0.14);
+  --sidebar-accent-foreground: #ffd3dc;
+  --sidebar-border: rgb(255 110 130 / 0.14);
+}
+:root[data-skin="tramonto"]:not([data-theme="notte"]) .skin-topbar {
+  background: linear-gradient(to right, #3f1841, #3b193f 50%, #37163e);
+  border: 0;
+  border-bottom: 1px solid #c33c45;
+  /* solo la luce sotto, niente alone sui lati */
+  box-shadow: 0 1px 0 rgb(255 120 80 / 0.5), 0 10px 14px -10px rgb(255 80 70 / 0.6);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+/* sfondo con l'immagine: solo con la casella accesa (user_prefs.skin_image) */
+.skin-bg-image {
+  display: none;
+}
+:root[data-skin="tramonto"][data-skin-image="on"]:not([data-theme="notte"]) .skin-bg-image {
+  display: block;
+}
+/* pulsanti della barra laterale (Aggiorna, Mappa, Esci e i tre in basso) */
+:root[data-skin="tramonto"]:not([data-theme="notte"]) .skin-btn {
+  background: #3e1a38;
+  border: 1px solid #4f2147;
+  color: #f2dde6;
+}
+:root[data-skin="tramonto"]:not([data-theme="notte"]) .skin-btn:hover {
+  background: #4b2044;
+}
+/* pillole Annunci staff e Guida */
+:root[data-skin="tramonto"]:not([data-theme="notte"]) .skin-pill {
+  background: #3c1837;
+  border-color: #551f3e;
+  color: #f2dde6;
+}
+:root[data-skin="tramonto"]:not([data-theme="notte"]) .skin-pill:hover {
+  background: #4b2044;
+}
+/* riquadro Online: corpo bordeaux, testata con il bagliore rosso al centro */
+:root[data-skin="tramonto"]:not([data-theme="notte"]) .skin-online {
+  background: linear-gradient(to bottom, #3d1a37, #4d1d38);
+  border: 1px solid #4f2147;
+  box-shadow: 0 0 18px rgb(140 30 60 / 0.35);
+}
+:root[data-skin="tramonto"]:not([data-theme="notte"]) .skin-online-head {
+  background: radial-gradient(ellipse 55% 120% at center, #ab3142 0%, #782c48 45%, #562348 75%, #4e2049 100%);
+  border-bottom-color: rgb(255 110 110 / 0.35);
+  color: #fff1f3;
+}
+:root[data-skin="tramonto"]:not([data-theme="notte"]) .skin-map-frame {
+  background: #551d44;
+  border: 2px solid #feb950;
+  box-shadow:
+    0 0 22px rgb(255 150 70 / 0.65),
+    0 0 60px rgb(255 100 80 / 0.3),
+    inset 0 0 16px rgb(255 150 80 / 0.35);
+}
 /* Stelle del cielo notturno */
 .night-stars {
   background-image:

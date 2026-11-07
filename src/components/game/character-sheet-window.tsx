@@ -45,6 +45,7 @@ import { OptionRequestPanel } from "@/components/game/option-request";
 import { ActionPointsBox } from "@/components/game/action-points-box";
 import { XpGrantBox } from "@/components/admin/xp-grant-manager";
 import { PxHistory } from "@/components/game/px-history";
+import { SkinPicker } from "@/components/game/skin-picker";
 import { AdminSheetPanel } from "@/components/game/admin-sheet";
 import { useCloseModal } from "@/components/game/page-modal";
 import { PrefsPanel } from "@/components/game/prefs-panel";
@@ -284,6 +285,7 @@ export function CharacterSheetWindow({
               character={character}
               districts={districts}
               majors={rules.sheetOptions.filter((o) => o.kind === "indirizzo")}
+              isOwner={isOwner}
               onDone={() => setView((v) => ({ ...v, mode: "view" }))}
             />
           ) : section.key === "principale" ? (
@@ -964,11 +966,14 @@ function SectionEditor({
   character,
   districts,
   majors,
+  isOwner = false,
   onDone,
 }: {
   section: Section;
   character: SheetCharacter;
   districts: District[];
+  /** la propria scheda: c'è anche «Scegli skin» (preferenza dell'account) */
+  isOwner?: boolean;
   /** Indirizzi di studio, per scegliere il Minor */
   majors: { id: string; name: string }[];
   onDone: () => void;
@@ -987,6 +992,7 @@ function SectionEditor({
 
         {section.key === "principale" && (
           <>
+            {isOwner && <SkinPicker />}
             <p className="text-sm text-muted-foreground">
               Incolla i link delle immagini (devono iniziare con https://). Qui sotto le misure reali in cui si vedono le immagini: se le proporzioni sono diverse, i bordi in eccesso vengono tagliati.
             </p>

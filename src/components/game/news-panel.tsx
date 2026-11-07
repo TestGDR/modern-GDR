@@ -75,7 +75,7 @@ export function NewsButton({ canPublish }: { canPublish: boolean }) {
           markSeen();
         }}
         className={cn(
-          "flex items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+          "skin-pill flex items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
           unseen > 0 ? "border-peach/60 bg-peach/15 text-peach shadow-[0_0_12px_var(--peach)]" : "border-white/10 text-muted-foreground hover:bg-white/5 hover:text-foreground",
         )}
       >

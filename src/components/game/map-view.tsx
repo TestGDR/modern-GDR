@@ -12,6 +12,9 @@ import { createClient } from "@/lib/supabase/client";
 import type { District, GameMap, Room, RoomGroup } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+/** Mappa principale nella skin Tramonto */
+const SUNSET_MAP = "/images/mappa-tramonto.webp";
+
 type Props = {
   maps: GameMap[];
   districts: District[];
@@ -89,7 +92,7 @@ export function MapView({ maps, districts, groups, rooms, activity, initialDistr
       )}
 
       {/* la mappa sta sempre tutta nello schermo: altezza = schermo meno barra in alto, margini e casella della password */}
-      <div className="glass rounded-3xl p-3 sm:p-4" style={{ "--map-extra": maps.length > 1 ? "3.25rem" : "0rem" } as React.CSSProperties}>
+      <div className="glass skin-map-frame rounded-3xl p-3 sm:p-4" style={{ "--map-extra": maps.length > 1 ? "3.25rem" : "0rem" } as React.CSSProperties}>
         <div
           className={cn(
             "relative mx-auto overflow-hidden rounded-2xl",
@@ -109,9 +112,20 @@ export function MapView({ maps, districts, groups, rooms, activity, initialDistr
                   className={cn(
                     "block h-auto max-h-[min(800px,calc(100dvh-15.5rem-var(--map-extra)))] w-auto max-w-full select-none lg:max-h-[min(800px,calc(100dvh-17.5rem-var(--map-extra)))]",
                     map.night_image_url && "theme-day",
+                    map.id === maps[0]?.id && "skin-classic",
                   )}
                   draggable={false}
                 />
+                {/* skin Tramonto (di giorno): la città al tramonto, solo sulla mappa principale */}
+                {map.id === maps[0]?.id && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={SUNSET_MAP}
+                    alt={map.name}
+                    className="skin-sunset h-auto max-h-[min(800px,calc(100dvh-15.5rem-var(--map-extra)))] w-auto max-w-full select-none lg:max-h-[min(800px,calc(100dvh-17.5rem-var(--map-extra)))]"
+                    draggable={false}
+                  />
+                )}
                 {/* modalità notte: la stessa mappa di notte */}
                 {map.night_image_url && (
                   // eslint-disable-next-line @next/next/no-img-element

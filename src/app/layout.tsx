@@ -48,7 +48,7 @@ export const viewport: Viewport = {
 
 // Grafica giorno/notte prima del primo disegno: copia tecnica della preferenza (quella vera è nel database,
 // user_prefs.theme, e applyPrefs la rimette appena arriva), così chi ha scelto la notte non vede lampi di giorno
-const THEME_SCRIPT = `try{if(localStorage.getItem("gdr_grafica")==="notte")document.documentElement.dataset.theme="notte"}catch(e){}`;
+const THEME_SCRIPT = `try{if(localStorage.getItem("gdr_grafica")==="notte")document.documentElement.dataset.theme="notte";if(localStorage.getItem("gdr_skin")==="tramonto")document.documentElement.dataset.skin="tramonto";if(localStorage.getItem("gdr_skin_img")==="on")document.documentElement.dataset.skinImage="on"}catch(e){}`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

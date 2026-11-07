@@ -33,7 +33,7 @@ export function GuideButton({ canEdit, className, children }: { canEdit: boolean
         onClick={() => setOpen(true)}
         className={
           className ??
-          "flex items-center justify-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+          "skin-pill flex items-center justify-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
         }
       >
         {children ?? (

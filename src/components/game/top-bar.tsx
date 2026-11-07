@@ -61,7 +61,7 @@ export function PortraitFallback() {
 /** Barra in alto: al centro Messaggi OFF, ritratto del personaggio e Telefono */
 export function TopBar({ admin, messages }: { admin: React.ReactNode; messages: React.ReactNode }) {
   return (
-    <header className="glass fixed inset-x-0 top-0 z-40 flex h-20 items-center border-x-0 border-t-0 px-2 pt-[env(safe-area-inset-top)] sm:px-4 lg:left-72 lg:h-24">
+    <header className="glass skin-topbar fixed inset-x-0 top-0 z-40 flex h-20 items-center border-x-0 border-t-0 px-2 pt-[env(safe-area-inset-top)] sm:px-4 lg:left-72 lg:h-24">
       {/* lati uguali: il gruppo centrale resta al centro anche con il pulsante del menu */}
       <div className="flex min-w-[4.75rem] flex-1 basis-0 items-center gap-1 sm:min-w-10">
         <MenuButton />

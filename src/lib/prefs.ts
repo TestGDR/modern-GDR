@@ -139,6 +139,67 @@ export async function savePrefs(supabase: SupabaseClient, p: Prefs) {
   return !error;
 }
 
+// ----- Skin del sito (user_prefs.skin) -----
+// Letta e salvata a parte: se la colonna non c'è ancora, resta la classica.
+export type Skin = "classica" | "tramonto";
+export const SKINS: { id: Skin; label: string; description: string; /** ha uno sfondo con l'immagine */ image: boolean }[] = [
+  { id: "classica", label: "Classica", description: "Il crepuscolo viola di sempre.", image: false },
+  { id: "tramonto", label: "Tramonto", description: "Prugna e bordeaux con luci calde, la città al tramonto sulla mappa.", image: true },
+];
+
+/** Mette la skin sulla pagina e ne tiene una copia tecnica nel browser (per il primo disegno, vedi layout.tsx) */
+export function setSkinAttr(skin: Skin) {
+  if (typeof document === "undefined") return;
+  document.documentElement.dataset.skin = skin;
+  try {
+    localStorage.setItem("gdr_skin", skin);
+  } catch {
+    // archivio del browser non disponibile
+  }
+}
+
+/** Sfondo con l'immagine (per le skin che ce l'hanno): attributo data-skin-image sulla pagina + copia tecnica */
+export function setSkinImageAttr(on: boolean) {
+  if (typeof document === "undefined") return;
+  if (on) document.documentElement.dataset.skinImage = "on";
+  else delete document.documentElement.dataset.skinImage;
+  try {
+    localStorage.setItem("gdr_skin_img", on ? "on" : "off");
+  } catch {
+    // archivio del browser non disponibile
+  }
+}
+
+/** La propria skin dal database (classica se manca) e se mostrare lo sfondo con l'immagine */
+export async function loadSkin(supabase: SupabaseClient): Promise<{ skin: Skin; image: boolean }> {
+  const { data, error } = await supabase.from("user_prefs").select("skin").maybeSingle();
+  const skin: Skin = !error && (data as { skin?: string } | null)?.skin === "tramonto" ? "tramonto" : "classica";
+  // a parte: se la colonna non c'è ancora resta spento
+  const { data: img, error: imgError } = await supabase.from("user_prefs").select("skin_image").maybeSingle();
+  const image = !imgError && Boolean((img as { skin_image?: boolean } | null)?.skin_image);
+  setSkinAttr(skin);
+  setSkinImageAttr(image);
+  return { skin, image };
+}
+
+/** Accende o spegne lo sfondo con l'immagine e lo salva subito */
+export async function saveSkinImage(supabase: SupabaseClient, on: boolean) {
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return false;
+  const { error } = await supabase.from("user_prefs").upsert({ user_id: data.user.id, skin_image: on, updated_at: new Date().toISOString() });
+  if (!error) setSkinImageAttr(on);
+  return !error;
+}
+
+/** Cambia la skin e la salva subito */
+export async function saveSkin(supabase: SupabaseClient, skin: Skin) {
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return false;
+  const { error } = await supabase.from("user_prefs").upsert({ user_id: data.user.id, skin, updated_at: new Date().toISOString() });
+  if (!error) setSkinAttr(skin);
+  return !error;
+}
+
 /** Cambia solo la grafica (giorno/notte) e la salva subito */
 export async function saveTheme(supabase: SupabaseClient, theme: Theme) {
   setThemeAttr(theme);

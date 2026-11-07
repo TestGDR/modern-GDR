@@ -49,8 +49,10 @@ export function SunsetScene({ className }: { className?: string }) {
 export function DuskBackdrop() {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden="true">
+      {/* skin Tramonto (solo di giorno): spiaggia al tramonto */}
+      <SunsetSkinScene />
       {/* giorno: crepuscolo */}
-      <div className="theme-day absolute inset-0">
+      <div className="theme-day skin-classic absolute inset-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#271e4c_0%,#35295f_40%,#4f3a78_78%,#6d4782_100%)]" />
         <div className="absolute -bottom-40 left-1/2 size-[70vmax] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgb(236_140_184/0.24)_0%,rgb(242_179_156/0.10)_35%,transparent_65%)]" />
         <Palm className="absolute -bottom-4 -left-20 h-[60vh] text-[#3b2b66]/80" lean={24} />
@@ -63,6 +65,24 @@ export function DuskBackdrop() {
         <div className="absolute -bottom-48 left-1/2 size-[70vmax] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgb(255_176_102/0.16)_0%,rgb(179_139_224/0.10)_35%,transparent_65%)]" />
         <Palm className="absolute -bottom-4 -left-20 h-[60vh] text-[#070c26]/90" lean={24} />
         <Palm className="absolute -right-20 -bottom-4 h-[50vh] text-[#070c26]/85" lean={-22} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Skin «Tramonto» (user_prefs.skin = tramonto, di giorno): sfondo neutro prugna,
+ * scuro in alto e con un bagliore caldo in basso al centro.
+ * Si vede solo con la skin attiva (classe skin-sunset in globals.css).
+ */
+function SunsetSkinScene() {
+  return (
+    <div className="skin-sunset absolute inset-0">
+      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#271131_0%,#3a1640_35%,#4c1c46_65%,#461a45_100%)]" />
+      <div className="absolute -bottom-[30vh] left-1/2 h-[80vh] w-[110vw] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgb(140_45_85/0.75)_0%,rgb(110_35_75/0.35)_45%,transparent_70%)]" />
+      {/* sfondo con l'immagine (casella in scheda → Modifica · Principale): spiaggia al tramonto, un velo scuro per leggere bene */}
+      <div className="skin-bg-image absolute inset-0 bg-[url(/images/sfondo-tramonto.webp)] bg-cover bg-center">
+        <div className="absolute inset-0 bg-[#200f2b]/25" />
       </div>
     </div>
   );

@@ -41,7 +41,7 @@ import { signOut } from "@/lib/actions/auth";
 import { AVAILABILITY, loadPresenceState, savePresenceState, type Availability } from "@/lib/availability";
 import { onCurrentMap, readCurrentMap } from "@/lib/current-map";
 import { initials } from "@/lib/format";
-import { applyPrefs, loadPrefs } from "@/lib/prefs";
+import { applyPrefs, loadPrefs, loadSkin } from "@/lib/prefs";
 import { createClient } from "@/lib/supabase/client";
 import { setInvisible } from "@/lib/actions/chat";
 import type { GameMap } from "@/lib/types";
@@ -232,7 +232,7 @@ function MainButtons() {
     closeAllWindows();
     window.location.assign(inChat ? bg : "/mappa");
   }
-  const btn = "flex flex-col items-center gap-1 rounded-xl bg-white/5 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground";
+  const btn = "skin-btn flex flex-col items-center gap-1 rounded-xl bg-white/5 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground";
   return (
     <div className="grid grid-cols-3 gap-2">
       <button
@@ -441,12 +441,12 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
         <Users className="size-5 text-mint" />
         <span className="rounded-full bg-mint/15 px-2 py-0.5 text-xs text-mint">{players ? list.length : "…"}</span>
       </button>
-      <div className="hidden max-h-[250px] flex-col gap-2 overflow-hidden rounded-2xl bg-white/5 pb-3 lg:flex">
+      <div className="skin-online hidden max-h-[250px] flex-col gap-2 overflow-hidden rounded-2xl bg-white/5 pb-3 lg:flex">
         {/* Il titolo (al centro, su una fascia sua) apre l'elenco esteso; il nome apre la scheda */}
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="flex shrink-0 items-center justify-center gap-2 border-b border-white/10 bg-gradient-to-r from-violet/40 via-orchid/30 to-violet/40 px-3 py-2 text-sm font-medium transition-colors hover:text-mint"
+          className="skin-online-head flex shrink-0 items-center justify-center gap-2 border-b border-white/10 bg-gradient-to-r from-violet/40 via-orchid/30 to-violet/40 px-3 py-2 text-sm font-medium transition-colors hover:text-mint"
           title="Tutti i presenti online"
         >
           <Users className="size-4 text-mint" />
@@ -664,6 +664,7 @@ function useOrgBadges(characterIds: string[]) {
 function PrefsLoader() {
   useEffect(() => {
     loadPrefs(createClient()).then(applyPrefs);
+    loadSkin(createClient());
   }, []);
   return null;
 }
@@ -683,7 +684,7 @@ export function GameSidebar({
     <div className="flex flex-col gap-4 p-4">
       <PrefsLoader />
       <div className="hidden justify-center lg:flex">
-        <Logo href="/bacheca" size="sm" />
+        <Logo href="/bacheca" size="sm" skinAware />
       </div>
       <PlaceCard info={info} map={roomId ? null : map} />
       <MainButtons />

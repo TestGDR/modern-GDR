@@ -89,7 +89,7 @@ async function names(supabase: Supabase, ids: string[]) {
 }
 
 const smallBtn =
-  "relative flex flex-1 items-center justify-center rounded-xl bg-white/5 py-1.5 text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground [&_svg]:size-4";
+  "skin-btn relative flex flex-1 items-center justify-center rounded-xl bg-white/5 py-1.5 text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground [&_svg]:size-4";
 
 export function CommunityButtons({
   canAbsences,
