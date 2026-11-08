@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import DOMPurify from "dompurify";
-import { ArrowDown, ArrowUp, Check, ChevronDown, Pencil, Plus, Sparkle, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, Pencil, Plus, Sparkle, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { initials } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
@@ -45,7 +45,9 @@ export function AffectionsSection({ characterId, canEdit, legacyText }: { charac
       .order("sort_order")
       .order("created_at")
       .overrideTypes<Affection[], { merge: false }>();
-    setItems(data ?? []);
+    // in ordine alfabetico per nome (chi non è più iscritto in fondo)
+    const byName = (a: Affection) => a.target?.username ?? "￿";
+    setItems([...(data ?? [])].sort((a, b) => byName(a).localeCompare(byName(b), "it", { sensitivity: "base" })));
   }, [supabase, characterId]);
 
   useEffect(() => {
@@ -64,22 +66,6 @@ export function AffectionsSection({ characterId, canEdit, legacyText }: { charac
     await load();
   }
 
-  /** Sposta su o giù: si rinumera tutto l'elenco */
-  async function move(index: number, dir: -1 | 1) {
-    if (!items) return;
-    const next = [...items];
-    const j = index + dir;
-    if (j < 0 || j >= next.length) return;
-    [next[index], next[j]] = [next[j], next[index]];
-    setItems(next);
-    setBusy(true);
-    for (const [i, a] of next.entries()) {
-      if (a.sort_order !== i + 1) await supabase.from("character_affections").update({ sort_order: i + 1 }).eq("id", a.id);
-    }
-    setBusy(false);
-    await load();
-  }
-
   return (
     <div className="flex flex-col gap-4">
       {canEdit && <AddPerson characterId={characterId} onAdd={add} disabled={busy} existing={(items ?? []).map((a) => a.target?.id ?? "")} />}
@@ -92,17 +78,8 @@ export function AffectionsSection({ characterId, canEdit, legacyText }: { charac
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {items.map((a, i) => (
-            <AffectionCard
-              key={a.id}
-              item={a}
-              canEdit={canEdit}
-              first={i === 0}
-              last={i === items.length - 1}
-              disabled={busy}
-              onMove={(d) => move(i, d)}
-              onChanged={load}
-            />
+          {items.map((a) => (
+            <AffectionCard key={a.id} item={a} canEdit={canEdit} onChanged={load} />
           ))}
         </ul>
       )}
@@ -255,18 +232,10 @@ function SafeHtml({ html, className }: { html: string; className?: string }) {
 function AffectionCard({
   item,
   canEdit,
-  first,
-  last,
-  disabled,
-  onMove,
   onChanged,
 }: {
   item: Affection;
   canEdit: boolean;
-  first: boolean;
-  last: boolean;
-  disabled: boolean;
-  onMove: (dir: -1 | 1) => void;
   onChanged: () => void;
 }) {
   const supabase = useMemo(() => createClient(), []);
@@ -305,12 +274,12 @@ function AffectionCard({
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-3 @lg:flex-row @lg:gap-4">
         {/* ritratto incorniciato */}
-        <div className="size-28 shrink-0 overflow-hidden rounded-xl border-2 border-peach/40 bg-gradient-to-br from-violet via-orchid to-peach shadow-lg ring-1 ring-white/10">
+        <div className="size-20 shrink-0 overflow-hidden rounded-xl border-2 border-peach/40 bg-gradient-to-br from-violet via-orchid to-peach shadow-lg ring-1 ring-white/10">
           {character?.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={character.avatar_url} alt={`Ritratto di ${name}`} className="size-full object-cover" />
           ) : (
-            <span className="grid size-full place-items-center font-heading text-3xl tracking-wider text-white">{initials(name)}</span>
+            <span className="grid size-full place-items-center font-heading text-2xl tracking-wider text-white">{initials(name)}</span>
           )}
         </div>
         <div className="min-w-0 flex-1">
@@ -332,12 +301,6 @@ function AffectionCard({
             </div>
             {canEdit && !editing && (
               <div className="flex shrink-0 gap-1.5">
-                <button type="button" className={ctrl} disabled={first || disabled} onClick={() => onMove(-1)} aria-label="Sposta su" title="Sposta su">
-                  <ArrowUp />
-                </button>
-                <button type="button" className={ctrl} disabled={last || disabled} onClick={() => onMove(1)} aria-label="Sposta giù" title="Sposta giù">
-                  <ArrowDown />
-                </button>
                 <button
                   type="button"
                   className={ctrl}
