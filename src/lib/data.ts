@@ -117,16 +117,7 @@ export async function getChatRoom(id: string, characterId: string | null) {
           .overrideTypes<{ character: { id: string; name: string } | null }[], { merge: false }>()
       : Promise.resolve({ data: [] as { character: { id: string; name: string } | null }[] }),
     // Giocata in corso in un'altra chat: prima va chiusa quella
-    characterId
-      ? supabase
-          .from("chat_presence")
-          .select("room_id, room:rooms(name)")
-          .eq("character_id", characterId)
-          .neq("room_id", id)
-          .gt("last_active_at", new Date(now.getTime() - settings.idle_minutes * 60_000).toISOString())
-          .limit(1)
-          .maybeSingle<{ room_id: string; room: { name: string } | null }>()
-      : Promise.resolve({ data: null }),
+    characterId ? supabase.rpc("my_giocata") : Promise.resolve({ data: null }),
     supabase.rpc("i_am_invisible"),
   ]);
 
@@ -143,7 +134,10 @@ export async function getChatRoom(id: string, characterId: string | null) {
     messages: visible,
     snapshotAt: now.toISOString(),
     guests: (guests.data ?? []).flatMap((g) => (g.character ? [g.character] : [])),
-    busyIn: busy.data ? { id: busy.data.room_id, name: busy.data.room?.name ?? "un'altra chat" } : null,
+    busyIn: (() => {
+      const g = busy.data as { room_id: string; name: string } | null;
+      return g && g.room_id !== id ? { id: g.room_id, name: g.name } : null;
+    })(),
     invisible: invisible.data === true,
   };
 }

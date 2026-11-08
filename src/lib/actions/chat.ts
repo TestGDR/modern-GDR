@@ -27,16 +27,23 @@ async function rpc(fn: string, args: Record<string, unknown>): Promise<ChatResul
 
 const bad = { error: "Dati non validi." };
 
-/** Entra in giocata: da qui si leggono e si scrivono i messaggi */
-export async function joinChat(roomId: string, characterId: string) {
+/** Entra in giocata (pulsante «Entra in chat»): da qui si leggono e si scrivono i messaggi.
+ *  Se c'è già una giocata in corso altrove, busyRoomId è la chat in cui tornare. */
+export async function joinChat(roomId: string, characterId: string): Promise<ChatResult & { busyRoomId?: string }> {
   if (!isUuid(roomId) || !isUuid(characterId)) return bad;
-  return rpc("join_chat", { p_room: roomId, p_character: characterId });
+  await requirePlayer();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("join_chat", { p_room: roomId, p_character: characterId });
+  const res = result(error);
+  const hint = (error as { hint?: string } | null)?.hint;
+  return hint && isUuid(hint) ? { ...res, busyRoomId: hint } : res;
 }
 
-/** Esce dalla chat: quando esce l'ultimo la chat si svuota */
-export async function leaveChat(roomId: string, characterId: string) {
+/** Esce dalla chat (pulsante «Esci dalla chat»), salvando o no la giocata nell'archivio.
+ *  Se il salvataggio non riesce si resta in chat. Quando esce l'ultimo la chat si svuota. */
+export async function leaveChat(roomId: string, characterId: string, save = false) {
   if (!isUuid(roomId) || !isUuid(characterId)) return bad;
-  return rpc("leave_chat", { p_room: roomId, p_character: characterId });
+  return rpc("leave_chat", { p_room: roomId, p_character: characterId, p_save: save });
 }
 
 /** Modalità master (max null = la spegne) */

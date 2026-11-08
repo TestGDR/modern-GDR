@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowLeft, Bandage, ChevronDown, Crown, Dices, Eye, EyeOff, LayoutGrid, NotebookPen, Package, Save, SendHorizontal, SlidersHorizontal, Swords, Users } from "lucide-react";
+import { ArrowDown, ArrowLeft, Bandage, ChevronDown, Crown, Dices, Eye, EyeOff, LayoutGrid, LogIn, LogOut, NotebookPen, Package, Save, SendHorizontal, SlidersHorizontal, Swords, Users } from "lucide-react";
 import { ItemsPanel } from "@/components/game/chat-items";
 import { ChatToolWindow, NotepadPanel, SaveChatPanel } from "@/components/game/chat-tools";
 import { ChatPrefsPanel } from "@/components/game/prefs-panel";
@@ -60,9 +60,6 @@ type Tool = "scontro" | "incidente" | "oggetti" | "dadi" | "master" | "note" | "
  * entrata e uscita dalla giocata, presenti, sussurri, dadi, modalità master,
  * correzione entro 5 minuti. I messaggi spariscono dopo la durata impostata.
  */
-// Uscita dalla giocata in attesa: annullata se si rientra subito nella stessa chat
-let pendingLeave: { roomId: string; timer: ReturnType<typeof setTimeout> } | null = null;
-
 export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canDice, canCombat, isOwner, ownerName, attributes, skills }: Props) {
   const { room, settings } = data;
   const roomId = room.id;
@@ -259,56 +256,40 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
   // si evidenzia il mio nome (e il nome completo, se qualcuno lo scrive)
   const myNames = useMemo(() => (me && me.name.trim().length >= 2 ? [...new Set([me.name.trim(), firstName(me.name)])].filter((n) => n.length >= 2) : []), [me]);
 
-  // Entrata in giocata automatica all'apertura della chat (se si può);
-  // se si stava giocando in un'altra chat, prima si esce da quella
+  // Si entra in giocata col pulsante «Entra in chat» e si esce con «Esci dalla chat»
+  // (documento «Chat e giocate»): niente più entrata e uscita automatiche
   const canJoin = !!me && data.canEnter && (room.is_open || canModerate) && !invisible;
   const meId = me?.id ?? null;
-  const busyInId = data.busyIn?.id ?? null;
-  const tried = useRef(false);
-  useEffect(() => {
-    if (!meId || !canJoin || joined || tried.current) return;
-    tried.current = true;
-    (async () => {
-      setBusy(true);
-      setError(null);
-      if (busyInId && busyInId !== roomId) await leaveChat(busyInId, meId);
-      const res = await joinChat(roomId, meId);
-      setBusy(false);
-      if (res.error) return setError(res.error);
-      router.refresh();
-    })();
-  }, [meId, canJoin, joined, busyInId, roomId, router]);
+  // giocata in corso in un'altra chat: prima si esce da lì
+  const [joinBusy, setJoinBusy] = useState<{ id: string; name: string } | null>(null);
+  const busyIn = joinBusy ?? data.busyIn;
+  const [leaving, setLeaving] = useState(false);
 
-  // Uscita automatica lasciando la chat (mappa, altra chat); le finestre aperte sopra non contano.
-  // Si aspetta qualche secondo e si esce solo se l'indirizzo è davvero cambiato: se la chat si è
-  // solo ridisegnata (aggiornamento, finestra aperta sopra, rete lenta) si resta in giocata.
-  useEffect(() => {
+  async function enter() {
     if (!meId) return;
-    if (pendingLeave?.roomId === roomId) {
-      clearTimeout(pendingLeave.timer);
-      pendingLeave = null;
+    setBusy(true);
+    setError(null);
+    const res = await joinChat(roomId, meId);
+    setBusy(false);
+    if (res.busyRoomId) {
+      setJoinBusy({ id: res.busyRoomId, name: data.busyIn?.name ?? "un'altra chat" });
+      return setError(res.error ?? null);
     }
-    return () => {
-      pendingLeave = {
-        roomId,
-        timer: setTimeout(() => {
-          pendingLeave = null;
-          const here = `/chat/${roomId}`;
-          const path = window.location.pathname;
-          let under: string | null = null;
-          try {
-            under = sessionStorage.getItem("gdr_pagina_sotto");
-          } catch {
-            // archivio del browser non disponibile
-          }
-          // ancora in questa chat, o in una finestra aperta sopra di lei
-          const overThisChat = under?.split("?")[0] === here && path !== "/mappa" && !path.startsWith("/chat/");
-          if (path === here || overThisChat) return;
-          leaveChat(roomId, meId);
-        }, 3000),
-      };
-    };
-  }, [meId, roomId]);
+    if (res.error) return setError(res.error);
+    router.refresh();
+  }
+
+  /** Esci dalla chat: con save la giocata va nell'archivio (se non riesce si resta in chat) */
+  async function exit(save: boolean) {
+    if (!meId) return;
+    setBusy(true);
+    setError(null);
+    const res = await leaveChat(roomId, meId, save);
+    setBusy(false);
+    if (res.error) return setError(res.error);
+    setLeaving(false);
+    router.refresh();
+  }
 
   async function toggleInvisible() {
     setBusy(true);
@@ -433,6 +414,9 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
   // alla mappa senza riaprire il riquadro del quartiere
   const back = "/mappa";
   const blurred = !joined && !invisible;
+  // «Salva»: i messaggi da quando sono entrato in chat (l'ultimo «è entrato in chat» mio)
+  const myEntry = me ? messages.findLastIndex((m) => m.character_id === me.id && m.kind === "sistema" && m.content === "è entrato in chat.") : -1;
+  const sinceJoin = myEntry >= 0 ? messages.slice(myEntry) : messages;
   // per salvare la chat servono almeno 3 mie azioni
   const myActions = me ? messages.filter((m) => m.character_id === me.id && m.kind === "azione").length : 0;
 
@@ -501,7 +485,31 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
             </span>
           ))
         )}
+        {joined && (
+          <Button type="button" size="xs" variant="ghost" disabled={busy} onClick={() => setLeaving(true)} className="ml-auto rounded-full border border-white/15">
+            <LogOut /> Esci dalla chat
+          </Button>
+        )}
       </div>
+      {leaving && (
+        <div className="flex shrink-0 flex-col gap-2 border-b border-peach/30 bg-peach/10 px-3 py-2.5 text-sm sm:px-6">
+          <p>
+            <strong className="text-peach">Vuoi salvare la giocata prima di uscire?</strong>{" "}
+            <span className="text-muted-foreground">Finisce in Utility → Archivio giocate, la vedi solo tu.</span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" disabled={busy} onClick={() => exit(true)} className="rounded-full">
+              <Save /> Sì, salva ed esci
+            </Button>
+            <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => exit(false)} className="rounded-full">
+              <LogOut /> No, esci senza salvare
+            </Button>
+            <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => setLeaving(false)} className="rounded-full">
+              Resta in chat
+            </Button>
+          </div>
+        </div>
+      )}
 
       {master && (
         <p className="shrink-0 border-b border-orchid/30 bg-orchid/10 px-4 py-1.5 text-xs text-orchid sm:px-6">
@@ -525,16 +533,28 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
           {blurred ? (
             <div className="flex flex-col gap-4">
               {hidden > 0 && <BlurredRows count={hidden} />}
-              <div className="mx-auto flex max-w-sm flex-col items-center gap-3 py-6 text-center">
+              <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-white/10 bg-night/50 px-5 py-6 text-center">
+                <p className="font-heading text-xl tracking-wide text-peach">Non fai ancora parte della giocata</p>
                 <p className="text-sm text-muted-foreground">
-                  {canJoin && !error
-                    ? "Entrata in giocata…"
-                    : hidden > 0
-                      ? `In questa chat ci sono ${hidden} messaggi recenti.`
-                      : "La chat è tranquilla."}
+                  {hidden > 0 ? `In questa chat ci sono ${hidden} messaggi recenti: entrando li leggi.` : "La chat è tranquilla: entrando inizi tu la scena."}
                 </p>
                 {!room.is_open && <p className="text-sm text-muted-foreground">Questa chat è chiusa dallo staff.</p>}
-                {error && <p className="text-sm text-destructive">{error}</p>}
+                {busyIn && busyIn.id !== roomId ? (
+                  <p className="text-sm text-peach">
+                    Hai una giocata in corso in{" "}
+                    <Link href={`/chat/${busyIn.id}`} className="font-semibold underline hover:text-flamingo">
+                      {busyIn.name}
+                    </Link>
+                    : prima vai lì e premi «Esci dalla chat».
+                  </p>
+                ) : (
+                  canJoin && (
+                    <Button type="button" disabled={busy} onClick={enter} className="rounded-full">
+                      <LogIn /> Entra in chat
+                    </Button>
+                  )
+                )}
+                {error && !busyIn && <p className="text-sm text-destructive">{error}</p>}
               </div>
             </div>
           ) : messages.length === 0 ? (
@@ -634,7 +654,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
           )}
           {tools.includes("salva") && (
             <ChatToolWindow title="Salva chat" icon={<Save className="size-5" />} onClose={() => closeTool("salva")}>
-              <SaveChatPanel roomName={room.name} messages={messages} myActions={myActions} />
+              <SaveChatPanel roomName={room.name} messages={sinceJoin} myActions={myActions} />
             </ChatToolWindow>
           )}
           {error && <p className="text-sm text-destructive">{error}</p>}

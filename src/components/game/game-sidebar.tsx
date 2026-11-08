@@ -226,11 +226,13 @@ function MainButtons() {
   const bg = useBackgroundPath();
   const inChat = CHAT_PATH.test(bg);
   const newVersion = useNewVersion();
-  // In chat "Aggiorna" ricarica la chat; altrove riporta alla mappa.
+  // Se si è in giocata "Aggiorna" ricarica quella chat; altrimenti riporta alla mappa.
   // È un caricamento vero: chiude le finestre, prende i dati freschi e, se c'è, la versione nuova del sito
-  function update() {
+  async function update() {
     closeAllWindows();
-    window.location.assign(inChat ? bg : "/mappa");
+    const { data } = await createClient().rpc("my_giocata");
+    const room = (data as { room_id?: string } | null)?.room_id;
+    window.location.assign(room ? `/chat/${room}` : "/mappa");
   }
   const btn = "skin-btn flex flex-col items-center gap-1 rounded-xl bg-white/5 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground";
   return (
