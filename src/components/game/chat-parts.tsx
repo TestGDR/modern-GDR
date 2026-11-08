@@ -599,7 +599,9 @@ export function LookWindow({ person, onClose }: { person: { name: string; avatar
     <FloatingWindow
       label={`Il look di ${firstName(person.name)}`}
       onClose={onClose}
-      initialWidth={460}
+      // 600 × 600 (più piccola solo se lo schermo non ci sta); il testo lungo scorre dentro
+      initialWidth={600}
+      initialHeight={600}
       header={
         <div className="flex items-center gap-3 pb-4">
           {person.avatar ? (
