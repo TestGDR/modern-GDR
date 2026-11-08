@@ -19,6 +19,7 @@ import {
   type DiceAttribute,
   type DiceSkill,
 } from "@/components/game/chat-parts";
+import { ChatTagsBar } from "@/components/game/chat-tags";
 import { CombatPanel } from "@/components/game/combat-panel";
 import { IncidentPanel } from "@/components/game/incident-panel";
 import { NeedsCharacter } from "@/components/game/needs-character";
@@ -30,7 +31,7 @@ import { playEvent } from "@/lib/notify-sound";
 import type { ChatPresent, ChatRoomData } from "@/lib/data";
 import { createClient } from "@/lib/supabase/client";
 import { useResync } from "@/lib/use-resync";
-import type { Message, MessageKind } from "@/lib/types";
+import type { Message, MessageKind, RoomTag } from "@/lib/types";
 import { firstName } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +41,8 @@ type Props = {
   me: { id: string; name: string } | null;
   canNarrate: boolean;
   canModerate: boolean;
+  /** crea, rinomina ed elimina i sotto-tag (chat.sottotag) */
+  canTags: boolean;
   canInvisible: boolean;
   canDice: boolean;
   /** Staff del combattimento: numeri dei tiri, difese al posto dei giocatori, chiusura */
@@ -61,7 +64,7 @@ type Tool = "scontro" | "incidente" | "oggetti" | "dadi" | "master" | "note" | "
  * entrata e uscita dalla giocata, presenti, sussurri, dadi, modalità master,
  * correzione entro 5 minuti. I messaggi spariscono dopo la durata impostata.
  */
-export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canDice, canCombat, isOwner, ownerName, attributes, skills }: Props) {
+export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canInvisible, canDice, canCombat, isOwner, ownerName, attributes, skills }: Props) {
   const { room, settings } = data;
   const roomId = room.id;
   const supabase = useMemo(() => createClient(), []);
@@ -120,6 +123,57 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
   const joined = !!me && present.some((p) => p.character_id === me.id);
   const invisible = data.invisible;
   const canWrite = !!me && (joined || invisible);
+
+  /* ---------- Sotto-tag ---------- */
+  const [tags, setTags] = useState<RoomTag[]>([]);
+  const [myTagRaw, setMyTag] = useState<string | null>(null);
+  const [tagError, setTagError] = useState<string | null>(null);
+  const loadTags = useCallback(async () => {
+    const { data: rows } = await supabase.from("room_tags").select("id, room_id, name, position").eq("room_id", roomId).order("position").order("created_at");
+    if (rows) setTags(rows as RoomTag[]);
+  }, [supabase, roomId]);
+  useEffect(() => {
+    const channel = supabase
+      .channel(`sottotag:${roomId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "room_tags" }, (payload) => {
+        const row = (payload.new ?? payload.old) as { room_id?: string };
+        if (!row.room_id || row.room_id === roomId) loadTags();
+      })
+      // collegato (anche dopo una caduta): si leggono i sotto-tag
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") loadTags();
+      });
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, roomId, loadTags]);
+  // il mio sotto-tag (salvato nel database): si rilegge entrando in giocata
+  const meIdForTag = me?.id;
+  useEffect(() => {
+    if (!meIdForTag || !joined) return;
+    supabase
+      .from("chat_presence")
+      .select("tag_id")
+      .eq("room_id", roomId)
+      .eq("character_id", meIdForTag)
+      .maybeSingle<{ tag_id: string | null }>()
+      .then(({ data: row }) => setMyTag(row?.tag_id ?? null));
+  }, [supabase, roomId, meIdForTag, joined]);
+  // fuori dalla giocata o sotto-tag eliminato: parte principale
+  const myTag = joined && myTagRaw && tags.some((t) => t.id === myTagRaw) ? myTagRaw : null;
+  async function pickTag(tag: string | null) {
+    if (!me) return;
+    const before = myTagRaw;
+    setMyTag(tag);
+    const { error: e } = await supabase.rpc("chat_set_tag", { p_room: roomId, p_character: me.id, p_tag: tag });
+    if (e) {
+      setMyTag(before);
+      setTagError(e.message);
+    } else setTagError(null);
+  }
+  const tagName = (id: string | null | undefined) => tags.find((t) => t.id === id)?.name ?? "Principale";
+  /** messaggio di un altro sotto-tag: più piccolo e sbiadito (la narrazione del master e i messaggi di sistema mai) */
+  const otherTag = (m: Message) => tags.length > 0 && m.kind !== "sistema" && m.kind !== "master" && (m.tag_id ?? null) !== myTag;
 
   /* ---------- Messaggi ---------- */
   const listRef = useRef<HTMLDivElement>(null);
@@ -527,6 +581,11 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
           document.body,
         )}
 
+      {!blurred && (
+        <ChatTagsBar roomId={roomId} tags={tags} current={myTag} canPick={joined} canManage={canTags} onPick={pickTag} onChanged={loadTags} onError={setTagError} />
+      )}
+      {tagError && <p className="shrink-0 border-b border-border px-4 py-1 text-xs text-destructive sm:px-6">{tagError}</p>}
+
       {master && (
         <p className="shrink-0 border-b border-orchid/30 bg-orchid/10 px-4 py-1.5 text-xs text-orchid sm:px-6">
           <Crown className="mr-1 inline size-3.5" />
@@ -579,6 +638,23 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
             messages.map((m) =>
               editing?.id === m.id ? (
                 <EditBox key={m.id} message={m} maxLength={m.kind === "azione" && master ? master.max : settings.max_length} onDone={(t) => saveEdit(m, t)} />
+              ) : otherTag(m) ? (
+                <div key={m.id} className="opacity-45 transition-opacity [zoom:0.85] hover:opacity-80" title={`Sotto-tag: ${tagName(m.tag_id)}`}>
+                  <MessageRow
+                    message={m}
+                    myNames={myNames}
+                    mine={m.character_id === me?.id && m.kind !== "sistema"}
+                    canModerate={canModerate}
+                    now={now}
+                    onEdit={setEditing}
+                    onDelete={remove}
+                    avatar={m.kind === "png" ? (npcAvatars[m.npc_id ?? ""] ?? null) : (avatars[m.character_id] ?? null)}
+                    onLook={openLook}
+                    canSeeRolls={canNarrate || canCombat}
+                    rerolls={[]}
+                    onReroll={reroll}
+                  />
+                </div>
               ) : (
                 <MessageRow
                   key={m.id}

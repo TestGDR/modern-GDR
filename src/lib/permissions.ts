@@ -61,6 +61,7 @@ export const PERMISSION_AREAS: PermissionArea[] = [
       { key: "dadi.tirare", label: "Tirare i dadi" },
       { key: "dadi.nascosti", label: "Fare tiri nascosti da Master" },
       { key: "chat.narrazione", label: "Narrare come Master", description: "Messaggi «Narrazione master» e modalità master (limiti di caratteri)" },
+      { key: "chat.sottotag", label: "Creare i sotto-tag delle chat", description: "Dentro una chat (anche con password, se si ha la chiave) creare, rinominare ed eliminare i sotto-tag: chi ne sceglie uno vede più piccoli e sbiaditi i messaggi degli altri" },
       { key: "png.gestire", label: "Gestire i PNG", description: "Creare i PNG della città, approvare quelli proposti dai giocatori, modificarli e disattivarli" },
       { key: "universita.gestire", label: "Gestire l'università", description: "Corsi, corsi obbligatori, semestri, bonus/malus, simulazione degli esami e pubblicazione dei voti" },
       { key: "fama.gestire", label: "Gestire la fama", description: "Voci e badge di fama e infamia dei personaggi, proposte di background, cataloghi, livelli, impostazioni e registro della fama" },

@@ -289,8 +289,18 @@ export type Message = {
   roll_data: RollData | null;
   /** messaggio di un PNG (kind 'png') */
   npc_id?: string | null;
+  /** sotto-tag della chat di chi l'ha scritto (null = parte principale) */
+  tag_id?: string | null;
   edited_at: string | null;
   created_at: string;
+};
+
+/** Sotto-tag di una chat (es. «Bancone» dentro «Caffetteria») */
+export type RoomTag = {
+  id: string;
+  room_id: string;
+  name: string;
+  position: number;
 };
 
 /** Impostazioni della chat (Gestione → Chat) */

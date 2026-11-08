@@ -62,6 +62,7 @@ async function Room({ params }: { params: PageProps<"/chat/[id]">["params"] }) {
       me={character ? { id: character.id, name: character.name } : null}
       canNarrate={can(player, "chat.narrazione")}
       canModerate={can(player, "chat.moderare")}
+      canTags={can(player, "chat.sottotag")}
       canInvisible={can(player, "staff.invisibile")}
       canDice={can(player, "dadi.tirare")}
       canCombat={can(player, "combattimento.gestire")}
