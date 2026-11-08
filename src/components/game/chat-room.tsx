@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArrowDown, ArrowLeft, Bandage, ChevronDown, Crown, Dices, Eye, EyeOff, LayoutGrid, LogIn, LogOut, NotebookPen, Package, Save, SendHorizontal, SlidersHorizontal, Swords, Users } from "lucide-react";
+import { Archive, ArrowDown, ArrowLeft, Bandage, ChevronDown, Crown, Dices, Eye, EyeOff, LayoutGrid, LogIn, LogOut, NotebookPen, Package, Repeat, Save, SendHorizontal, SkipForward, SlidersHorizontal, Swords, Users } from "lucide-react";
 import { ItemsPanel } from "@/components/game/chat-items";
 import { ChatToolWindow, NotepadPanel, SaveChatPanel } from "@/components/game/chat-tools";
 import { ChatPrefsPanel } from "@/components/game/prefs-panel";
@@ -21,7 +21,7 @@ import {
 } from "@/components/game/chat-parts";
 import { StashPanel, useRoomStash } from "@/components/game/chat-stash";
 import { ChatTagsBar } from "@/components/game/chat-tags";
-import { ChatTurnsBar, useRoomTurns } from "@/components/game/chat-turns";
+import { ChatTurnsManager, scenesOf, turnAction, turnMarks, useRoomTurns } from "@/components/game/chat-turns";
 import { CombatPanel } from "@/components/game/combat-panel";
 import { IncidentPanel } from "@/components/game/incident-panel";
 import type { CharacterStatus } from "@/components/game/status-icons";
@@ -170,10 +170,6 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
   const invisible = data.invisible;
   const canWrite = !!me && (joined || invisible);
 
-  /* ---------- Turni ---------- */
-  const turns = useRoomTurns(roomId);
-  const presentIds = useMemo(() => new Set(present.map((p) => p.character_id)), [present]);
-
   /* ---------- Cassa comune ---------- */
   const stash = useRoomStash(roomId, me?.id ?? null);
 
@@ -181,6 +177,22 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
   const [tags, setTags] = useState<RoomTag[]>([]);
   const [myTagRaw, setMyTag] = useState<string | null>(null);
   const [tagError, setTagError] = useState<string | null>(null);
+
+  /* ---------- Turni ---------- */
+  const turns = useRoomTurns(roomId);
+  const presentIds = useMemo(() => new Set(present.map((p) => p.character_id)), [present]);
+  const turnScenes = useMemo(() => scenesOf(turns.rows, presentIds), [turns.rows, presentIds]);
+  const marks = useMemo(() => turnMarks(turnScenes), [turnScenes]);
+  const [turnsOpen, setTurnsOpen] = useState(false);
+  const [turnBusy, setTurnBusy] = useState(false);
+  async function passTurn(scene: string) {
+    setTurnBusy(true);
+    const err = await turnAction(roomId, "passa", null, scene);
+    setTurnBusy(false);
+    setTagError(err);
+    turns.reload();
+  }
+
   const loadTags = useCallback(async () => {
     const { data: rows } = await supabase.from("room_tags").select("id, room_id, name, position").eq("room_id", roomId).order("position").order("created_at");
     if (rows) setTags(rows as RoomTag[]);
@@ -606,8 +618,18 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
           present.map((p) => (
             <span
               key={p.character_id}
-              className={cn("rounded-full px-2.5 py-0.5 text-xs", showPresent ? "inline" : "hidden sm:inline", p.character_id === me?.id ? "bg-flamingo/25 text-white" : "bg-white/10")}
+              className={cn(
+                "rounded-full px-2.5 py-0.5 text-xs",
+                showPresent ? "inline" : "hidden sm:inline",
+                p.character_id === me?.id ? "bg-flamingo/25 text-white" : "bg-white/10",
+                // di turno: bordo pesca (e lampeggia se sono io)
+                marks[p.character_id]?.current && "font-semibold ring-1 ring-peach",
+                marks[p.character_id]?.current && p.character_id === me?.id && "blink-call",
+              )}
+              title={marks[p.character_id] ? (marks[p.character_id].current ? "Di turno" : `${marks[p.character_id].n}° nel giro dei turni`) : undefined}
             >
+              {/* numero nel giro dei turni */}
+              {marks[p.character_id] && <span className={cn("mr-1 text-[0.65rem]", marks[p.character_id].current ? "text-peach" : "text-muted-foreground")}>{marks[p.character_id].current ? "▶" : marks[p.character_id].n}</span>}
               {firstName(p.name)}
               {/* il sotto-tag in cui si trova (solo se ne ha scelto uno) */}
               {presentTags[p.character_id] && tags.some((t) => t.id === presentTags[p.character_id]) && (
@@ -616,11 +638,26 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
             </span>
           ))
         )}
+        <span className="ml-auto flex items-center gap-1.5">
+          {me && marks[me.id]?.current && (
+            <>
+              <span className="text-xs font-semibold text-peach">Tocca a te!</span>
+              <Button type="button" size="xs" variant="ghost" disabled={turnBusy} onClick={() => passTurn(marks[me.id].scene)} className="rounded-full border border-white/15">
+                <SkipForward /> Passo
+              </Button>
+            </>
+          )}
+          {canNarrate && !blurred && (
+            <Button type="button" size="icon-xs" variant="ghost" onClick={() => setTurnsOpen((v) => !v)} aria-label="Gestisci i turni" aria-pressed={turnsOpen} title="Gestisci i turni">
+              <Repeat className={cn(turnsOpen && "text-peach")} />
+            </Button>
+          )}
         {joined && (
-          <Button type="button" size="xs" variant="ghost" disabled={busy} onClick={() => setLeaving(true)} className="ml-auto rounded-full border border-white/15">
+          <Button type="button" size="xs" variant="ghost" disabled={busy} onClick={() => setLeaving(true)} className="rounded-full border border-white/15">
             <LogOut /> Esci dalla chat
           </Button>
         )}
+        </span>
       </div>
       {/* uscita dalla giocata: finestra al centro dello schermo, sopra a tutto */}
       {leaving &&
@@ -654,19 +691,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
       {!blurred && (
         <ChatTagsBar roomId={roomId} tags={tags} current={myTag} canPick={joined} canManage={canTags} onPick={pickTag} onChanged={loadTags} onError={setTagError} />
       )}
-      {!blurred && (
-        <ChatTurnsBar
-          roomId={roomId}
-          rows={turns.rows}
-          meId={me?.id ?? null}
-          myScene={myTag ?? ""}
-          presentIds={presentIds}
-          tags={tags}
-          canManage={canNarrate}
-          onChanged={turns.reload}
-          onError={setTagError}
-        />
-      )}
+      {turnsOpen && canNarrate && !blurred && <ChatTurnsManager roomId={roomId} scenes={turnScenes} tags={tags} onChanged={turns.reload} onError={setTagError} />}
       {tagError && <p className="shrink-0 border-b border-border px-4 py-1 text-xs text-destructive sm:px-6">{tagError}</p>}
 
       {master && (
