@@ -626,10 +626,10 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
                 marks[p.character_id]?.current && "font-semibold ring-1 ring-peach",
                 marks[p.character_id]?.current && p.character_id === me?.id && "blink-call",
               )}
-              title={marks[p.character_id] ? (marks[p.character_id].current ? "Di turno" : `${marks[p.character_id].n}° nel giro dei turni`) : undefined}
+              title={marks[p.character_id] ? (marks[p.character_id].current ? "Di turno" : `${marks[p.character_id].n}° nel giro dei turni${marks[p.character_id].done ? ": ha già scritto, il suo turno si salta" : ""}`) : undefined}
             >
               {/* numero nel giro dei turni */}
-              {marks[p.character_id] && <span className={cn("mr-1 text-[0.65rem]", marks[p.character_id].current ? "text-peach" : "text-muted-foreground")}>{marks[p.character_id].current ? "▶" : marks[p.character_id].n}</span>}
+              {marks[p.character_id] && <span className={cn("mr-1 text-[0.65rem]", marks[p.character_id].current ? "text-peach" : "text-muted-foreground")}>{marks[p.character_id].current ? "▶" : marks[p.character_id].n}{marks[p.character_id].done && " ✓"}</span>}
               {firstName(p.name)}
               {/* il sotto-tag in cui si trova (solo se ne ha scelto uno) */}
               {presentTags[p.character_id] && tags.some((t) => t.id === presentTags[p.character_id]) && (

@@ -17,6 +17,8 @@ export type TurnRow = {
   position: number;
   is_current: boolean;
   live: boolean;
+  /** ha già scritto fuori turno: quando arriva il suo turno si salta */
+  acted_ahead: boolean;
 };
 
 /** Turnazione della chat, aggiornata in tempo reale */
@@ -79,10 +81,10 @@ export function scenesOf(rows: TurnRow[], presentIds: Set<string>): Scene[] {
 }
 
 /** Per ogni presente: il suo numero nel giro e se è di turno */
-export type TurnMark = { n: number; current: boolean; scene: string };
+export type TurnMark = { n: number; current: boolean; scene: string; done: boolean };
 export function turnMarks(scenes: Scene[]): Record<string, TurnMark> {
   const out: Record<string, TurnMark> = {};
-  for (const s of scenes) s.list.forEach((r, i) => (out[r.character_id] = { n: i + 1, current: r.character_id === s.current, scene: s.key }));
+  for (const s of scenes) s.list.forEach((r, i) => (out[r.character_id] = { n: i + 1, current: r.character_id === s.current, scene: s.key, done: r.acted_ahead }));
   return out;
 }
 
