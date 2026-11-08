@@ -222,7 +222,6 @@ function MapDot({
         <span className="relative block size-4">
           <span className="absolute inset-0 animate-ping rounded-full bg-flamingo/50" />
           <span className="absolute inset-0 rounded-full border-2 border-white bg-flamingo shadow-[0_0_10px_var(--flamingo)] transition group-hover:scale-125" />
-          {people > 0 && <span className="absolute -top-1 -right-1 size-2 rounded-full bg-mint ring-2 ring-night" />}
         </span>
       </button>
       <button
