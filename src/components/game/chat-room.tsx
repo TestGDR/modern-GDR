@@ -289,7 +289,8 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
     setBusy(false);
     if (res.error) return setError(res.error);
     setLeaving(false);
-    router.refresh();
+    // uscito (con o senza salvataggio): si torna alla mappa
+    router.push("/mappa");
   }
 
   async function toggleInvisible() {
