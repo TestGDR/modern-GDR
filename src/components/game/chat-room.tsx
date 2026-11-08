@@ -96,14 +96,22 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
     });
   }
 
+  // sotto-tag scelto da ogni presente (personaggio → sotto-tag)
+  const [presentTags, setPresentTags] = useState<Record<string, string | null>>({});
+  const loadPresentTags = useCallback(async () => {
+    const { data: rows } = await supabase.from("chat_presence").select("character_id, tag_id").eq("room_id", roomId);
+    if (rows) setPresentTags(Object.fromEntries((rows as { character_id: string; tag_id: string | null }[]).map((r) => [r.character_id, r.tag_id])));
+  }, [supabase, roomId]);
+
   const loadPresence = useCallback(async () => {
     const [{ data: list }, { data: n }] = await Promise.all([
       supabase.rpc("chat_present", { p_room: roomId }),
       supabase.rpc("chat_hidden_count", { p_room: roomId }),
+      loadPresentTags(),
     ]);
     if (list) setPresent(list as ChatPresent[]);
     setHidden((n as number | null) ?? 0);
-  }, [supabase, roomId]);
+  }, [supabase, roomId, loadPresentTags]);
 
   useEffect(() => {
     const channel = supabase
@@ -112,7 +120,17 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
       // a ogni messaggio (per tutti i presenti) costerebbe molte richieste
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_presence", filter: `room_id=eq.${roomId}` }, () => loadPresence())
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "chat_presence" }, () => loadPresence())
-      .subscribe();
+      // cambio di sotto-tag: arriva già nella riga, senza rileggere niente
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chat_presence", filter: `room_id=eq.${roomId}` }, (payload) => {
+        const row = payload.new as { character_id?: string; tag_id?: string | null };
+        if (!row.character_id) return;
+        const id = row.character_id;
+        const tag = row.tag_id ?? null;
+        setPresentTags((prev) => (prev[id] === tag ? prev : { ...prev, [id]: tag }));
+      })
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") loadPresentTags();
+      });
     // chi resta inattivo esce da solo: si ricontrolla ogni 3 minuti, a scheda visibile
     const t = setInterval(() => {
       if (document.visibilityState === "visible") loadPresence();
@@ -121,7 +139,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
       supabase.removeChannel(channel);
       clearInterval(t);
     };
-  }, [supabase, roomId, loadPresence]);
+  }, [supabase, roomId, loadPresence, loadPresentTags]);
 
   const joined = !!me && present.some((p) => p.character_id === me.id);
   const invisible = data.invisible;
@@ -171,6 +189,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
     if (!me) return;
     const before = myTagRaw;
     setMyTag(tag);
+    setPresentTags((prev) => ({ ...prev, [me.id]: tag }));
     const { error: e } = await supabase.rpc("chat_set_tag", { p_room: roomId, p_character: me.id, p_tag: tag });
     if (e) {
       setMyTag(before);
@@ -551,6 +570,10 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
               className={cn("rounded-full px-2.5 py-0.5 text-xs", showPresent ? "inline" : "hidden sm:inline", p.character_id === me?.id ? "bg-flamingo/25 text-white" : "bg-white/10")}
             >
               {firstName(p.name)}
+              {/* il sotto-tag in cui si trova (solo se ne ha scelto uno) */}
+              {presentTags[p.character_id] && tags.some((t) => t.id === presentTags[p.character_id]) && (
+                <span className="ml-1 text-[0.65rem] text-peach">· {tagName(presentTags[p.character_id])}</span>
+              )}
             </span>
           ))
         )}
