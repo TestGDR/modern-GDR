@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarX2, Check, Dices, Ear, Search, Trash2, X } from "lucide-react";
 import { FloatingWindow } from "@/components/floating-window";
 import { Button } from "@/components/ui/button";
 import { firstName, formatDateTime } from "@/lib/format";
 import { playEvent } from "@/lib/notify-sound";
 import { createClient } from "@/lib/supabase/client";
+import { refreshCounters, useCounters, type Counters } from "@/lib/counters";
 import { useResync } from "@/lib/use-resync";
 import { cn } from "@/lib/utils";
 
@@ -16,69 +17,34 @@ import { cn } from "@/lib/utils";
 const field = "w-full rounded-lg border border-input bg-night/40 px-3 py-2 text-sm outline-none focus-visible:border-ring";
 type Supabase = ReturnType<typeof createClient>;
 
-/** Quante voci nuove dopo l'ultima apertura (escluse le proprie) */
-function useUnseen(table: "absences" | "play_requests", seenTable: "absences_seen" | "play_requests_seen") {
+/** Quante voci nuove dopo l'ultima apertura, escluse le proprie (contatori condivisi: src/lib/counters.ts) */
+function useUnseen(kind: "absences" | "play_requests", seenTable: "absences_seen" | "play_requests_seen") {
   const supabase = useMemo(() => createClient(), []);
-  const [n, setN] = useState(0);
-  const refresh = useCallback(async () => {
-    const [{ data: user }, { data: seen }] = await Promise.all([
-      supabase.auth.getUser(),
-      supabase.from(seenTable).select("seen_at").maybeSingle<{ seen_at: string }>(),
-    ]);
-    if (!user.user) return;
-    let q = supabase.from(table).select("id", { count: "exact", head: true }).neq("user_id", user.user.id);
-    if (seen) q = q.gt("created_at", seen.seen_at);
-    if (table === "play_requests") q = q.gt("ends_at", new Date().toISOString());
-    const { count } = await q;
-    setN(count ?? 0);
-  }, [supabase, table, seenTable]);
-  useResync(refresh);
+  const counters = useCounters();
+  // aperto qui: zero subito, finché non arriva la rilettura dei contatori
+  const [seenBase, setSeenBase] = useState<Counters | null>(null);
+  const n = seenBase === counters ? 0 : counters[kind];
+  // voce nuova: suono
+  const previous = useRef(counters[kind]);
   useEffect(() => {
-    const first = setTimeout(refresh, 0);
-    const ch = supabase
-      .channel(`novita:${table}`)
-      .on("postgres_changes", { event: "*", schema: "public", table }, (p) => {
-        if (p.eventType === "INSERT") playEvent("off");
-        refresh();
-      })
-      .subscribe();
-    return () => {
-      clearTimeout(first);
-      supabase.removeChannel(ch);
-    };
-  }, [supabase, table, refresh]);
+    if (counters[kind] > previous.current) playEvent("off");
+    previous.current = counters[kind];
+  }, [counters, kind]);
   const markSeen = useCallback(async () => {
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) return;
-    await supabase.from(seenTable).upsert({ user_id: data.user.id, seen_at: new Date().toISOString() });
-    setN(0);
-  }, [supabase, seenTable]);
+    const { data } = await supabase.auth.getSession();
+    const me = data.session?.user.id;
+    if (!me) return;
+    setSeenBase(counters);
+    await supabase.from(seenTable).upsert({ user_id: me, seen_at: new Date().toISOString() });
+    refreshCounters(true);
+  }, [supabase, seenTable, counters]);
   return { n, markSeen };
 }
 
-/** Pettegolezzi in attesa (solo per lo staff) */
+/** Pettegolezzi in attesa (solo per lo staff; contatori condivisi) */
 function useGossipWaiting(enabled: boolean) {
-  const supabase = useMemo(() => createClient(), []);
-  const [n, setN] = useState(0);
-  const refresh = useCallback(async () => {
-    if (!enabled) return;
-    const { data } = await supabase.rpc("gossip_waiting");
-    setN((data as number | null) ?? 0);
-  }, [supabase, enabled]);
-  useResync(refresh);
-  useEffect(() => {
-    if (!enabled) return;
-    const first = setTimeout(refresh, 0);
-    const ch = supabase
-      .channel("pettegolezzi:attesa")
-      .on("postgres_changes", { event: "*", schema: "public", table: "gossip_reports" }, () => refresh())
-      .subscribe();
-    return () => {
-      clearTimeout(first);
-      supabase.removeChannel(ch);
-    };
-  }, [supabase, enabled, refresh]);
-  return { n, refresh };
+  const n = useCounters().gossip;
+  return { n: enabled ? n : 0, refresh: () => refreshCounters(true) };
 }
 
 /** Nomi (personaggio approvato o account) per un elenco di utenti */

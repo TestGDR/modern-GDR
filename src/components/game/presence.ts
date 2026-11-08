@@ -7,9 +7,10 @@ import { readLastActivity, writeLastActivity } from "@/lib/last-activity";
 import { createClient } from "@/lib/supabase/client";
 
 // Presenti online (dal Westeros: presence.ts).
-// - canale "online" di Supabase: chi entra o esce si vede subito
-// - segnale nel database (touch_online) ogni 60 secondi
-// - elenco riletto dal database (recent_online) ogni 20 secondi
+// - canale "online" di Supabase: chi entra o esce fa rileggere l'elenco (al massimo ogni 30 s)
+// - segnale nel database (touch_online) solo se c'è stata attività, al massimo ogni 3 minuti, a scheda visibile
+// - elenco riletto dal database (recent_online) ogni 3 minuti, a scheda visibile
+// Pochi controlli: ogni richiesta finisce nei log di Supabase (quota del piano Free).
 // Online = ha fatto un'azione nel sito entro il tempo dell'uscita per inattività (2 ore). Si sparisce subito solo con Esci.
 // Nome e ritratto li mette il database: il browser manda solo posto e disponibilità.
 
@@ -31,8 +32,14 @@ export type OnlinePlayer = {
 
 export type PresenceInfo = { availability: Availability; place: string; placeKey: string; note?: string };
 
-const HEARTBEAT_MS = 60_000;
-const POLL_MS = 20_000;
+/** Ogni quanto si guarda se mandare il segnale */
+const TICK_MS = 60_000;
+/** Al massimo un segnale ogni 3 minuti (online = un'azione nelle ultime 2 ore) */
+const HEARTBEAT_MS = 180_000;
+/** Rilettura dell'elenco a scheda visibile */
+const POLL_MS = 180_000;
+/** Riletture dopo gli avvisi: al massimo una ogni 30 secondi */
+const REFRESH_GAP_MS = 30_000;
 const RETRY_MS = 4_000;
 
 type Row = {
@@ -86,6 +93,24 @@ export function usePresence(info: PresenceInfo) {
     );
   }, [supabase]);
 
+  // Riletture raggruppate: al massimo una ogni 30 secondi, con un piccolo ritardo
+  // a caso perché non partano tutti insieme quando qualcuno entra o esce
+  const lastRefresh = useRef(0);
+  const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const softRefresh = useCallback(() => {
+    if (pending.current) return;
+    const wait = Math.max(0, lastRefresh.current + REFRESH_GAP_MS - Date.now()) + 1000 + Math.random() * 4000;
+    pending.current = setTimeout(() => {
+      pending.current = null;
+      if (document.visibilityState !== "visible") return;
+      lastRefresh.current = Date.now();
+      refresh();
+    }, wait);
+  }, [refresh]);
+  useEffect(() => () => {
+    if (pending.current) clearTimeout(pending.current);
+  }, []);
+
   // Chi sono (serve come chiave del canale)
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
@@ -98,8 +123,8 @@ export function usePresence(info: PresenceInfo) {
     let retry: ReturnType<typeof setTimeout> | undefined;
     const ch = supabase.channel("online", { config: { presence: { key: userId } } });
     ch.on("presence", { event: "sync" }, () => {
-      // qualcuno è entrato o uscito: rileggo l'elenco dal database
-      setTimeout(refresh, 1500);
+      // qualcuno è entrato o uscito: rileggo l'elenco dal database (raggruppato)
+      softRefresh();
     }).subscribe((status) => {
       if (disposed) return;
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
@@ -115,26 +140,35 @@ export function usePresence(info: PresenceInfo) {
       clearTimeout(retry);
       supabase.removeChannel(ch);
     };
-  }, [supabase, userId, refresh, attempt]);
+  }, [supabase, userId, softRefresh, attempt]);
 
   // --- Segnale nel database ---
   useEffect(() => {
     const beat = (action = false) => supabase.rpc("touch_online", { p_info: JSON.parse(latest.current), p_action: action });
     // chi usa davvero il sito (mouse, tastiera, tocco, finestre, telefono, social…) resta tra gli online:
     // il battito conta come azione se dall'ultimo c'è stata attività
+    // il segnale parte solo a scheda visibile, se dall'ultimo c'è stata attività, al massimo ogni 3 minuti
     let lastBeat = Date.now();
     const beatTimer = setInterval(() => {
-      const active = readLastActivity() > lastBeat;
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastBeat < HEARTBEAT_MS) return;
+      if (readLastActivity() <= lastBeat) return;
       lastBeat = Date.now();
-      beat(active);
-    }, HEARTBEAT_MS);
-    const pollTimer = setInterval(refresh, POLL_MS);
+      beat(true);
+    }, TICK_MS);
+    const pollTimer = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      lastRefresh.current = Date.now();
+      refresh();
+    }, POLL_MS);
     const onBack = () => {
       if (document.visibilityState !== "visible") return;
-      // tornare sulla pagina (o riavere la rete) è un'azione: si ricompare subito tra i presenti
+      // tornare sulla pagina (o riavere la rete) è un'azione: si ricompare tra i presenti
       writeLastActivity(Date.now());
-      lastBeat = Date.now();
-      beat(true).then(refresh);
+      if (Date.now() - lastBeat >= REFRESH_GAP_MS) {
+        lastBeat = Date.now();
+        beat(true).then(softRefresh);
+      }
       const ch = supabase.getChannels().find((c) => c.topic === "realtime:online");
       if (!ch || ch.state !== "joined") setAttempt((a) => a + 1);
     };
@@ -146,12 +180,18 @@ export function usePresence(info: PresenceInfo) {
       document.removeEventListener("visibilitychange", onBack);
       window.removeEventListener("online", onBack);
     };
-  }, [supabase, refresh]);
+  }, [supabase, refresh, softRefresh]);
 
-  // Aprire la pagina, cambiare posto o disponibilità sono azioni: aggiorno subito
+  // Aprire la pagina, cambiare posto o disponibilità sono azioni: segnale subito, elenco raggruppato
   useEffect(() => {
-    supabase.rpc("touch_online", { p_info: JSON.parse(payload), p_action: true }).then(refresh);
-  }, [supabase, payload, refresh]);
+    supabase.rpc("touch_online", { p_info: JSON.parse(payload), p_action: true }).then(() => {
+      if (!lastRefresh.current) {
+        // prima apertura: l'elenco serve subito
+        lastRefresh.current = Date.now();
+        refresh();
+      } else softRefresh();
+    });
+  }, [supabase, payload, refresh, softRefresh]);
 
   return { players, me: userId, refresh };
 }

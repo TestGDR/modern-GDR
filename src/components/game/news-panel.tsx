@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Newspaper, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { FloatingWindow } from "@/components/floating-window";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { playEvent } from "@/lib/notify-sound";
 import { createClient } from "@/lib/supabase/client";
-import { useResync } from "@/lib/use-resync";
+import { refreshCounters, useCounters, type Counters } from "@/lib/counters";
 import type { News } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -17,46 +17,32 @@ import { cn } from "@/lib/utils";
 
 const field = "w-full rounded-lg border border-input bg-night/40 px-3 py-2 text-sm outline-none focus-visible:border-ring";
 
-/** Quanti annunci nuovi ci sono, in tempo reale */
+/** Quanti annunci nuovi ci sono (contatori condivisi: src/lib/counters.ts) */
 function useNewsUnseen() {
   const supabase = useMemo(() => createClient(), []);
-  const [unseen, setUnseen] = useState(0);
-  // ultima apertura degli annunci (null: mai aperti)
-  const [seenAt, setSeenAt] = useState<string | null>(null);
+  const counters = useCounters();
+  // aperti qui: zero subito, finché non arriva la rilettura dei contatori
+  const [mark, setMark] = useState<{ at: string; base: Counters } | null>(null);
+  const marked = mark && mark.base === counters ? mark : null;
+  const seenAt = marked ? marked.at : counters.news_seen_at;
+  const unseen = marked ? 0 : counters.news;
 
-  const refresh = useCallback(async () => {
-    const { data: seen } = await supabase.from("news_seen").select("seen_at").maybeSingle<{ seen_at: string }>();
-    setSeenAt(seen?.seen_at ?? null);
-    let q = supabase.from("news").select("id", { count: "exact", head: true });
-    if (seen) q = q.gt("created_at", seen.seen_at);
-    const { count } = await q;
-    setUnseen(count ?? 0);
-  }, [supabase]);
-
-  useResync(refresh);
+  // annuncio nuovo: suono
+  const previous = useRef(counters.news);
   useEffect(() => {
-    const first = setTimeout(refresh, 0);
-    const ch = supabase
-      .channel("notizie")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "news" }, () => {
-        playEvent("off");
-        refresh();
-      })
-      .subscribe();
-    return () => {
-      clearTimeout(first);
-      supabase.removeChannel(ch);
-    };
-  }, [supabase, refresh]);
+    if (counters.news > previous.current) playEvent("off");
+    previous.current = counters.news;
+  }, [counters.news]);
 
   const markSeen = useCallback(async () => {
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) return;
+    const { data } = await supabase.auth.getSession();
+    const me = data.session?.user.id;
+    if (!me) return;
     const now = new Date().toISOString();
-    await supabase.from("news_seen").upsert({ user_id: data.user.id, seen_at: now });
-    setUnseen(0);
-    setSeenAt(now);
-  }, [supabase]);
+    setMark({ at: now, base: counters });
+    await supabase.from("news_seen").upsert({ user_id: me, seen_at: now });
+    refreshCounters(true);
+  }, [supabase, counters]);
 
   return { unseen, seenAt, markSeen };
 }

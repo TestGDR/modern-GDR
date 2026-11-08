@@ -52,7 +52,10 @@ export function SheetStatus({ characterId }: { characterId: string }) {
         setNow(Date.now());
       });
     load();
-    const t = setInterval(load, 60_000);
+    // ogni 3 minuti, solo a scheda visibile
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, 180_000);
     return () => {
       alive = false;
       clearInterval(t);

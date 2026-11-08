@@ -1,52 +1,42 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Megaphone, MessagesSquare, X } from "lucide-react";
 import { FORUM_READ_EVENT } from "@/components/game/forum-client";
 import { sidebarIconClass } from "@/components/game/sidebar-styles";
 import { createClient } from "@/lib/supabase/client";
-import { useResync } from "@/lib/use-resync";
+import { refreshCounters, useCounters, type ForumHighlight } from "@/lib/counters";
 import { cn } from "@/lib/utils";
 
 // Icona "Forum" della barra laterale (dal Westeros: useForumUnread e
 // useForumHighlights): discussioni con messaggi nuovi e post segnalati a tutti.
 
-type Highlight = { post_id: number; thread_id: string; board_slug: string; title: string; highlighted_by: string | null };
-
 export function ForumIcon() {
   const supabase = useMemo(() => createClient(), []);
-  const [unread, setUnread] = useState(0);
-  const [highlights, setHighlights] = useState<Highlight[]>([]);
+  // contatori condivisi (una sola chiamata per tutte le icone: src/lib/counters.ts)
+  const { forum_unread: unread, forum_highlights } = useCounters();
+  // segnalati chiusi qui (si toglie subito, senza aspettare la rilettura)
+  const [dismissed, setDismissed] = useState<number[]>([]);
+  const highlights = forum_highlights.filter((h) => !dismissed.includes(h.post_id));
 
-  const refresh = useCallback(async () => {
-    const [{ data: u }, { data: h }] = await Promise.all([supabase.rpc("forum_unread"), supabase.rpc("forum_pending_highlights")]);
-    setUnread(((u ?? []) as unknown[]).length);
-    setHighlights((h ?? []) as Highlight[]);
-  }, [supabase]);
-
-  useResync(refresh);
   useEffect(() => {
     // prima visita: da qui le discussioni nuove contano come non lette
-    const first = setTimeout(() => supabase.rpc("forum_touch").then(refresh), 0);
-    const ch = supabase
-      .channel("forum:icona")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "forum_posts" }, () => refresh())
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "forum_posts" }, () => refresh())
-      .subscribe();
-    window.addEventListener(FORUM_READ_EVENT, refresh);
+    const first = setTimeout(() => supabase.rpc("forum_touch").then(() => refreshCounters(true)), 0);
+    const onRead = () => refreshCounters(true);
+    window.addEventListener(FORUM_READ_EVENT, onRead);
     return () => {
       clearTimeout(first);
-      supabase.removeChannel(ch);
-      window.removeEventListener(FORUM_READ_EVENT, refresh);
+      window.removeEventListener(FORUM_READ_EVENT, onRead);
     };
-  }, [supabase, refresh]);
+  }, [supabase]);
 
-  async function seen(h: Highlight) {
-    const { data } = await supabase.auth.getUser();
-    if (data.user) await supabase.from("forum_highlight_seen").insert({ user_id: data.user.id, post_id: h.post_id });
-    setHighlights((prev) => prev.filter((x) => x.post_id !== h.post_id));
+  async function seen(h: ForumHighlight) {
+    setDismissed((prev) => [...prev, h.post_id]);
+    const { data } = await supabase.auth.getSession();
+    const me = data.session?.user.id;
+    if (me) await supabase.from("forum_highlight_seen").insert({ user_id: me, post_id: h.post_id });
   }
 
   const first = highlights[0];

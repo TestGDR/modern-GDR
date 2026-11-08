@@ -102,10 +102,15 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
   useEffect(() => {
     const channel = supabase
       .channel(`presenti:${roomId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "chat_presence", filter: `room_id=eq.${roomId}` }, () => loadPresence())
+      // solo entrate e uscite: ogni messaggio aggiorna chat_presence, e rileggere i presenti
+      // a ogni messaggio (per tutti i presenti) costerebbe molte richieste
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_presence", filter: `room_id=eq.${roomId}` }, () => loadPresence())
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "chat_presence" }, () => loadPresence())
       .subscribe();
-    // chi resta inattivo esce da solo: si ricontrolla ogni minuto
-    const t = setInterval(loadPresence, 60_000);
+    // chi resta inattivo esce da solo: si ricontrolla ogni 3 minuti, a scheda visibile
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") loadPresence();
+    }, 180_000);
     return () => {
       supabase.removeChannel(channel);
       clearInterval(t);

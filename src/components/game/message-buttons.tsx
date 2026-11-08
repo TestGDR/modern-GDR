@@ -10,88 +10,20 @@ import { everyEvenInBackground, playEvent } from "@/lib/notify-sound";
 import { formatPhone, type PhoneState } from "@/lib/phone";
 import { createClient } from "@/lib/supabase/client";
 import { setTitleCount } from "@/lib/title-count";
-import { useResync } from "@/lib/use-resync";
+import { refreshCounters, useCounters } from "@/lib/counters";
 import { cn } from "@/lib/utils";
 
 // Messaggi OFF e Telefono nella barra in alto, con i loro contatori
 // (dal Westeros: useUnread in GameShell.tsx). Il telefono cambia icona
 // durante una chiamata e fa squillare in tutto il gioco.
 
-const EMPTY_PHONE: PhoneState = { unread: 0, call: null };
-
-/** Non letti OFF (messaggi, gruppi, messaggi a tutti, SISTEMA), in tempo reale */
-function useOffUnread(userId: string | null) {
-  const supabase = useMemo(() => createClient(), []);
-  const [count, setCount] = useState(0);
-
-  const refresh = useCallback(async () => {
-    if (!userId) return;
-    const { data } = await supabase.rpc("off_unread", { p_channel: "off" });
-    setCount((data as number | null) ?? 0);
-  }, [supabase, userId]);
-
-  useResync(refresh);
-
-  useEffect(() => {
-    if (!userId) return;
-    const first = setTimeout(refresh, 0);
-    const ch = supabase
-      .channel(`unread:${userId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "private_messages", filter: `recipient_id=eq.${userId}` }, () => refresh())
-      // letto da un altro dispositivo o da un'altra scheda
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "private_messages", filter: `recipient_id=eq.${userId}` }, () => refresh())
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "off_group_messages" }, () => refresh())
-      .on("postgres_changes", { event: "*", schema: "public", table: "off_group_members" }, () => refresh())
-      .on("postgres_changes", { event: "*", schema: "public", table: "off_broadcasts" }, () => refresh())
-      .on("postgres_changes", { event: "*", schema: "public", table: "off_broadcast_reads", filter: `user_id=eq.${userId}` }, () => refresh())
-      .on("postgres_changes", { event: "*", schema: "public", table: "system_messages", filter: `user_id=eq.${userId}` }, () => refresh())
-      .subscribe();
-    return () => {
-      clearTimeout(first);
-      supabase.removeChannel(ch);
-    };
-  }, [supabase, userId, refresh]);
-
-  return count;
-}
-
-/** Telefono: non letti e chiamata in corso (o che squilla), in tempo reale */
-function usePhoneState(userId: string | null) {
-  const supabase = useMemo(() => createClient(), []);
-  const [state, setState] = useState<PhoneState>(EMPTY_PHONE);
-
-  const refresh = useCallback(async () => {
-    if (!userId) return;
-    const { data } = await supabase.rpc("phone_state");
-    if (data) setState(data as PhoneState);
-  }, [supabase, userId]);
-
-  useResync(refresh, 60_000);
-
-  useEffect(() => {
-    if (!userId) return;
-    const first = setTimeout(refresh, 0);
-    const ch = supabase
-      .channel(`telefono-stato:${userId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "phone_messages" }, () => refresh())
-      .on("postgres_changes", { event: "*", schema: "public", table: "phone_members" }, () => refresh())
-      .on("postgres_changes", { event: "*", schema: "public", table: "phone_calls" }, () => refresh())
-      .subscribe();
-    return () => {
-      clearTimeout(first);
-      supabase.removeChannel(ch);
-    };
-  }, [supabase, userId, refresh]);
-
-  // Mentre squilla, si ricontrolla spesso (la chiamata può diventare "persa")
-  const ringing = state.call?.status === "squilla";
+/** Telefono: mentre squilla si ricontrolla spesso (la chiamata può diventare "persa") */
+function usePhoneRinging(ringing: boolean) {
   useEffect(() => {
     if (!ringing) return;
-    const t = setInterval(refresh, 15_000);
+    const t = setInterval(() => refreshCounters(true), 15_000);
     return () => clearInterval(t);
-  }, [ringing, refresh]);
-
-  return { state, refresh };
+  }, [ringing]);
 }
 
 function Badge({ n }: { n: number }) {
@@ -105,8 +37,14 @@ function Badge({ n }: { n: number }) {
 
 /** Con i contatori dell'utente collegato */
 export function MessageButtons({ userId, center }: { userId: string | null; center?: React.ReactNode }) {
-  const off = useOffUnread(userId);
-  const { state: phone, refresh } = usePhoneState(userId);
+  // contatori condivisi (una sola chiamata per tutte le icone: src/lib/counters.ts)
+  const counters = useCounters();
+  const off = userId ? counters.off : 0;
+  const phone = userId ? counters.phone : { unread: 0, call: null };
+  const refresh = useCallback(() => {
+    refreshCounters(true);
+  }, []);
+  usePhoneRinging(phone.call?.status === "squilla");
   const pathname = usePathname();
   const incoming = phone.call?.status === "squilla" && phone.call.incoming;
 
@@ -148,7 +86,7 @@ export function MessageButtons({ userId, center }: { userId: string | null; cent
 
 /** Segnaposto mentre arriva l'utente */
 export function MessageButtonsFallback({ center }: { center?: React.ReactNode }) {
-  return <Buttons off={0} phone={EMPTY_PHONE} center={center} />;
+  return <Buttons off={0} phone={{ unread: 0, call: null }} center={center} />;
 }
 
 // Stessa larghezza ai due lati: il ritratto resta al centro

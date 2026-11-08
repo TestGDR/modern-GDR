@@ -1,43 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LifeBuoy } from "lucide-react";
 import { sidebarIconClass } from "@/components/game/sidebar-styles";
 import { playEvent } from "@/lib/notify-sound";
-import { createClient } from "@/lib/supabase/client";
 import { setTitleCount } from "@/lib/title-count";
-import { useResync } from "@/lib/use-resync";
+import { useCounters } from "@/lib/counters";
 import { cn } from "@/lib/utils";
 
 // Icona "Ticket" della barra laterale (dal Westeros: useTicketUnread).
 // Quando compare un ticket da leggere: suono "off", avviso a comparsa e lampeggio.
 
 export function TicketIcon() {
-  const supabase = useMemo(() => createClient(), []);
   const pathname = usePathname();
-  const [ids, setIds] = useState<string[]>([]);
+  // contatori condivisi (una sola chiamata per tutte le icone: src/lib/counters.ts)
+  const ids = useCounters().tickets;
   const [toast, setToast] = useState(false);
-
-  const refresh = useCallback(async () => {
-    const { data } = await supabase.rpc("ticket_unread_ids");
-    setIds(((data ?? []) as string[]).slice().sort());
-  }, [supabase]);
-
-  useResync(refresh);
-  useEffect(() => {
-    const first = setTimeout(refresh, 0);
-    const ch = supabase
-      .channel("ticket-finestra:icona")
-      .on("postgres_changes", { event: "*", schema: "public", table: "tickets" }, () => refresh())
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "ticket_messages" }, () => refresh())
-      .subscribe();
-    return () => {
-      clearTimeout(first);
-      supabase.removeChannel(ch);
-    };
-  }, [supabase, refresh]);
 
   // Un ticket nuovo da leggere: suono e avviso
   const previous = useRef<string[]>([]);
