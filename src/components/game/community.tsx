@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarX2, Check, Dices, Ear, Search, Trash2, X } from "lucide-react";
 import { FloatingWindow } from "@/components/floating-window";
 import { Button } from "@/components/ui/button";
 import { firstName, formatDateTime } from "@/lib/format";
-import { playEvent } from "@/lib/notify-sound";
 import { createClient } from "@/lib/supabase/client";
-import { refreshCounters, useCounters, type Counters } from "@/lib/counters";
+import { refreshCounters, useCounters, useSeenCounter } from "@/lib/counters";
 import { useResync } from "@/lib/use-resync";
 import { cn } from "@/lib/utils";
 
@@ -16,30 +15,6 @@ import { cn } from "@/lib/utils";
 
 const field = "w-full rounded-lg border border-input bg-night/40 px-3 py-2 text-sm outline-none focus-visible:border-ring";
 type Supabase = ReturnType<typeof createClient>;
-
-/** Quante voci nuove dopo l'ultima apertura, escluse le proprie (contatori condivisi: src/lib/counters.ts) */
-function useUnseen(kind: "absences" | "play_requests", seenTable: "absences_seen" | "play_requests_seen") {
-  const supabase = useMemo(() => createClient(), []);
-  const counters = useCounters();
-  // aperto qui: zero subito, finché non arriva la rilettura dei contatori
-  const [seenBase, setSeenBase] = useState<Counters | null>(null);
-  const n = seenBase === counters ? 0 : counters[kind];
-  // voce nuova: suono
-  const previous = useRef(counters[kind]);
-  useEffect(() => {
-    if (counters[kind] > previous.current) playEvent("off");
-    previous.current = counters[kind];
-  }, [counters, kind]);
-  const markSeen = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
-    const me = data.session?.user.id;
-    if (!me) return;
-    setSeenBase(counters);
-    await supabase.from(seenTable).upsert({ user_id: me, seen_at: new Date().toISOString() });
-    refreshCounters(true);
-  }, [supabase, seenTable, counters]);
-  return { n, markSeen };
-}
 
 /** Pettegolezzi in attesa (solo per lo staff; contatori condivisi) */
 function useGossipWaiting(enabled: boolean) {
@@ -69,9 +44,11 @@ export function CommunityButtons({
   /** Personaggio approvato (null: si legge soltanto) */
   characterId: string | null;
 }) {
-  const absences = useUnseen("absences", "absences_seen");
-  const requests = useUnseen("play_requests", "play_requests_seen");
+  const absences = useSeenCounter("absences");
+  const requests = useSeenCounter("play_requests");
   const gossip = useGossipWaiting(canGossip);
+  // voci nuove (pettegolezzi approvati dopo l'ultima apertura)
+  const gossipNew = useSeenCounter("gossip_new");
   const [open, setOpen] = useState<"assenze" | "ricerca" | "pettegolezzi" | null>(null);
 
   const badge = (n: number) =>
@@ -86,8 +63,8 @@ export function CommunityButtons({
         <button type="button" title="Cerco gioco" aria-label="Cerco gioco" className={cn(smallBtn, requests.n > 0 && "blink-call")} onClick={() => (setOpen("ricerca"), requests.markSeen())}>
           <Search /> {badge(requests.n)}
         </button>
-        <button type="button" title="Pettegolezzi" aria-label="Pettegolezzi" className={cn(smallBtn, gossip.n > 0 && "blink-call")} onClick={() => setOpen("pettegolezzi")}>
-          <Ear /> {badge(gossip.n)}
+        <button type="button" title="Pettegolezzi" aria-label="Pettegolezzi" className={cn(smallBtn, gossip.n + gossipNew.n > 0 && "blink-call")} onClick={() => (setOpen("pettegolezzi"), gossipNew.markSeen())}>
+          <Ear /> {badge(gossip.n + gossipNew.n)}
         </button>
       </div>
       {open && (
@@ -310,12 +287,13 @@ type Report = {
   status: "attesa" | "approvato" | "rifiutato";
   published_text: string | null;
   reviewed_at: string | null;
+  reviewed_by_name: string | null;
   created_at: string;
 };
 type Place = { id: string; name: string };
 type RoomPlace = Place & { location_id: string };
 
-type ArchiveRow = { id: string; kind: "voce" | "non_visto"; body: string; zone: string; author: string; created_at: string };
+type ArchiveRow = { id: string; kind: "voce"; body: string; zone: string; author: string; created_at: string };
 
 /** Pettegolezzi: tab "Pettegolezzo" (dado e archivio) e, per lo staff, "Da approvare" */
 function GossipPanel({ canManage, characterId, onChanged }: { canManage: boolean; characterId: string | null; onChanged: () => void }) {
@@ -324,6 +302,8 @@ function GossipPanel({ canManage, characterId, onChanged }: { canManage: boolean
   const [tab, setTab] = useState<"archivio" | "pettegolezzo" | "approvare">("archivio");
   const [archive, setArchive] = useState<ArchiveRow[] | null>(null);
   const [waiting, setWaiting] = useState<Report[]>([]);
+  // staff: le ultime decisioni, con chi le ha prese
+  const [reviewed, setReviewed] = useState<Report[]>([]);
   const [pendingRoll, setPendingRoll] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<"scoperti" | "non-visti" | null>(null);
   const [rolling, setRolling] = useState(false);
@@ -347,11 +327,15 @@ function GossipPanel({ canManage, characterId, onChanged }: { canManage: boolean
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [{ data: arc }, pending, staff] = await Promise.all([
+    const [{ data: arc }, pending, staff, done] = await Promise.all([
       supabase.rpc("gossip_archive"),
       characterId ? supabase.rpc("gossip_pending", { p_character: characterId }) : Promise.resolve({ data: null }),
       canManage ? supabase.from("gossip_reports").select("*").eq("status", "attesa").order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+      canManage
+        ? supabase.from("gossip_reports").select("*").neq("status", "attesa").order("reviewed_at", { ascending: false, nullsFirst: false }).limit(100)
+        : Promise.resolve({ data: [] }),
     ]);
+    setReviewed((done.data ?? []) as Report[]);
     setArchive((arc ?? []) as ArchiveRow[]);
     setPendingRoll((pending.data as string | null) ?? null);
     setWaiting((staff.data ?? []) as Report[]);
@@ -372,7 +356,7 @@ function GossipPanel({ canManage, characterId, onChanged }: { canManage: boolean
     const row = ((data ?? []) as { id: string; seen: boolean }[])[0];
     setOutcome(row?.seen ? "scoperti" : "non-visti");
     if (row?.seen) setPendingRoll(row.id);
-    else load(); // il tiro finisce nell'archivio come "Visto e non visto"
+    else load();
   }
 
   const tabBtn = (active: boolean) =>
@@ -396,7 +380,7 @@ function GossipPanel({ canManage, characterId, onChanged }: { canManage: boolean
       </div>
 
       {tab === "approvare" && canManage ? (
-        <GossipStaff reports={waiting} onChanged={() => (load(), onChanged())} />
+        <GossipStaff reports={waiting} reviewed={reviewed} onChanged={() => (load(), onChanged())} />
       ) : tab === "pettegolezzo" ? (
         <>
           {!characterId && <p className="text-sm text-muted-foreground">Per tirare il dado serve un personaggio approvato.</p>}
@@ -411,7 +395,7 @@ function GossipPanel({ canManage, characterId, onChanged }: { canManage: boolean
               ) : (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    Alla fine di una giocata tira il dado: se siete stati scoperti scrivete cosa è successo e lo mandate allo staff; altrimenti il tiro finisce in archivio come «Visto e non visto».
+                    Alla fine di una giocata tira il dado: se siete stati scoperti scrivete cosa è successo e lo mandate allo staff; altrimenti nessuno vi ha visti e non resta traccia.
                   </p>
                   <label className="flex flex-col gap-1 text-xs text-muted-foreground">
                     Dove eravate?
@@ -448,8 +432,7 @@ function GossipPanel({ canManage, characterId, onChanged }: { canManage: boolean
             {archive === null && <p className="text-sm text-muted-foreground">Caricamento…</p>}
             {archive !== null && archive.length === 0 && <p className="text-sm text-muted-foreground">Ancora nessun pettegolezzo.</p>}
             <ul className="flex flex-col gap-2">
-              {(archive ?? []).map((r) =>
-                r.kind === "voce" ? (
+              {(archive ?? []).map((r) => (
                   <li key={r.id} className="rounded-xl border border-peach/20 bg-white/5 p-3 text-sm">
                     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Ear className="size-3.5 text-peach" /> {r.zone} · {formatDateTime(r.created_at)}
@@ -457,15 +440,7 @@ function GossipPanel({ canManage, characterId, onChanged }: { canManage: boolean
                     <p className="mt-1 leading-relaxed whitespace-pre-line italic">«{r.body}»</p>
                     {canManage && <DeleteReport id={r.id} onDone={() => (load(), onChanged())} />}
                   </li>
-                ) : (
-                  <li key={r.id} className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2 text-xs text-muted-foreground">
-                    <Dices className="size-3.5 shrink-0" />
-                    <span className="font-medium text-foreground/80">{r.author}</span>
-                    <span className="italic">Visto e non visto</span>
-                    <span className="ml-auto shrink-0">{formatDateTime(r.created_at)}</span>
-                  </li>
-                ),
-              )}
+              ))}
             </ul>
           </section>
         </>
@@ -586,7 +561,7 @@ function GossipForm({ rollId, characterId, onDone }: { rollId: string; character
   );
 }
 
-function GossipStaff({ reports, onChanged }: { reports: Report[]; onChanged: () => void }) {
+function GossipStaff({ reports, reviewed, onChanged }: { reports: Report[]; reviewed: Report[]; onChanged: () => void }) {
   const supabase = useMemo(() => createClient(), []);
   // probabilità di essere scoperti, in percentuale (dado da 100: scoperti da 101 - % in su)
   const [percent, setPercent] = useState<number | null>(null);
@@ -622,6 +597,30 @@ function GossipStaff({ reports, onChanged }: { reports: Report[]; onChanged: () 
         {reports.map((r) => (
           <ReviewItem key={r.id} report={r} onChanged={onChanged} />
         ))}
+      </section>
+      <section className="flex flex-col gap-2 rounded-2xl bg-white/5 p-3">
+        <h3 className="font-heading text-lg tracking-wide text-lavender">Archivio delle approvazioni</h3>
+        {reviewed.length === 0 && <p className="text-sm text-muted-foreground">Ancora nessuna decisione.</p>}
+        <ul className="flex flex-col gap-1.5">
+          {reviewed.map((r) => (
+            <li key={r.id} className="flex flex-col gap-1 rounded-xl bg-night/30 px-3 py-2 text-sm">
+              <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                <span className={cn("rounded-full px-2 py-0.5 font-semibold", r.status === "approvato" ? "bg-mint/15 text-mint" : "bg-destructive/15 text-destructive")}>
+                  {r.status === "approvato" ? "Approvato" : "Rifiutato"}
+                </span>
+                <span>
+                  da <strong className="text-foreground">{r.reviewed_by_name || "—"}</strong>
+                  {r.reviewed_at ? ` · ${formatDateTime(r.reviewed_at)}` : ""}
+                </span>
+                <span className="ml-auto">
+                  {r.zone_name} · {r.author_name}
+                  {r.participant_names ? `, ${r.participant_names}` : ""}
+                </span>
+              </p>
+              <p className="leading-relaxed whitespace-pre-line italic">«{r.published_text || r.summary}»</p>
+            </li>
+          ))}
+        </ul>
       </section>
       {percent !== null && (
         <section className="flex flex-col gap-2 rounded-2xl bg-white/5 p-3 text-sm">

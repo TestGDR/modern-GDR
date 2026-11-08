@@ -41,6 +41,7 @@ import { signOut } from "@/lib/actions/auth";
 import { AVAILABILITY, loadPresenceState, savePresenceState, type Availability } from "@/lib/availability";
 import { onCurrentMap, readCurrentMap } from "@/lib/current-map";
 import { initials } from "@/lib/format";
+import { useSeenCounter } from "@/lib/counters";
 import { applyPrefs, loadPrefs, loadSkin } from "@/lib/prefs";
 import { createClient } from "@/lib/supabase/client";
 import { setInvisible } from "@/lib/actions/chat";
@@ -260,6 +261,17 @@ function MainButtons() {
 
 const iconCls = sidebarIconClass;
 
+/** Calendario: si illumina quando lo staff aggiunge un evento (fino alla prossima apertura) */
+function CalendarIcon() {
+  const { n, markSeen } = useSeenCounter("calendar_new", false);
+  return (
+    <Link href="/calendario" onClick={() => markSeen()} className={cn(iconCls, "relative", n > 0 && "blink-call")} aria-label={n ? `Calendario: ${n} eventi nuovi` : "Calendario"}>
+      <CalendarDays />
+      {n > 0 && <span className="absolute -top-1 -right-1 grid min-w-4 place-items-center rounded-full bg-flamingo px-1 text-[0.6rem] leading-4 font-bold text-white">{n}</span>}
+    </Link>
+  );
+}
+
 /** Calendario, Social, Forum, Scheda, Ticket, Utility, Università, Sport: solo icone, il nome nel fumetto */
 function FeatureIcons() {
   const links: [string, string, React.ReactNode][] = [
@@ -278,7 +290,9 @@ function FeatureIcons() {
   );
   return (
     <div className="grid grid-cols-4 justify-items-center gap-1">
-      {link(links[0])}
+      <HoverTip label="Calendario">
+        <CalendarIcon />
+      </HoverTip>
       <HoverTip label="Social">
         <SocialIcon />
       </HoverTip>

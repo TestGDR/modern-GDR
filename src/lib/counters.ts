@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { playEvent } from "@/lib/notify-sound";
 import type { PhoneState } from "@/lib/phone";
 import { createClient } from "@/lib/supabase/client";
 
@@ -27,6 +28,10 @@ export type Counters = {
   absences: number;
   play_requests: number;
   gossip: number;
+  /** voci (pettegolezzi approvati) dopo l'ultima apertura */
+  gossip_new: number;
+  /** eventi del calendario creati da altri dopo l'ultima apertura */
+  calendar_new: number;
 };
 
 export const EMPTY_COUNTERS: Counters = {
@@ -41,6 +46,8 @@ export const EMPTY_COUNTERS: Counters = {
   absences: 0,
   play_requests: 0,
   gossip: 0,
+  gossip_new: 0,
+  calendar_new: 0,
 };
 
 const CACHE_MS = 45_000;
@@ -134,6 +141,7 @@ function start() {
       .on("postgres_changes", { event: "*", schema: "public", table: "absences" }, later)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "play_requests" }, later)
       .on("postgres_changes", { event: "*", schema: "public", table: "gossip_reports" }, later)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "calendar_events" }, later)
       .subscribe();
   });
 
@@ -185,4 +193,35 @@ export function useCounters(): Counters {
     () => state,
     () => EMPTY_COUNTERS,
   );
+}
+
+/** Contatori con il segno «visto»: il simbolo si illumina finché non si apre la sezione */
+export type SeenKind = "absences" | "play_requests" | "gossip_new" | "calendar_new";
+const SEEN_TABLE: Record<SeenKind, string> = {
+  absences: "absences_seen",
+  play_requests: "play_requests_seen",
+  gossip_new: "gossip_seen",
+  calendar_new: "calendar_seen",
+};
+
+/** Quante novità e il segno «visto» (aperto qui: zero subito, poi si rilegge); sound = suono alle novità */
+export function useSeenCounter(kind: SeenKind, sound = true) {
+  const counters = useCounters();
+  const [seenBase, setSeenBase] = useState<Counters | null>(null);
+  const n = seenBase === counters ? 0 : counters[kind];
+  const previous = useRef(counters[kind]);
+  useEffect(() => {
+    if (sound && counters[kind] > previous.current) playEvent("off");
+    previous.current = counters[kind];
+  }, [counters, kind, sound]);
+  const markSeen = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase.auth.getSession();
+    const me = data.session?.user.id;
+    if (!me) return;
+    setSeenBase(counters);
+    await supabase.from(SEEN_TABLE[kind]).upsert({ user_id: me, seen_at: new Date().toISOString() });
+    refreshCounters(true);
+  }, [counters, kind]);
+  return { n, markSeen };
 }

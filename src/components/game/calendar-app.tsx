@@ -23,6 +23,7 @@ import {
 import { inputClass, textareaClass } from "@/components/admin/admin-ui";
 import { Button } from "@/components/ui/button";
 import { PHASE_LABEL } from "@/lib/sport";
+import { useSeenCounter } from "@/lib/counters";
 import { createClient } from "@/lib/supabase/client";
 import type { CalendarItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,11 @@ const timeOf = (iso: string) => new Date(iso).toLocaleTimeString("it-IT", { time
 
 export function CalendarApp({ canManage }: { canManage: boolean }) {
   const supabase = useMemo(() => createClient(), []);
+  // aprendo il calendario gli eventi nuovi sono visti: il simbolo smette di illuminarsi
+  const { n: newEvents, markSeen } = useSeenCounter("calendar_new", false);
+  useEffect(() => {
+    if (newEvents > 0) markSeen();
+  }, [newEvents, markSeen]);
   const [month, setMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
