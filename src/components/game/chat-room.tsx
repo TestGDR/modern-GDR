@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowLeft, Bandage, ChevronDown, Crown, Dices, Eye, EyeOff, LayoutGrid, LogIn, LogOut, NotebookPen, Package, Save, SendHorizontal, SlidersHorizontal, Swords, Users } from "lucide-react";
+import { Archive, ArrowDown, ArrowLeft, Bandage, ChevronDown, Crown, Dices, Eye, EyeOff, LayoutGrid, LogIn, LogOut, NotebookPen, Package, Save, SendHorizontal, SlidersHorizontal, Swords, Users } from "lucide-react";
 import { ItemsPanel } from "@/components/game/chat-items";
 import { ChatToolWindow, NotepadPanel, SaveChatPanel } from "@/components/game/chat-tools";
 import { ChatPrefsPanel } from "@/components/game/prefs-panel";
@@ -19,6 +19,7 @@ import {
   type DiceAttribute,
   type DiceSkill,
 } from "@/components/game/chat-parts";
+import { StashPanel, useRoomStash } from "@/components/game/chat-stash";
 import { ChatTagsBar } from "@/components/game/chat-tags";
 import { CombatPanel } from "@/components/game/combat-panel";
 import { IncidentPanel } from "@/components/game/incident-panel";
@@ -43,6 +44,8 @@ type Props = {
   canModerate: boolean;
   /** crea, rinomina ed elimina i sotto-tag (chat.sottotag) */
   canTags: boolean;
+  /** riempie la cassa comune (chat.cassa) */
+  canStash: boolean;
   canInvisible: boolean;
   canDice: boolean;
   /** Staff del combattimento: numeri dei tiri, difese al posto dei giocatori, chiusura */
@@ -57,14 +60,14 @@ type Props = {
 const byTime = (a: Message, b: Message) => a.created_at.localeCompare(b.created_at) || a.id - b.id;
 
 /** Comandi della chat: ognuno si apre nella sua finestra */
-type Tool = "scontro" | "incidente" | "oggetti" | "dadi" | "master" | "note" | "salva" | "impostazioni";
+type Tool = "scontro" | "incidente" | "oggetti" | "cassa" | "dadi" | "master" | "note" | "salva" | "impostazioni";
 
 /**
  * Stanza di chat (dal Westeros: ChatRoom.tsx). Tempo reale con Supabase,
  * entrata e uscita dalla giocata, presenti, sussurri, dadi, modalità master,
  * correzione entro 5 minuti. I messaggi spariscono dopo la durata impostata.
  */
-export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canInvisible, canDice, canCombat, isOwner, ownerName, attributes, skills }: Props) {
+export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash, canInvisible, canDice, canCombat, isOwner, ownerName, attributes, skills }: Props) {
   const { room, settings } = data;
   const roomId = room.id;
   const supabase = useMemo(() => createClient(), []);
@@ -123,6 +126,9 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canInvisi
   const joined = !!me && present.some((p) => p.character_id === me.id);
   const invisible = data.invisible;
   const canWrite = !!me && (joined || invisible);
+
+  /* ---------- Cassa comune ---------- */
+  const stash = useRoomStash(roomId, me?.id ?? null);
 
   /* ---------- Sotto-tag ---------- */
   const [tags, setTags] = useState<RoomTag[]>([]);
@@ -488,6 +494,8 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canInvisi
     { id: "scontro", label: "Combattimento", icon: <Swords />, show: true },
     { id: "incidente", label: "Incidente", icon: <Bandage />, show: true },
     { id: "oggetti", label: "Oggetti", icon: <Package />, show: true },
+    // la cassa compare quando c'è dentro qualcosa (lo staff la vede sempre per riempirla)
+    { id: "cassa", label: "Cassa comune", icon: <Archive />, show: canStash || stash.rows.length > 0 },
     { id: "salva", label: "Salva chat", icon: <Save />, show: true },
     { id: "master", label: "Master", icon: <Crown />, show: canNarrate || canModerate },
     { id: "impostazioni", label: "Impostazioni", icon: <SlidersHorizontal />, show: true },
@@ -725,7 +733,13 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canInvisi
           )}
           {tools.includes("oggetti") && (
             <ChatToolWindow title="Oggetti" icon={<Package className="size-5" />} onClose={() => closeTool("oggetti")}>
-              <ItemsPanel roomId={roomId} characterId={me.id} onError={setError} />
+              <ItemsPanel roomId={roomId} characterId={me.id} others={others} onError={setError} />
+            </ChatToolWindow>
+          )}
+          {tools.includes("cassa") && (
+            <ChatToolWindow title="Cassa comune" icon={<Archive className="size-5" />} width={520} onClose={() => closeTool("cassa")}>
+              <StashPanel roomId={roomId} characterId={me.id} rows={stash.rows} canManage={canStash} joined={joined} onChanged={stash.reload} onError={setError} />
+              {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
             </ChatToolWindow>
           )}
           {tools.includes("master") && (
@@ -805,7 +819,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canInvisi
                     variant="ghost"
                     size="sm"
                     onClick={() => toggleTool(c.id)}
-                    className={cn("rounded-full", tools.includes(c.id) && "bg-white/10 text-peach")}
+                    className={cn("rounded-full", tools.includes(c.id) && "bg-white/10 text-peach", c.id === "cassa" && stash.rows.length > 0 && "text-peach")}
                     aria-pressed={tools.includes(c.id)}
                     title={c.label}
                     aria-label={c.label}
