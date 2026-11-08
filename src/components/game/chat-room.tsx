@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowLeft, Bandage, ChevronDown, Crown, Dices, Eye, EyeOff, LayoutGrid, LogIn, LogOut, NotebookPen, Package, Save, SendHorizontal, SlidersHorizontal, Swords, Users } from "lucide-react";
@@ -491,25 +492,34 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canInvisible, canD
           </Button>
         )}
       </div>
-      {leaving && (
-        <div className="flex shrink-0 flex-col gap-2 border-b border-peach/30 bg-peach/10 px-3 py-2.5 text-sm sm:px-6">
-          <p>
-            <strong className="text-peach">Vuoi salvare la giocata prima di uscire?</strong>{" "}
-            <span className="text-muted-foreground">Finisce in Utility → Archivio giocate, la vedi solo tu.</span>
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" disabled={busy} onClick={() => exit(true)} className="rounded-full">
-              <Save /> Sì, salva ed esci
-            </Button>
-            <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => exit(false)} className="rounded-full">
-              <LogOut /> No, esci senza salvare
-            </Button>
-            <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => setLeaving(false)} className="rounded-full">
-              Resta in chat
-            </Button>
-          </div>
-        </div>
-      )}
+      {/* uscita dalla giocata: finestra al centro dello schermo, sopra a tutto */}
+      {leaving &&
+        createPortal(
+          <div className="fixed inset-0 z-[2147482000] grid place-items-center bg-night/60 p-4 backdrop-blur-sm">
+            <div role="dialog" aria-modal="true" aria-labelledby="esci-titolo" className="glass flex w-[min(26rem,calc(100vw-2rem))] flex-col gap-4 rounded-2xl p-5 shadow-2xl">
+              <div className="flex flex-col gap-1 text-center">
+                <LogOut className="mx-auto size-7 text-peach" />
+                <h2 id="esci-titolo" className="font-heading text-2xl tracking-wide text-peach">
+                  Esci dalla chat
+                </h2>
+                <p className="text-sm text-muted-foreground">Vuoi salvare la giocata prima di uscire? Finisce in Utility → Archivio giocate e la vedi solo tu.</p>
+              </div>
+              {error && <p className="rounded-lg bg-destructive/15 px-3 py-2 text-center text-sm text-destructive">{error}</p>}
+              <div className="flex flex-col gap-2">
+                <Button type="button" disabled={busy} onClick={() => exit(true)} className="rounded-full">
+                  <Save /> Sì, salva ed esci
+                </Button>
+                <Button type="button" variant="secondary" disabled={busy} onClick={() => exit(false)} className="rounded-full">
+                  <LogOut /> No, esci senza salvare
+                </Button>
+                <Button type="button" variant="ghost" disabled={busy} onClick={() => (setLeaving(false), setError(null))} className="rounded-full">
+                  Resta in chat
+                </Button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
 
       {master && (
         <p className="shrink-0 border-b border-orchid/30 bg-orchid/10 px-4 py-1.5 text-xs text-orchid sm:px-6">
