@@ -484,7 +484,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
                   <span className={cn("size-2 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} title={AVAILABILITY[c.availability].label} />
                   <LevelIcon icon={c.levelIcon} name={c.levelName} className="size-3.5" />
                   <span className="truncate">{c.name}</span>
-                  {c.subTag && <span className="shrink-0 truncate text-[0.65rem] text-peach">· {c.subTag}</span>}
+                  {c.subTag && c.placeKey.startsWith("chat:") && <span className="shrink-0 truncate text-[0.65rem] text-peach">· {c.subTag}</span>}
                   {c.invisible && <EyeOff className="size-3 shrink-0" aria-label="Invisibile" />}
                 </>
               );
