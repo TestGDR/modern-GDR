@@ -21,6 +21,7 @@ import {
 } from "@/components/game/chat-parts";
 import { StashPanel, useRoomStash } from "@/components/game/chat-stash";
 import { ChatTagsBar } from "@/components/game/chat-tags";
+import { ChatTurnsBar, useRoomTurns } from "@/components/game/chat-turns";
 import { CombatPanel } from "@/components/game/combat-panel";
 import { IncidentPanel } from "@/components/game/incident-panel";
 import type { CharacterStatus } from "@/components/game/status-icons";
@@ -168,6 +169,10 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
   }, [loadStatuses]);
   const invisible = data.invisible;
   const canWrite = !!me && (joined || invisible);
+
+  /* ---------- Turni ---------- */
+  const turns = useRoomTurns(roomId);
+  const presentIds = useMemo(() => new Set(present.map((p) => p.character_id)), [present]);
 
   /* ---------- Cassa comune ---------- */
   const stash = useRoomStash(roomId, me?.id ?? null);
@@ -648,6 +653,19 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
 
       {!blurred && (
         <ChatTagsBar roomId={roomId} tags={tags} current={myTag} canPick={joined} canManage={canTags} onPick={pickTag} onChanged={loadTags} onError={setTagError} />
+      )}
+      {!blurred && (
+        <ChatTurnsBar
+          roomId={roomId}
+          rows={turns.rows}
+          meId={me?.id ?? null}
+          myScene={myTag ?? ""}
+          presentIds={presentIds}
+          tags={tags}
+          canManage={canNarrate}
+          onChanged={turns.reload}
+          onError={setTagError}
+        />
       )}
       {tagError && <p className="shrink-0 border-b border-border px-4 py-1 text-xs text-destructive sm:px-6">{tagError}</p>}
 
