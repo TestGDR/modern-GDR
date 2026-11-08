@@ -12,6 +12,7 @@ import { EDIT_WINDOW_MS } from "@/lib/chat";
 import { firstName, formatTime, initials } from "@/lib/format";
 import type { Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ChatStatusIcons, type CharacterStatus } from "@/components/game/status-icons";
 
 // Pezzi della chat di gioco: righe dei messaggi, dadi, modalità master, invitati.
 
@@ -87,9 +88,11 @@ type RowProps = {
   onReroll?: (m: Message, kind: "fortunato" | "sfortunato") => void;
   /** sotto-tag della chat da cui è stata scritta l'azione */
   subTag?: string | null;
+  /** stati del personaggio (alcol, droghe, insonnia): accanto al nome si vedono quelli attivi */
+  status?: CharacterStatus | null;
 };
 
-export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit, onDelete, avatar, onLook, canSeeRolls = false, rerolls = [], onReroll, subTag = null }: RowProps) {
+export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit, onDelete, avatar, onLook, canSeeRolls = false, rerolls = [], onReroll, subTag = null, status = null }: RowProps) {
   const time = formatTime(m.created_at);
   const names = mine ? [] : myNames;
   const editable =
@@ -245,6 +248,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
             {to}
           </span>
           {npc && <span className="rounded bg-orchid/25 px-1.5 py-0.5 text-[0.6rem] font-semibold tracking-wider text-orchid uppercase">PNG</span>}
+          {!npc && <ChatStatusIcons status={status} />}
           {subTag && <span className="truncate rounded-full bg-peach/15 px-2 py-0.5 text-[0.65rem] text-peach">{subTag}</span>}
           <span className="ml-auto text-xs text-muted-foreground">{time}</span>
           {tools}

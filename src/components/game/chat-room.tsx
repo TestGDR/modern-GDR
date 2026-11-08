@@ -23,6 +23,7 @@ import { StashPanel, useRoomStash } from "@/components/game/chat-stash";
 import { ChatTagsBar } from "@/components/game/chat-tags";
 import { CombatPanel } from "@/components/game/combat-panel";
 import { IncidentPanel } from "@/components/game/incident-panel";
+import type { CharacterStatus } from "@/components/game/status-icons";
 import { NeedsCharacter } from "@/components/game/needs-character";
 import { SafetyLight } from "@/components/game/safety-light";
 import { Button } from "@/components/ui/button";
@@ -143,6 +144,28 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
   }, [supabase, roomId, loadPresence, loadPresentTags]);
 
   const joined = !!me && present.some((p) => p.character_id === me.id);
+
+  /* ---------- Stati dei presenti (alcol, droghe, insonnia) accanto al nome ---------- */
+  const [statuses, setStatuses] = useState<Record<string, CharacterStatus>>({});
+  const presentKey = present.map((p) => p.character_id).sort().join(",");
+  const loadStatuses = useCallback(async () => {
+    if (!presentKey) return;
+    const { data: map } = await supabase.rpc("characters_status_get", { p_characters: presentKey.split(",") });
+    if (map) setStatuses(map as Record<string, CharacterStatus>);
+  }, [supabase, presentKey]);
+  const loadStatusesRef = useRef(loadStatuses);
+  useEffect(() => {
+    loadStatusesRef.current = loadStatuses;
+    // all'entrata (e quando cambiano i presenti), poi ogni 3 minuti a scheda visibile
+    const first = setTimeout(loadStatuses, 0);
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") loadStatuses();
+    }, 180_000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(t);
+    };
+  }, [loadStatuses]);
   const invisible = data.invisible;
   const canWrite = !!me && (joined || invisible);
 
@@ -253,6 +276,8 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
         if (!own && msg.kind !== "sistema") playEvent("chat");
         addMessage(msg, own);
         if (msg.kind === "combattimento") setCombatTick((n) => n + 1);
+        // qualcuno ha bevuto o preso qualcosa: gli stati si rileggono
+        if (msg.kind === "sistema" && /Resistenza/.test(msg.content)) loadStatusesRef.current();
         if (msg.kind === "sistema") {
           // la modalità master cambia i limiti: arrivano dal server
           if (/modalità master/i.test(msg.content)) router.refresh();
@@ -694,6 +719,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
                     rerolls={[]}
                     onReroll={reroll}
                     subTag={msgTag(m)}
+                    status={m.kind === "azione" ? statuses[m.character_id] : null}
                   />
                 </div>
               ) : (
@@ -716,6 +742,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
                   }
                   onReroll={reroll}
                   subTag={msgTag(m)}
+                  status={m.kind === "azione" ? statuses[m.character_id] : null}
                 />
               ),
             )

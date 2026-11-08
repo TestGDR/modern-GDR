@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 // Non attivi: grigio scuro, "Non attivo".
 
 type Alteration = AlterationStage & { phase: "stadio" | "postumi"; stage?: number; until: string; source: string };
-type Status = {
+export type CharacterStatus = {
   alcol: Alteration | null;
   droga: Alteration | null;
   insonnia: { has_trait: boolean; active: boolean; total: number | null; cd: number | null; malus: number; until: string };
@@ -34,7 +34,7 @@ type Item = {
 
 export function SheetStatus({ characterId }: { characterId: string }) {
   const [level, setLevel] = useState<Level | null>(null);
-  const [status, setStatus] = useState<Status | null>(null);
+  const [status, setStatus] = useState<CharacterStatus | null>(null);
   const [now, setNow] = useState(0);
   const [open, setOpen] = useState<string | null>(null);
 
@@ -48,7 +48,7 @@ export function SheetStatus({ characterId }: { characterId: string }) {
       ]).then(([l, s]) => {
         if (!alive) return;
         setLevel((l.data ?? null) as Level | null);
-        setStatus((s.data ?? null) as Status | null);
+        setStatus((s.data ?? null) as CharacterStatus | null);
         setNow(Date.now());
       });
     load();
@@ -62,45 +62,7 @@ export function SheetStatus({ characterId }: { characterId: string }) {
     };
   }, [characterId]);
 
-  const alteration = (key: "alcol" | "droga", label: string, icon: LucideIcon, color: string): Item => {
-    const a = status?.[key] ?? null;
-    return {
-      key,
-      label,
-      icon,
-      color,
-      active: !!a,
-      title: a?.name ?? label,
-      lines: a
-        ? [
-            a.phase === "stadio" ? `${label} · stadio ${a.stage} di 3 · da ${a.source}` : `Postumi · da ${a.source}`,
-            a.text,
-            modsText(a.mods) ? `Malus ai tiri: ${modsText(a.mods)}` : "",
-          ].filter(Boolean)
-        : [],
-      until: a?.until ?? null,
-    };
-  };
-  const ins = status?.insonnia;
-  const items: Item[] = [
-    alteration("alcol", "Alcol", Wine, "text-peach border-peach/50 bg-peach/15"),
-    alteration("droga", "Droghe", Pill, "text-orchid border-orchid/50 bg-orchid/15"),
-    {
-      key: "insonnia",
-      label: "Insonnia",
-      icon: Moon,
-      color: "text-lavender border-lavender/50 bg-lavender/15",
-      active: !!ins?.active,
-      title: "Notte in bianco",
-      lines: ins?.active
-        ? [
-            `Stanotte non ha chiuso occhio (resistenza ${ins.total} contro ${ins.cd}): occhiaie, sbadigli, poca concentrazione.`,
-            `Malus a tutti i tiri: −${ins.malus}`,
-          ]
-        : [],
-      until: ins?.active ? ins.until : null,
-    },
-  ];
+  const items = statusItems(status);
 
   return (
     <span className="flex flex-col items-center gap-2">
@@ -127,8 +89,78 @@ export function SheetStatus({ characterId }: { characterId: string }) {
   );
 }
 
+
+/** Le tre icone (alcol, droghe, insonnia) con la loro descrizione */
+function statusItems(status: CharacterStatus | null): Item[] {
+  const alteration = (key: "alcol" | "droga", label: string, icon: LucideIcon, color: string): Item => {
+    const a = status?.[key] ?? null;
+    return {
+      key,
+      label,
+      icon,
+      color,
+      active: !!a,
+      title: a?.name ?? label,
+      lines: a
+        ? [
+            a.phase === "stadio" ? `${label} · stadio ${a.stage} di 3 · da ${a.source}` : `Postumi · da ${a.source}`,
+            a.text,
+            modsText(a.mods) ? `Malus ai tiri: ${modsText(a.mods)}` : "",
+          ].filter(Boolean)
+        : [],
+      until: a?.until ?? null,
+    };
+  };
+  const ins = status?.insonnia;
+  return [
+    alteration("alcol", "Alcol", Wine, "text-peach border-peach/50 bg-peach/15"),
+    alteration("droga", "Droghe", Pill, "text-orchid border-orchid/50 bg-orchid/15"),
+    {
+      key: "insonnia",
+      label: "Insonnia",
+      icon: Moon,
+      color: "text-lavender border-lavender/50 bg-lavender/15",
+      active: !!ins?.active,
+      title: "Notte in bianco",
+      lines: ins?.active
+        ? [
+            `Stanotte non ha chiuso occhio (resistenza ${ins.total} contro ${ins.cd}): occhiaie, sbadigli, poca concentrazione.`,
+            `Malus a tutti i tiri: −${ins.malus}`,
+          ]
+        : [],
+      until: ins?.active ? ins.until : null,
+    },
+  ];
+}
+
+/** In chat, accanto al nome: solo gli stati attivi, piccoli; cliccando la descrizione */
+export function ChatStatusIcons({ status }: { status: CharacterStatus | null | undefined }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const [now, setNow] = useState(0);
+  if (!status) return null;
+  const active = statusItems(status).filter((it) => it.active);
+  if (!active.length) return null;
+  return (
+    <span className="flex shrink-0 items-center gap-1">
+      {active.map((it) => (
+        <StatusButton
+          key={it.key}
+          item={it}
+          small
+          open={open === it.key}
+          now={now}
+          onToggle={() => {
+            setNow(Date.now());
+            setOpen(open === it.key ? null : it.key);
+          }}
+        />
+      ))}
+    </span>
+  );
+}
+
 /** Stato attivo: icona colorata; cliccando si apre la descrizione (sempre dentro lo schermo) */
-function StatusButton({ item, open, now, onToggle }: { item: Item; open: boolean; now: number; onToggle: () => void }) {
+function StatusButton({ item, open, now, onToggle, small = false }: { item: Item; open: boolean; now: number; onToggle: () => void; small?: boolean }) {
   const anchor = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
@@ -156,9 +188,9 @@ function StatusButton({ item, open, now, onToggle }: { item: Item; open: boolean
           onClick={onToggle}
           aria-expanded={open}
           aria-label={`${item.label}: ${item.title}`}
-          className={cn("grid size-7 place-items-center rounded-full border shadow-[0_0_10px_-2px_currentColor] transition-transform hover:scale-110", item.color)}
+          className={cn("grid place-items-center rounded-full border shadow-[0_0_10px_-2px_currentColor] transition-transform hover:scale-110", small ? "size-5" : "size-7", item.color)}
         >
-          <item.icon className="size-3.5" />
+          <item.icon className={small ? "size-3" : "size-3.5"} />
         </button>
       </HoverTip>
       {open &&
