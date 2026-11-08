@@ -6,6 +6,7 @@ import Link from "next/link";
 import { CharacterAvatar } from "@/components/game/character-avatar";
 import { Button } from "@/components/ui/button";
 import { firstName, formatTime, initials } from "@/lib/format";
+import { refreshCounters } from "@/lib/counters";
 import { createClient } from "@/lib/supabase/client";
 import { useResync } from "@/lib/use-resync";
 import { useStickToBottom } from "@/lib/use-stick-bottom";
@@ -287,7 +288,11 @@ export function MessagesApp({
         .eq("recipient_id", me.id)
         .eq("sender_id", dmId)
         .is("read_at", null)
-        .then(() => setDms((prev) => prev?.map((m) => (m.sender_id === dmId && m.recipient_id === me.id && !m.read_at ? { ...m, read_at: now } : m)) ?? prev));
+        .then(() => {
+          setDms((prev) => prev?.map((m) => (m.sender_id === dmId && m.recipient_id === me.id && !m.read_at ? { ...m, read_at: now } : m)) ?? prev);
+          // il numero in alto (e il suono che si ripete) si azzera subito
+          refreshCounters(true);
+        });
     } else if (current.kind === "group" && activeGroup) {
       const last = groupMsgs.filter((m) => m.group_id === activeGroup.id).at(-1)?.created_at;
       if (!last) return;
@@ -296,20 +301,29 @@ export function MessagesApp({
         .update({ last_read_at: last })
         .eq("group_id", activeGroup.id)
         .eq("user_id", me.id)
-        .then(() => setMembers((prev) => prev.map((m) => (m.group_id === activeGroup.id && m.user_id === me.id ? { ...m, last_read_at: last } : m))));
+        .then(() => {
+          setMembers((prev) => prev.map((m) => (m.group_id === activeGroup.id && m.user_id === me.id ? { ...m, last_read_at: last } : m)));
+          refreshCounters(true);
+        });
     } else if (current.kind === "global") {
       const last = broadcasts.at(-1)?.created_at;
       if (!last) return;
       supabase
         .from("off_broadcast_reads")
         .upsert({ user_id: me.id, channel, last_read_at: last })
-        .then(() => setBroadcastRead(last));
+        .then(() => {
+          setBroadcastRead(last);
+          refreshCounters(true);
+        });
     } else if (current.kind === "system") {
       supabase
         .from("system_messages")
         .update({ read_at: now })
         .is("read_at", null)
-        .then(() => setSystemMsgs((prev) => prev.map((m) => (m.read_at ? m : { ...m, read_at: now }))));
+        .then(() => {
+          setSystemMsgs((prev) => prev.map((m) => (m.read_at ? m : { ...m, read_at: now })));
+          refreshCounters(true);
+        });
     }
   }, [supabase, channel, current, unreadHere, dmId, activeGroup, groupMsgs, broadcasts, me.id]);
 
@@ -473,6 +487,7 @@ export function MessagesApp({
       if (otherId) setExtra((prev) => prev.filter((x) => x !== otherId));
     }
     if (active === c.key) setActive(null);
+    refreshCounters(true);
   }
 
   const isOwner = activeGroup?.created_by === me.id;

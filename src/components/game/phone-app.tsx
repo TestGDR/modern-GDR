@@ -44,6 +44,7 @@ import {
   type PhoneProfile,
   type PhoneThread,
 } from "@/lib/phone";
+import { refreshCounters } from "@/lib/counters";
 import { createClient } from "@/lib/supabase/client";
 import { useResync } from "@/lib/use-resync";
 import { useStickToBottom } from "@/lib/use-stick-bottom";
@@ -303,6 +304,8 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
     const now = new Date().toISOString();
     setMembers((prev) => prev.map((m) => (m.thread_id === openThread && m.number_id === current ? { ...m, last_read_at: now } : m)));
     setInbox((prev) => (openThread && prev[openThread] ? { ...prev, [openThread]: { ...prev[openThread], unread: 0 } } : prev));
+    // il numero sull'icona del telefono (e il suono che si ripete) si azzera subito
+    refreshCounters(true);
   }, [openThread, current]);
 
   // ----- nomi -----

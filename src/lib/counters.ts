@@ -14,13 +14,10 @@ import { createClient } from "@/lib/supabase/client";
 //   ticket (servono per i suoni); il resto aspetta il ritorno sulla scheda
 // - in più un ricontrollo ogni 3 minuti, solo a scheda visibile
 
-export type ForumHighlight = { post_id: number; thread_id: string; board_slug: string; title: string; highlighted_by: string | null };
-
 export type Counters = {
   off: number;
   phone: PhoneState;
   forum_unread: number;
-  forum_highlights: ForumHighlight[];
   social: { dms: number; activity: number };
   tickets: string[];
   news: number;
@@ -38,7 +35,6 @@ export const EMPTY_COUNTERS: Counters = {
   off: 0,
   phone: { unread: 0, call: null },
   forum_unread: 0,
-  forum_highlights: [],
   social: { dms: 0, activity: 0 },
   tickets: [],
   news: 0,
@@ -57,6 +53,8 @@ const RESYNC_MS = 180_000;
 let state: Counters = EMPTY_COUNTERS;
 let fetchedAt = 0;
 let inflight: Promise<void> | null = null;
+// richiesta forzata arrivata durante una lettura: se ne fa un'altra subito dopo
+let again = false;
 let debounce: ReturnType<typeof setTimeout> | null = null;
 // avvisi arrivati con la scheda nascosta: si aggiorna al ritorno
 let staleWhileHidden = false;
@@ -70,7 +68,11 @@ function emit() {
 export function refreshCounters(force = false): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   if (!force && Date.now() - fetchedAt < CACHE_MS) return Promise.resolve();
-  if (inflight) return inflight;
+  if (inflight) {
+    // la lettura in corso può avere i numeri di prima (es. messaggio appena letto)
+    if (force) again = true;
+    return inflight;
+  }
   inflight = (async () => {
     try {
       const { data, error } = await createClient().rpc("my_counters");
@@ -81,6 +83,10 @@ export function refreshCounters(force = false): Promise<void> {
       }
     } finally {
       inflight = null;
+      if (again) {
+        again = false;
+        void refreshCounters(true);
+      }
     }
   })();
   return inflight;
