@@ -27,10 +27,12 @@ export type OnlinePlayer = {
   placeKey: string;
   /** Messaggio OFF scritto dal giocatore */
   note: string;
+  /** sotto-tag della chat in cui si trova (se ne ha scelto uno) */
+  subTag: string;
   invisible: boolean;
 };
 
-export type PresenceInfo = { availability: Availability; place: string; placeKey: string; note?: string };
+export type PresenceInfo = { availability: Availability; place: string; placeKey: string; note?: string; subTag?: string };
 
 /** Ogni quanto si guarda se mandare il segnale */
 const TICK_MS = 60_000;
@@ -65,6 +67,7 @@ export function usePresence(info: PresenceInfo) {
   const [attempt, setAttempt] = useState(0);
   const payload = JSON.stringify(info);
   const latest = useRef(payload);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   useEffect(() => {
     latest.current = payload;
   }, [payload]);
@@ -87,6 +90,7 @@ export function usePresence(info: PresenceInfo) {
           place: r.info?.place ?? "",
           placeKey: r.info?.placeKey ?? "",
           note: r.info?.note ?? "",
+          subTag: r.info?.subTag ?? "",
           invisible: r.invisible,
         }))
         .sort(byAvailabilityThenName),
@@ -122,10 +126,14 @@ export function usePresence(info: PresenceInfo) {
     let disposed = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
     const ch = supabase.channel("online", { config: { presence: { key: userId } } });
+    channelRef.current = ch;
     ch.on("presence", { event: "sync" }, () => {
       // qualcuno è entrato o uscito: rileggo l'elenco dal database (raggruppato)
       softRefresh();
-    }).subscribe((status) => {
+    })
+      // qualcuno ha cambiato sotto-tag in chat: anche qui si rilegge (raggruppato)
+      .on("broadcast", { event: "posto" }, () => softRefresh())
+      .subscribe((status) => {
       if (disposed) return;
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
         // collegamento caduto: lo ricreo da zero tra poco
@@ -138,6 +146,7 @@ export function usePresence(info: PresenceInfo) {
     return () => {
       disposed = true;
       clearTimeout(retry);
+      if (channelRef.current === ch) channelRef.current = null;
       supabase.removeChannel(ch);
     };
   }, [supabase, userId, softRefresh, attempt]);
@@ -183,8 +192,16 @@ export function usePresence(info: PresenceInfo) {
   }, [supabase, refresh, softRefresh]);
 
   // Aprire la pagina, cambiare posto o disponibilità sono azioni: segnale subito, elenco raggruppato
+  const lastSubTag = useRef(info.subTag ?? "");
   useEffect(() => {
-    supabase.rpc("touch_online", { p_info: JSON.parse(payload), p_action: true }).then(() => {
+    const parsed = JSON.parse(payload) as PresenceInfo;
+    supabase.rpc("touch_online", { p_info: parsed, p_action: true }).then(() => {
+      // cambio di sotto-tag: lo sanno subito anche gli altri
+      const sub = parsed.subTag ?? "";
+      if (sub !== lastSubTag.current) {
+        lastSubTag.current = sub;
+        channelRef.current?.send({ type: "broadcast", event: "posto", payload: {} });
+      }
       if (!lastRefresh.current) {
         // prima apertura: l'elenco serve subito
         lastRefresh.current = Date.now();

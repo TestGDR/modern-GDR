@@ -85,9 +85,11 @@ type RowProps = {
   /** Ritiro del d10: Fortunato (chi tira) o Sfortunato (il Master) */
   rerolls?: ("fortunato" | "sfortunato")[];
   onReroll?: (m: Message, kind: "fortunato" | "sfortunato") => void;
+  /** sotto-tag della chat da cui è stata scritta l'azione */
+  subTag?: string | null;
 };
 
-export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit, onDelete, avatar, onLook, canSeeRolls = false, rerolls = [], onReroll }: RowProps) {
+export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit, onDelete, avatar, onLook, canSeeRolls = false, rerolls = [], onReroll, subTag = null }: RowProps) {
   const time = formatTime(m.created_at);
   const names = mine ? [] : myNames;
   const editable =
@@ -243,6 +245,7 @@ export function MessageRow({ message: m, myNames, mine, canModerate, now, onEdit
             {to}
           </span>
           {npc && <span className="rounded bg-orchid/25 px-1.5 py-0.5 text-[0.6rem] font-semibold tracking-wider text-orchid uppercase">PNG</span>}
+          {subTag && <span className="truncate rounded-full bg-peach/15 px-2 py-0.5 text-[0.65rem] text-peach">{subTag}</span>}
           <span className="ml-auto text-xs text-muted-foreground">{time}</span>
           {tools}
         </header>

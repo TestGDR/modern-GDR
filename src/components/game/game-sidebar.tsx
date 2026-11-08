@@ -42,6 +42,7 @@ import { AVAILABILITY, loadPresenceState, savePresenceState, type Availability }
 import { onCurrentMap, readCurrentMap } from "@/lib/current-map";
 import { initials } from "@/lib/format";
 import { useSeenCounter } from "@/lib/counters";
+import { useMySubTag } from "@/lib/chat-subtag";
 import { applyPrefs, loadPrefs, loadSkin } from "@/lib/prefs";
 import { createClient } from "@/lib/supabase/client";
 import { setInvisible } from "@/lib/actions/chat";
@@ -314,7 +315,10 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
   // messaggio OFF personale, mostrato sotto il nome nei presenti estesi
   const [note, setNote] = useState("");
   const [noteDraft, setNoteDraft] = useState("");
-  const { players, me, refresh } = usePresence({ availability, place, placeKey, note });
+  // il mio sotto-tag nella chat aperta (lo scrive la chat)
+  const mySub = useMySubTag();
+  const subTag = mySub.roomId && placeKey === `chat:${mySub.roomId}` && mySub.name ? mySub.name : undefined;
+  const { players, me, refresh } = usePresence({ availability, place, placeKey, note, subTag });
   // disponibilità e messaggio OFF sono dell'account: si leggono dal database
   useEffect(() => {
     if (!me) return;
@@ -406,6 +410,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
             <span className="flex items-center gap-2">
               <span className={cn("size-2 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} title={AVAILABILITY[c.availability].label} />
               <span className={cn("truncate text-sm font-medium", seeking && "font-semibold text-peach")}>{c.name}</span>
+              {c.subTag && c.placeKey.startsWith("chat:") && <span className="shrink-0 truncate text-[0.7rem] text-peach">· {c.subTag}</span>}
               {c.userId === me && <span className="text-xs text-muted-foreground">(tu)</span>}
               {c.invisible && <EyeOff className="size-3.5 shrink-0 text-muted-foreground" aria-label="Invisibile" />}
               {seeking && <span className="ml-auto shrink-0 truncate text-[0.7rem] text-muted-foreground">{c.placeKey.startsWith("chat:") ? c.place || "In chat" : "Mappa"}</span>}
@@ -479,6 +484,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
                   <span className={cn("size-2 shrink-0 rounded-full", AVAILABILITY[c.availability].dot)} title={AVAILABILITY[c.availability].label} />
                   <LevelIcon icon={c.levelIcon} name={c.levelName} className="size-3.5" />
                   <span className="truncate">{c.name}</span>
+                  {c.subTag && <span className="shrink-0 truncate text-[0.65rem] text-peach">· {c.subTag}</span>}
                   {c.invisible && <EyeOff className="size-3 shrink-0" aria-label="Invisibile" />}
                 </>
               );

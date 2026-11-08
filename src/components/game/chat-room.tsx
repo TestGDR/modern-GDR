@@ -31,6 +31,7 @@ import { HISTORY_SIZE, KIND_LABEL, freshSince, isFresh } from "@/lib/chat";
 import { playEvent } from "@/lib/notify-sound";
 import type { ChatPresent, ChatRoomData } from "@/lib/data";
 import { createClient } from "@/lib/supabase/client";
+import { setMySubTag } from "@/lib/chat-subtag";
 import { useResync } from "@/lib/use-resync";
 import type { Message, MessageKind, RoomTag } from "@/lib/types";
 import { firstName } from "@/lib/format";
@@ -197,6 +198,14 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
     } else setTagError(null);
   }
   const tagName = (id: string | null | undefined) => tags.find((t) => t.id === id)?.name ?? "Principale";
+  /** nome del sotto-tag di un messaggio (solo se ne ha uno che esiste ancora) */
+  const msgTag = (m: Message) => (m.tag_id ? (tags.find((t) => t.id === m.tag_id)?.name ?? null) : null);
+  // il mio sotto-tag va anche nell'elenco «Online» della barra laterale
+  const myTagName = myTag ? (tags.find((t) => t.id === myTag)?.name ?? null) : null;
+  useEffect(() => {
+    setMySubTag(roomId, myTagName);
+  }, [roomId, myTagName]);
+  useEffect(() => () => setMySubTag(null, null), []);
   /** messaggio di un altro sotto-tag: più piccolo e sbiadito (la narrazione del master e i messaggi di sistema mai) */
   const otherTag = (m: Message) => tags.length > 0 && m.kind !== "sistema" && m.kind !== "master" && (m.tag_id ?? null) !== myTag;
 
@@ -684,6 +693,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
                     canSeeRolls={canNarrate || canCombat}
                     rerolls={[]}
                     onReroll={reroll}
+                    subTag={msgTag(m)}
                   />
                 </div>
               ) : (
@@ -705,6 +715,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
                       : []
                   }
                   onReroll={reroll}
+                  subTag={msgTag(m)}
                 />
               ),
             )
