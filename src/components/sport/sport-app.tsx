@@ -219,7 +219,6 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
             In carriera: {m.events} eventi
             {m.avg_grade !== null && ` · media voto ${m.avg_grade}`}
             {m.highlights > 0 && ` · ${m.highlights} highlight`} · stagioni di eleggibilità usate: {m.seasons_used} su 4
-            {m.redshirt_years > 0 && ` · Redshirt: ${m.redshirt_years}`}
           </p>
           <TrainingBox
             m={m}
@@ -245,7 +244,7 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
                 className={cn(inputClass, "h-8 w-32")}
                 value={m.training_intensity}
                 disabled={busy || m.season_started}
-                onChange={(e) => call("sport_set_training", { p_character: characterId, p_sport: m.sport_id, p_intensity: e.target.value, p_redshirt: m.squad_status === "redshirt" })}
+                onChange={(e) => call("sport_set_training", { p_character: characterId, p_sport: m.sport_id, p_intensity: e.target.value, p_redshirt: false })}
               >
                 {(Object.keys(INTENSITY_LABEL) as (keyof typeof INTENSITY_LABEL)[]).map((k) => (
                   <option key={k} value={k}>
@@ -254,18 +253,9 @@ function MySportPanel({ characterId, catalog, mine, onChange }: { characterId: s
                 ))}
               </select>
             </label>
-            <label className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                checked={m.squad_status === "redshirt"}
-                disabled={busy || m.season_started}
-                onChange={(e) => call("sport_set_training", { p_character: characterId, p_sport: m.sport_id, p_intensity: m.training_intensity, p_redshirt: e.target.checked })}
-              />
-              Redshirt quest&apos;anno
-            </label>
           </div>
           <p className="text-[0.7rem] text-muted-foreground">
-            Leggera: −1 ai tiri sportivi ma +1 agli esami · Normale · Intensa: +1 ai tiri sportivi ma −1 agli esami. Vale per tutta la stagione: intensità e Redshirt si scelgono prima del primo evento.
+            Leggera: −1 ai tiri sportivi ma +1 agli esami · Normale · Intensa: +1 ai tiri sportivi ma −1 agli esami. Vale per tutta la stagione: l’intensità si sceglie prima del primo evento.
           </p>
         </section>
       ))}

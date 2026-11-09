@@ -653,7 +653,10 @@ function RosterTab({ sport, lookup }: { sport: Sport; lookup: Lookup }) {
             <label className="flex flex-col gap-0.5">
               <span className="text-[0.65rem] text-muted-foreground uppercase">Stato (qui il Capitano)</span>
               <select className={cn(inputClass, "h-8 w-40")} value={r.squad_status} disabled={busy} onChange={(e) => update(r.id, { squad_status: e.target.value as SportRosterEntry["squad_status"] })}>
-                {(Object.keys(SQUAD_LABEL) as SportRosterEntry["squad_status"][]).map((k) => (
+                {(Object.keys(SQUAD_LABEL) as SportRosterEntry["squad_status"][])
+                  // il Redshirt non si usa più
+                  .filter((k) => k !== "redshirt")
+                  .map((k) => (
                   <option key={k} value={k}>
                     {SQUAD_LABEL[k]}
                   </option>
