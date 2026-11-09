@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarX2, Check, Dices, Ear, Search, Trash2, X } from "lucide-react";
+import { ArrowUpDown, CalendarDays, CalendarX2, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Dices, Ear, MapPin, Search, Trash2, X } from "lucide-react";
 import { FloatingWindow } from "@/components/floating-window";
 import { Button } from "@/components/ui/button";
 import { firstName, formatDateTime } from "@/lib/format";
@@ -71,7 +71,7 @@ export function CommunityButtons({
         <FloatingWindow
           label={open === "assenze" ? "Assenze" : open === "ricerca" ? "Ricerca di gioco" : "Pettegolezzi"}
           onClose={() => setOpen(null)}
-          initialWidth={560}
+          initialWidth={open === "pettegolezzi" ? 980 : 560}
           header={
             <h2 className="pb-4 font-heading text-3xl tracking-wide">{open === "assenze" ? "Assenze" : open === "ricerca" ? "Cerco gioco" : "Voci e pettegolezzi"}</h2>
           }
@@ -427,23 +427,7 @@ function GossipPanel({ canManage, characterId, onChanged }: { canManage: boolean
           )}
         </>
       ) : (
-        <>
-          <section className="flex flex-col gap-2">
-            {archive === null && <p className="text-sm text-muted-foreground">Caricamento…</p>}
-            {archive !== null && archive.length === 0 && <p className="text-sm text-muted-foreground">Ancora nessun pettegolezzo.</p>}
-            <ul className="flex flex-col gap-2">
-              {(archive ?? []).map((r) => (
-                  <li key={r.id} className="rounded-xl border border-peach/20 bg-white/5 p-3 text-sm">
-                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Ear className="size-3.5 text-peach" /> {r.zone} · {formatDateTime(r.created_at)}
-                    </p>
-                    <p className="mt-1 leading-relaxed whitespace-pre-line italic">«{r.body}»</p>
-                    {canManage && <DeleteReport id={r.id} onDone={() => (load(), onChanged())} />}
-                  </li>
-              ))}
-            </ul>
-          </section>
-        </>
+        <GossipArchive rows={archive} canManage={canManage} onDeleted={() => (load(), onChanged())} />
       )}
     </div>
   );
@@ -713,5 +697,207 @@ function DeleteReport({ id, onDone }: { id: string; onDone: () => void }) {
     >
       <Trash2 className="size-4" />
     </button>
+  );
+}
+
+/* ------------------------------ Archivio dei pettegolezzi ------------------------------ */
+
+const ROME = "Europe/Rome";
+const dayKey = (d: Date) => d.toLocaleDateString("it-IT", { timeZone: ROME });
+const hourOf = (d: Date) => d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: ROME });
+
+/** «8 nov, 18:26» (con l'anno se non è quello in corso) */
+function longWhen(iso: string, now: number) {
+  const d = new Date(iso);
+  const yearOf = (x: Date) => x.toLocaleDateString("it-IT", { year: "numeric", timeZone: ROME });
+  const sameYear = yearOf(d) === yearOf(new Date(now));
+  const day = d.toLocaleDateString("it-IT", { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }), timeZone: ROME }).replace(".", "");
+  return `${day}, ${hourOf(d)}`;
+}
+
+/** «Oggi, 18:26», «Ieri, 18:26» o la data */
+function shortWhen(iso: string, now: number) {
+  const d = new Date(iso);
+  if (dayKey(d) === dayKey(new Date(now))) return `Oggi, ${hourOf(d)}`;
+  if (dayKey(d) === dayKey(new Date(now - 86_400_000))) return `Ieri, ${hourOf(d)}`;
+  return longWhen(iso, now);
+}
+
+const PAGE_SIZE = 5;
+const DAYS = [
+  { value: "tutti", label: "Tutti i giorni", ms: 0 },
+  { value: "oggi", label: "Oggi", ms: 0 },
+  { value: "7", label: "Ultimi 7 giorni", ms: 7 * 86_400_000 },
+  { value: "30", label: "Ultimi 30 giorni", ms: 30 * 86_400_000 },
+] as const;
+type DaysValue = (typeof DAYS)[number]["value"];
+
+const pill = "relative flex h-10 items-center gap-2 rounded-full border border-white/15 bg-night/30 pl-3 pr-2 text-sm";
+const pillSelect = "h-full min-w-0 cursor-pointer appearance-none bg-transparent pr-6 text-sm text-foreground outline-none [&>option]:bg-night";
+const pageBtn =
+  "grid h-8 w-11 place-items-center rounded-full border border-white/15 text-muted-foreground hover:bg-white/10 hover:text-white disabled:opacity-35 disabled:hover:bg-transparent";
+
+/** Archivio: cerca, filtra per zona e giorno, elenco a pagine e pettegolezzo aperto accanto */
+function GossipArchive({ rows, canManage, onDeleted }: { rows: ArchiveRow[] | null; canManage: boolean; onDeleted: () => void }) {
+  const [now] = useState(() => Date.now());
+  const [query, setQuery] = useState("");
+  const [zone, setZone] = useState("");
+  const [days, setDays] = useState<DaysValue>("tutti");
+  const [newest, setNewest] = useState(true);
+  const [page, setPage] = useState(0);
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const zones = useMemo(() => [...new Set((rows ?? []).map((r) => r.zone).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [rows]);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const range = DAYS.find((d) => d.value === days);
+    const list = (rows ?? []).filter((r) => {
+      if (zone && r.zone !== zone) return false;
+      if (q && !`${r.body} ${r.zone}`.toLowerCase().includes(q)) return false;
+      if (days === "oggi" && dayKey(new Date(r.created_at)) !== dayKey(new Date(now))) return false;
+      if (range && range.ms > 0 && now - Date.parse(r.created_at) > range.ms) return false;
+      return true;
+    });
+    return newest ? list : [...list].reverse();
+  }, [rows, query, zone, days, newest, now]);
+
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const current = Math.min(page, pages - 1);
+  const visible = filtered.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
+  // aperto: quello scelto, se è ancora tra i risultati; altrimenti il primo della pagina
+  const open = filtered.find((r) => r.id === selected) ?? visible[0] ?? null;
+  // cambiando un filtro si torna alla prima pagina
+  const resetPage = () => {
+    setPage(0);
+    setSelected(null);
+  };
+  const goTo = (p: number) => {
+    setPage(Math.max(0, Math.min(pages - 1, p)));
+    setSelected(null);
+  };
+
+  if (rows === null) return <p className="text-sm text-muted-foreground">Caricamento…</p>;
+  if (rows.length === 0) return <p className="text-sm text-muted-foreground">Ancora nessun pettegolezzo.</p>;
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Ricerca e filtri */}
+      <div className="flex flex-wrap items-center gap-2 rounded-3xl border border-white/10 bg-white/5 p-2">
+        <label className={cn(pill, "min-w-48 flex-1")}>
+          <Search className="size-4 shrink-0 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(e) => (setQuery(e.target.value), resetPage())}
+            placeholder="Cerca un pettegolezzo…"
+            aria-label="Cerca un pettegolezzo"
+            className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          />
+        </label>
+        <label className={pill}>
+          <MapPin className="size-4 shrink-0 text-muted-foreground" />
+          <select value={zone} onChange={(e) => (setZone(e.target.value), resetPage())} aria-label="Zona" className={pillSelect}>
+            <option value="">Tutte le zone</option>
+            {zones.map((z) => (
+              <option key={z} value={z}>
+                {z}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 size-4 text-muted-foreground" />
+        </label>
+        <label className={pill}>
+          <CalendarDays className="size-4 shrink-0 text-muted-foreground" />
+          <select value={days} onChange={(e) => (setDays(e.target.value as DaysValue), resetPage())} aria-label="Giorno" className={pillSelect}>
+            {DAYS.map((d) => (
+              <option key={d.value} value={d.value}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 size-4 text-muted-foreground" />
+        </label>
+        <label className={cn(pill, "sm:ml-auto")}>
+          <ArrowUpDown className="size-4 shrink-0 text-muted-foreground" />
+          <select value={newest ? "recenti" : "vecchi"} onChange={(e) => (setNewest(e.target.value === "recenti"), resetPage())} aria-label="Ordine" className={pillSelect}>
+            <option value="recenti">Più recenti</option>
+            <option value="vecchi">Meno recenti</option>
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 size-4 text-muted-foreground" />
+        </label>
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">Nessun pettegolezzo con questi filtri.</p>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+          {/* Elenco */}
+          <div className="flex flex-col gap-2">
+            <ul className="flex flex-col gap-2">
+              {visible.map((r) => {
+                const active = open?.id === r.id;
+                return (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelected(r.id)}
+                      aria-pressed={active}
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors",
+                        active ? "border-white/40 bg-orchid/25" : "border-white/10 bg-white/5 hover:bg-white/10",
+                      )}
+                    >
+                      <Ear className="size-6 shrink-0 text-peach" />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-baseline gap-2">
+                          <span className="truncate font-semibold">{r.zone || "Senza zona"}</span>
+                          <span className="ml-auto shrink-0 text-xs text-muted-foreground">{shortWhen(r.created_at, now)}</span>
+                        </span>
+                        <span className="block truncate text-sm text-foreground/85">{r.body}</span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            {pages > 1 && (
+              <div className="mt-1 flex items-center justify-center gap-2">
+                <button type="button" className={pageBtn} disabled={current === 0} onClick={() => goTo(0)} aria-label="Prima pagina">
+                  <ChevronsLeft className="size-4" />
+                </button>
+                <button type="button" className={pageBtn} disabled={current === 0} onClick={() => goTo(current - 1)} aria-label="Pagina precedente">
+                  <ChevronLeft className="size-4" />
+                </button>
+                <span className="px-2 text-sm tabular-nums">
+                  {current + 1} / {pages}
+                </span>
+                <button type="button" className={pageBtn} disabled={current >= pages - 1} onClick={() => goTo(current + 1)} aria-label="Pagina successiva">
+                  <ChevronRight className="size-4" />
+                </button>
+                <button type="button" className={pageBtn} disabled={current >= pages - 1} onClick={() => goTo(pages - 1)} aria-label="Ultima pagina">
+                  <ChevronsRight className="size-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Pettegolezzo aperto */}
+          {open && (
+            <article className="flex min-h-56 flex-col gap-3 rounded-3xl border border-white/15 bg-white/5 p-4 sm:p-5">
+              <header className="flex items-center gap-3 border-b border-white/15 pb-3">
+                <Ear className="size-7 shrink-0 text-peach" />
+                <h3 className="min-w-0 flex-1 truncate text-xl font-semibold">{open.zone || "Senza zona"}</h3>
+                <span className="shrink-0 text-sm text-muted-foreground">{longWhen(open.created_at, now)}</span>
+              </header>
+              <p className="text-lg leading-relaxed whitespace-pre-line italic">«{open.body}»</p>
+              {canManage && (
+                <div className="mt-auto flex">
+                  <DeleteReport id={open.id} onDone={onDeleted} />
+                </div>
+              )}
+            </article>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
