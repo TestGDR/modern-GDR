@@ -1,6 +1,6 @@
 "use client";
 
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, type ReactNode } from "react";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 
 type Props = { children: ReactNode; /** Cosa si stava aprendo, per il messaggio */ what?: string };
@@ -29,8 +29,9 @@ export class ErrorBoundary extends Component<Props, State> {
     return { error };
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("Errore in", this.props.what ?? "una parte della pagina", error, info.componentStack);
+  componentDidCatch(error: Error) {
+    // solo il tipo di errore: niente dati della pagina né del giocatore
+    console.error(`Errore in ${this.props.what ?? "una parte della pagina"}: ${error.name}: ${error.message.slice(0, 200)}`);
     if (isOldVersion(error)) {
       try {
         if (!sessionStorage.getItem(RELOAD_KEY)) {

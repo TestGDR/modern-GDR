@@ -140,7 +140,6 @@ function start() {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "ticket_messages" }, urgent)
       // forum, social, annunci, comunità
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "forum_posts" }, later)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "forum_posts" }, later)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "social_dms" }, later)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "social_notifications" }, later)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "news" }, later)

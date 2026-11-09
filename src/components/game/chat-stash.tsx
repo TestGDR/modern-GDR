@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Hand, Minus, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CATEGORY_LABEL, type MarketCategory } from "@/lib/market";
@@ -25,6 +25,10 @@ export type StashRow = {
 export function useRoomStash(roomId: string, characterId: string | null) {
   const supabase = useMemo(() => createClient(), []);
   const [rows, setRows] = useState<StashRow[]>([]);
+  const rowsRef = useRef<StashRow[]>([]);
+  useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
   const load = useCallback(async () => {
     const { data } = await supabase.rpc("room_stash_list", { p_room: roomId, p_character: characterId });
     if (data) setRows(data as StashRow[]);
@@ -32,9 +36,12 @@ export function useRoomStash(roomId: string, characterId: string | null) {
   useEffect(() => {
     const channel = supabase
       .channel(`cassa:${roomId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "room_stash" }, (payload) => {
-        const row = (payload.new ?? payload.old) as { room_id?: string };
-        if (!row.room_id || row.room_id === roomId) load();
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "room_stash", filter: `room_id=eq.${roomId}` }, () => load())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "room_stash", filter: `room_id=eq.${roomId}` }, () => load())
+      // le eliminazioni non si filtrano: si rilegge se l'oggetto era in questa cassa
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "room_stash" }, (payload) => {
+        const id = (payload.old as { id?: string }).id;
+        if (!id || rowsRef.current.some((r) => r.id === id)) load();
       })
       // collegato (anche dopo una caduta): si legge la cassa
       .subscribe((status) => {

@@ -38,8 +38,11 @@ export function useRoomTurns(roomId: string) {
     };
     const channel = supabase
       .channel(`turni:${roomId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "room_turns" }, (payload) => {
-        const row = (payload.new && "room_id" in payload.new ? payload.new : payload.old) as { room_id?: string };
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "room_turns", filter: `room_id=eq.${roomId}` }, later)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "room_turns", filter: `room_id=eq.${roomId}` }, later)
+      // le eliminazioni non si filtrano: la chat è nella chiave della riga
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "room_turns" }, (payload) => {
+        const row = payload.old as { room_id?: string };
         if (!row.room_id || row.room_id === roomId) later();
       })
       // collegato (anche dopo una caduta): si leggono i turni

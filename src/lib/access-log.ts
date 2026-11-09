@@ -101,6 +101,7 @@ export async function logAccess({ userId, event, ip, userAgent }: { userId: stri
       risk: info?.risk ?? null,
     });
   } catch (e) {
-    console.error("Registro accessi:", e);
+    // solo il messaggio dell'errore, mai IP o dati dell'accesso
+    console.error("Registro accessi:", e instanceof Error ? e.message.slice(0, 200) : "errore sconosciuto");
   }
 }

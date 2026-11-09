@@ -122,7 +122,11 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
       // solo entrate e uscite: ogni messaggio aggiorna chat_presence, e rileggere i presenti
       // a ogni messaggio (per tutti i presenti) costerebbe molte richieste
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_presence", filter: `room_id=eq.${roomId}` }, () => loadPresence())
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "chat_presence" }, () => loadPresence())
+      // le uscite non si possono filtrare per chat: si guarda la chat nella chiave della riga
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "chat_presence" }, (payload) => {
+        const row = payload.old as { room_id?: string };
+        if (!row.room_id || row.room_id === roomId) loadPresence();
+      })
       // cambio di sotto-tag: arriva già nella riga, senza rileggere niente
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chat_presence", filter: `room_id=eq.${roomId}` }, (payload) => {
         const row = payload.new as { character_id?: string; tag_id?: string | null };
@@ -134,13 +138,9 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
       .subscribe((status) => {
         if (status === "SUBSCRIBED") loadPresentTags();
       });
-    // chi resta inattivo esce da solo: si ricontrolla ogni 3 minuti, a scheda visibile
-    const t = setInterval(() => {
-      if (document.visibilityState === "visible") loadPresence();
-    }, 180_000);
+    // chi resta inattivo esce da solo: lo ricontrolla useResync (ogni 3 minuti, a scheda visibile)
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(t);
     };
   }, [supabase, roomId, loadPresence, loadPresentTags]);
 
@@ -193,6 +193,10 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
     turns.reload();
   }
 
+  const tagsRef = useRef<RoomTag[]>([]);
+  useEffect(() => {
+    tagsRef.current = tags;
+  }, [tags]);
   const loadTags = useCallback(async () => {
     const { data: rows } = await supabase.from("room_tags").select("id, room_id, name, position").eq("room_id", roomId).order("position").order("created_at");
     if (rows) setTags(rows as RoomTag[]);
@@ -200,9 +204,12 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
   useEffect(() => {
     const channel = supabase
       .channel(`sottotag:${roomId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "room_tags" }, (payload) => {
-        const row = (payload.new ?? payload.old) as { room_id?: string };
-        if (!row.room_id || row.room_id === roomId) loadTags();
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "room_tags", filter: `room_id=eq.${roomId}` }, () => loadTags())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "room_tags", filter: `room_id=eq.${roomId}` }, () => loadTags())
+      // le eliminazioni non si filtrano: si rilegge se il sotto-tag è di questa chat
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "room_tags" }, (payload) => {
+        const id = (payload.old as { id?: string }).id;
+        if (!id || tagsRef.current.some((t) => t.id === id)) loadTags();
       })
       // collegato (anche dopo una caduta): si leggono i sotto-tag
       .subscribe((status) => {
@@ -295,11 +302,9 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
         if (msg.kind === "combattimento") setCombatTick((n) => n + 1);
         // qualcuno ha bevuto o preso qualcosa: gli stati si rileggono
         if (msg.kind === "sistema" && /Resistenza/.test(msg.content)) loadStatusesRef.current();
-        if (msg.kind === "sistema") {
-          // la modalità master cambia i limiti: arrivano dal server
-          if (/modalità master/i.test(msg.content)) router.refresh();
-          else loadPresence();
-        }
+        // la modalità master cambia i limiti: arrivano dal server
+        // (entrate e uscite arrivano già dal canale dei presenti)
+        if (msg.kind === "sistema" && /modalità master/i.test(msg.content)) router.refresh();
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `room_id=eq.${roomId}` }, (payload) => {
         const msg = payload.new as Message;
@@ -316,7 +321,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, roomId, myId, router, reload, loadPresence, addMessage]);
+  }, [supabase, roomId, myId, router, reload, addMessage]);
 
   // Tornando sulla scheda, tornando in rete, o ogni 3 minuti
   useResync(() => {
