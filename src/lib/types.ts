@@ -565,6 +565,12 @@ export type AcademicTerm = {
   created_at: string;
   simulated_at: string | null;
   published_at: string | null;
+  /** calendario (date in ora italiana, AAAA-MM-GG) */
+  registration_date: string | null;
+  classes_start: string | null;
+  exams_start: string | null;
+  exams_end: string | null;
+  results_date: string | null;
 };
 export type ExamRoll = {
   type: "coursework" | "midterm" | "final";

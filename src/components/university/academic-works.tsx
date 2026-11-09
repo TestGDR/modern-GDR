@@ -10,9 +10,21 @@ type WorkKind = "assignment" | "paper";
 type Choice = { enrollment_id: number; code: string; name: string; kind: WorkKind; cd: number; bonus: number };
 type RollOption = { message_id: number; total: number; attribute: string; skill: string | null; at: string; room: string; choices: Choice[] };
 type Work = { kind: WorkKind; code: string; bonus: number; total: number; cd: number; at: string };
+type CourseSkill = { code: string; attribute: string; skill: string | null };
 type Options =
-  | { open: false }
-  | { open: true; term: string; max: number; cap: number; hours: number; assignment: number; paper: number; works: Work[]; rolls: RollOption[] };
+  | { open: false; reason?: "no_term" | "not_enrolled" }
+  | {
+      open: true;
+      term: string;
+      max: number;
+      cap: number;
+      hours: number;
+      assignment: number;
+      paper: number;
+      works: Work[];
+      rolls: RollOption[];
+      courses?: CourseSkill[];
+    };
 
 export const WORK_LABEL: Record<WorkKind, string> = { assignment: "Assignment", paper: "Paper" };
 const hour = (iso: string) => new Date(iso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
@@ -63,9 +75,34 @@ export function AcademicWorks({ characterId, roomId = null, compact = false }: {
     load();
   }
 
-  if (!data || !data.open) return null;
-  // in chat il riquadro compare solo se c'è qualcosa da registrare
-  if (compact && data.rolls.length === 0) return null;
+  // errore della lettura: si mostra (prima restava nascosto)
+  if (error && !data) return <p className="rounded-lg bg-destructive/15 px-2 py-1 text-left text-xs text-destructive">Paper e assignment: {error}</p>;
+  if (!data) return null;
+  // niente da registrare: nella finestra di uscita si dice perché
+  if (!data.open) {
+    if (!compact) return null;
+    return (
+      <p className="rounded-xl bg-white/5 px-3 py-2 text-left text-xs text-muted-foreground">
+        <GraduationCap className="mr-1 inline size-3.5 text-peach" />
+        {data.reason === "no_term"
+          ? "Paper e assignment: non c'è un semestre in corso, i tiri non si possono registrare."
+          : "Paper e assignment: non sei iscritto a nessun corso del semestre in corso."}
+      </p>
+    );
+  }
+  if (compact && data.rolls.length === 0) {
+    return (
+      <p className="rounded-xl bg-white/5 px-3 py-2 text-left text-xs text-muted-foreground">
+        <GraduationCap className="mr-1 inline size-3.5 text-peach" />
+        Nessun tiro di questa giocata vale per i tuoi corsi: caratteristica e abilità devono essere quelle del corso.
+        {data.courses && data.courses.length > 0 && (
+          <span className="mt-1 block">
+            I tuoi corsi: {data.courses.map((c) => `${c.code} (${c.attribute}${c.skill ? " + " + c.skill : ""})`).join(", ")}.
+          </span>
+        )}
+      </p>
+    );
+  }
 
   return (
     <section className={cn("flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-left text-sm", compact && "text-xs")}>

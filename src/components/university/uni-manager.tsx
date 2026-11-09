@@ -7,7 +7,7 @@ import { SettingRow } from "@/components/admin/settings-manager";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import type { AcademicTerm, Course, CoursePrerequisite, GameSetting, TermStudent } from "@/lib/types";
-import { EFFORT_LABEL, EXAM_LABEL, STATUS_LABEL, TERM_STATUS_LABEL, grade } from "@/lib/university";
+import { EFFORT_LABEL, EXAM_LABEL, STATUS_LABEL, TERM_STATUS_LABEL, dayMonth, grade } from "@/lib/university";
 import { cn } from "@/lib/utils";
 
 // Gestione → Università: semestri (iscrizioni, simulazione, pubblicazione),
@@ -111,6 +111,7 @@ function Terms() {
             <h3 className="font-heading text-2xl tracking-wide">{termLabel(open)}</h3>
             <span className="rounded-full bg-peach/20 px-2.5 py-0.5 text-xs text-peach">{TERM_STATUS_LABEL[open.status]}</span>
           </div>
+          <TermDates key={`${open.id}-${open.registration_date}-${open.classes_start}-${open.exams_start}-${open.exams_end}-${open.results_date}`} term={open} busy={busy} onSave={(d) => act("academic_term_set_dates", { p_term: open.id, ...d })} />
           <ol className="flex flex-wrap gap-1 text-xs text-muted-foreground">
             {(["registration_open", "in_progress", "simulated", "published"] as const).map((s, i) => (
               <li key={s} className={cn("rounded-full px-2 py-0.5", open.status === s ? "bg-flamingo/30 text-white" : "bg-white/5")}>
@@ -178,6 +179,55 @@ function Terms() {
           ))}
         </section>
       )}
+    </div>
+  );
+}
+
+/** Date del semestre: il calendario automatico fa i passaggi da solo, lo staff le può spostare */
+function TermDates({ term, busy, onSave }: { term: AcademicTerm; busy: boolean; onSave: (d: Record<string, string>) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [d, setD] = useState({
+    p_registration: term.registration_date ?? "",
+    p_classes: term.classes_start ?? "",
+    p_exams_start: term.exams_start ?? "",
+    p_exams_end: term.exams_end ?? "",
+    p_results: term.results_date ?? "",
+  });
+  const fields: [keyof typeof d, string][] = [
+    ["p_registration", "Iscrizioni dal"],
+    ["p_classes", "Lezioni dal"],
+    ["p_exams_start", "Esami dal"],
+    ["p_exams_end", "Esami fino al"],
+    ["p_results", "Risultati il"],
+  ];
+  if (!editing) {
+    return (
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <CalendarRange className="size-3.5 text-peach" />
+        <span>Lezioni dal <strong className="text-foreground">{dayMonth(term.classes_start)}</strong></span>
+        <span>Esami <strong className="text-foreground">{dayMonth(term.exams_start)}–{dayMonth(term.exams_end)}</strong></span>
+        <span>Risultati il <strong className="text-foreground">{dayMonth(term.results_date)}</strong></span>
+        <span>· i passaggi si fanno da soli a queste date</span>
+        <Button type="button" size="xs" variant="ghost" onClick={() => setEditing(true)} className="rounded-full">
+          <Pencil /> Sposta le date
+        </Button>
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-end gap-2 rounded-xl bg-white/5 p-2 text-xs">
+      {fields.map(([k, label]) => (
+        <label key={k} className="flex flex-col gap-1">
+          {label}
+          <input type="date" value={d[k]} onChange={(e) => setD({ ...d, [k]: e.target.value })} className={cn(inputClass, "h-8 w-36")} />
+        </label>
+      ))}
+      <Button type="button" size="sm" disabled={busy} onClick={() => (onSave(d), setEditing(false))} className="rounded-full">
+        <Save /> Salva
+      </Button>
+      <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)} className="rounded-full">
+        <X /> Annulla
+      </Button>
     </div>
   );
 }

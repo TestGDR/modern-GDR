@@ -13,6 +13,7 @@ import {
   STATUS_LABEL,
   TERM_STATUS_LABEL,
   chatReport,
+  dayMonth,
   gpa,
   grade,
   rollText,
@@ -41,6 +42,8 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
   // ora dell'ultimo caricamento, per sapere se il prossimo compito si può già fare
   const [now, setNow] = useState(0);
   const [extras, setExtras] = useState<AcademicExtras | null>(null);
+  // date del semestre aperto (calendario automatico)
+  const [dates, setDates] = useState<{ classes_start: string | null; exams_start: string | null; exams_end: string | null; results_date: string | null } | null>(null);
   // arrivato a semestre in corso: mostra l'elenco dei corsi per cambiarli
   const [editLate, setEditLate] = useState(false);
 
@@ -85,15 +88,17 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
       supabase.from("attributes").select("id, code"),
       supabase.from("skills").select("id, name"),
       supabase.from("game_settings").select("key, value").like("key", "uni_%"),
-    ]).then(([c, p, a, s, g]) =>
+      supabase.from("academic_terms").select("classes_start, exams_start, exams_end, results_date").neq("status", "published").maybeSingle(),
+    ]).then(([c, p, a, s, g, t]) => {
+      setDates((t.data ?? null) as typeof dates);
       setCatalog({
         courses: (c.data ?? []) as Course[],
         prereqs: (p.data ?? []) as CoursePrerequisite[],
         attrs: Object.fromEntries(((a.data ?? []) as { id: string; code: string }[]).map((x) => [x.id, x.code])),
         skills: Object.fromEntries(((s.data ?? []) as { id: string; name: string }[]).map((x) => [x.id, x.name])),
         settings: Object.fromEntries(((g.data ?? []) as { key: string; value: number | number[] }[]).map((x) => [x.key, x.value])),
-      }),
-    );
+      });
+    });
   }, [load, supabase]);
 
   async function run(fn: string, args: Record<string, unknown>) {
@@ -130,6 +135,11 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
             {term.label}
             <span className="font-sans text-xs tracking-normal text-muted-foreground">{TERM_STATUS_LABEL[term.status]}</span>
           </h3>
+          {dates?.classes_start && (
+            <p className="-mt-2 text-xs text-muted-foreground">
+              Lezioni dal {dayMonth(dates.classes_start)} · esami {dayMonth(dates.exams_start)}–{dayMonth(dates.exams_end)} · risultati il {dayMonth(dates.results_date)}
+            </p>
+          )}
           {status === "suspended" && <p className="text-sm text-destructive">Sei in sospensione accademica: salti questo semestre.</p>}
           {term.status === "in_progress" && canAct && extras?.late_open && (
             <div className="flex flex-wrap items-center gap-2 rounded-xl bg-mint/10 px-3 py-2 text-sm text-mint">

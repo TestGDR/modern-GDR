@@ -22,6 +22,9 @@ export const EFFORT_LABEL: Record<Effort, string> = { minimal: "Minimo", normal:
 export const EXAM_LABEL: Record<ExamRoll["type"], string> = { coursework: "Coursework", midterm: "Midterm", final: "Final" };
 
 /** "B-" → "B−" */
+/** «25/08» da una data AAAA-MM-GG */
+export const dayMonth = (d: string | null | undefined) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}` : "—");
+
 export const grade = (g: string | null | undefined) => (g ? g.replace("-", "−") : "—");
 export const gpa = (n: number | null | undefined) => (n === null || n === undefined ? "—" : Number(n).toFixed(2));
 
