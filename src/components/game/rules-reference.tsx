@@ -34,14 +34,54 @@ const TABS: Tab[] = [
 const SCOPE_LABEL: Record<CreationOption["scope"], string | null> = { generale: null, ambientazione: null, accademica: "Accademica", sportiva: "Sportiva" };
 const SUBGROUP_LABEL: Record<string, string> = { legami: "Legami", risorse: "Risorse e luoghi", ruoli: "Ruoli e reputazione", interpretativo: "Interpretativo" };
 
-export function TraitsReference({ options }: { options: CreationOption[] }) {
+/** Voce di background di fama (si sceglie con i Punti Fama in creazione) */
+export type FameBgItem = {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  cost_pf: number;
+  fame_points: number;
+  infamy_points: number;
+  social_followers: number;
+};
+export type FameRules = { pf: number; maxFame: number; maxFollowers: number };
+
+const FAME_TAB = "fama";
+const thousands = (n: number) => n.toLocaleString("it-IT");
+
+function FameList({ items }: { items: FameBgItem[] }) {
+  return (
+    <ul className="grid gap-2 md:grid-cols-2">
+      {items.map((i) => (
+        <li key={i.id} className="flex flex-col gap-1 rounded-xl border border-white/10 bg-night/30 p-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="font-medium">{i.name}</span>
+            <span className="shrink-0 text-xs font-semibold text-peach">costa {i.cost_pf} PF</span>
+          </div>
+          <div className="flex flex-wrap gap-1 text-[0.65rem]">
+            <span className="rounded-full bg-white/10 px-2 py-0.5">{i.category}</span>
+            {i.fame_points !== 0 && <span className="rounded-full bg-sand/20 px-2 py-0.5 text-sand">⭐ {i.fame_points > 0 ? "+" : ""}{i.fame_points} fama</span>}
+            {i.infamy_points !== 0 && <span className="rounded-full bg-flamingo/20 px-2 py-0.5 text-flamingo">💬 {i.infamy_points > 0 ? "+" : ""}{i.infamy_points} infamia</span>}
+            {i.social_followers > 0 && <span className="rounded-full bg-mint/20 px-2 py-0.5 text-mint">📱 {thousands(i.social_followers)} follower</span>}
+          </div>
+          {i.description && <p className="text-xs leading-relaxed whitespace-pre-line text-foreground/85">{i.description}</p>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function TraitsReference({ options, fameItems = [], fameRules }: { options: CreationOption[]; fameItems?: FameBgItem[]; fameRules?: FameRules }) {
   const [tab, setTab] = useState(TABS[0].key);
   const [query, setQuery] = useState("");
   const byId = useMemo(() => new Map(options.map((o) => [o.id, o.name])), [options]);
   const current = TABS.find((t) => t.key === tab) ?? TABS[0];
   const q = norm(query.trim());
+  const fameTab = !q && tab === FAME_TAB;
   // con una ricerca si cerca in tutte le linguette
-  const items = options.filter((o) => (q ? true : current.filter(o)) && (!q || norm(`${o.name} ${o.description}`).includes(q)));
+  const items = fameTab ? [] : options.filter((o) => (q ? true : current.filter(o)) && (!q || norm(`${o.name} ${o.description}`).includes(q)));
+  const fameMatches = fameTab ? fameItems : q ? fameItems.filter((i) => norm(`${i.name} ${i.description} ${i.category}`).includes(q)) : [];
 
   return (
     <div className="flex flex-col gap-3">
@@ -60,13 +100,29 @@ export function TraitsReference({ options }: { options: CreationOption[] }) {
                 {t.title} <span className="text-muted-foreground">{options.filter(t.filter).length}</span>
               </button>
             ))}
+            {fameItems.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setTab(FAME_TAB)}
+                aria-current={fameTab ? "page" : undefined}
+                className={cn("rounded-full px-3 py-1.5 text-xs", fameTab ? "bg-flamingo/30 text-white" : "text-muted-foreground hover:bg-white/5")}
+              >
+                Background di fama <span className="text-muted-foreground">{fameItems.length}</span>
+              </button>
+            )}
           </nav>
-          <p className="text-xs text-muted-foreground">{current.hint}</p>
+          <p className="text-xs text-muted-foreground">
+            {fameTab
+              ? `Si scelgono in creazione (passaggio 3) con i Punti Fama${fameRules ? ` (${fameRules.pf})` : ""}: danno fama, infamia e follower al social${
+                  fameRules ? `. Dal background al massimo ${fameRules.maxFame} di fama e ${thousands(fameRules.maxFollowers)} follower in tutto` : ""
+                }. I Punti Fama non spesi diventano PX all'approvazione.`
+              : current.hint}
+          </p>
         </>
       )}
-      {items.length === 0 ? (
+      {fameTab ? null : items.length === 0 && fameMatches.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nessuna voce trovata.</p>
-      ) : (
+      ) : items.length === 0 ? null : (
         <ul className="grid gap-2 md:grid-cols-2">
           {items.map((o) => {
             const scope = SCOPE_LABEL[o.scope];
@@ -98,6 +154,13 @@ export function TraitsReference({ options }: { options: CreationOption[] }) {
             );
           })}
         </ul>
+      )}
+      {/* voci di background di fama: nella loro linguetta o tra i risultati della ricerca */}
+      {fameMatches.length > 0 && (
+        <>
+          {q && <h3 className="font-heading text-lg tracking-wide text-peach">Background di fama</h3>}
+          <FameList items={fameMatches} />
+        </>
       )}
     </div>
   );
