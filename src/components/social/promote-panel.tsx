@@ -8,7 +8,20 @@ import { createClient } from "@/lib/supabase/client";
 // Social → Promuovi: follower comprati e campagne sponsorizzate, pagati dal conto.
 // Il database (social_buy) controlla soldi e pacchetto e decide se l'acquisto viene scoperto.
 
-type Package = { id: string; name: string; description: string; kind: "follower" | "campagna"; amount: number; days: number; multiplier: number; price: number };
+type Package = {
+  id: string;
+  name: string;
+  description: string;
+  kind: "follower" | "campagna";
+  amount: number;
+  days: number;
+  multiplier: number;
+  price: number;
+  /** quante volte in tutto (0 = senza limite) */
+  max_per_character: number;
+  /** giorni tra un acquisto e il successivo */
+  cooldown_days: number;
+};
 
 export function PromotePanel({ characterId, onDone }: { characterId: string; onDone: () => void }) {
   const supabase = useMemo(() => createClient(), []);
@@ -20,7 +33,7 @@ export function PromotePanel({ characterId, onDone }: { characterId: string; onD
     let alive = true;
     supabase
       .from("social_packages")
-      .select("id, name, description, kind, amount, days, multiplier, price")
+      .select("id, name, description, kind, amount, days, multiplier, price, max_per_character, cooldown_days")
       .eq("active", true)
       .order("sort_order")
       .then(({ data }) => alive && setPackages((data ?? []) as Package[]));
@@ -70,6 +83,13 @@ export function PromotePanel({ characterId, onDone }: { characterId: string; onD
               <span className="min-w-0 flex-1">
                 <strong className="font-medium">{p.name}</strong>
                 {p.description && <span className="block text-xs text-muted-foreground">{p.description}</span>}
+                {(p.max_per_character > 0 || p.cooldown_days > 0) && (
+                  <span className="block text-[0.7rem] text-peach">
+                    {p.max_per_character === 1 ? "Si compra una volta sola" : p.max_per_character > 1 ? `Al massimo ${p.max_per_character} volte` : ""}
+                    {p.max_per_character > 0 && p.cooldown_days > 0 ? " · " : ""}
+                    {p.cooldown_days > 0 ? `una volta ogni ${p.cooldown_days} giorni` : ""}
+                  </span>
+                )}
               </span>
               <Button type="button" size="sm" className="rounded-full" disabled={busy !== null} onClick={() => buy(p)}>
                 {busy === p.id ? <Loader2 className="animate-spin" /> : `${p.price.toLocaleString("it-IT")} $`}

@@ -751,7 +751,7 @@ function SocialPackages() {
     <CatalogEditor
       table="social_packages"
       order={["sort_order", "name"]}
-      hint="Follower = quanti follower comprati dà subito (non calano mai e crescono ogni giorno con la fama, vedi Impostazioni; possono far scoprire l'acquisto). Campagna = per quanti giorni moltiplica crescita del pubblico e like dei post nuovi. Prezzo in dollari dal conto. Crescita per livello in Livelli, il resto in Impostazioni."
+      hint="Follower = quanti follower comprati dà subito (non calano mai e crescono ogni giorno con la fama, vedi Impostazioni; possono far scoprire l'acquisto). Campagna = per quanti giorni moltiplica crescita del pubblico e like dei post nuovi. Prezzo in dollari dal conto. Volte = quante volte un personaggio può comprarlo in tutto (0 = senza limite); Ogni giorni = attesa tra un acquisto e il successivo. Crescita per livello in Livelli, il resto in Impostazioni."
       fields={[
         { key: "name", label: "Nome", type: "text", width: "w-56" },
         {
@@ -768,11 +768,13 @@ function SocialPackages() {
         { key: "days", label: "Giorni", type: "number" },
         { key: "multiplier", label: "Moltiplicatore", type: "number" },
         { key: "price", label: "Prezzo $", type: "number", width: "w-24" },
+        { key: "max_per_character", label: "Volte (0 = sempre)", type: "number" },
+        { key: "cooldown_days", label: "Ogni giorni", type: "number" },
         { key: "sort_order", label: "Ordine", type: "number" },
         { key: "active", label: "In vendita", type: "checkbox" },
         { key: "description", label: "Descrizione", type: "textarea" },
       ]}
-      empty={{ name: "", kind: "follower", amount: 1000, days: 0, multiplier: 1, price: 100, sort_order: 0, active: true, description: "" }}
+      empty={{ name: "", kind: "follower", amount: 1000, days: 0, multiplier: 1, price: 100, max_per_character: 0, cooldown_days: 0, sort_order: 0, active: true, description: "" }}
     />
   );
 }

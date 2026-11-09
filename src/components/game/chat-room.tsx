@@ -21,6 +21,7 @@ import {
 } from "@/components/game/chat-parts";
 import { StashPanel, useRoomStash } from "@/components/game/chat-stash";
 import { ChatTagsBar } from "@/components/game/chat-tags";
+import { AcademicWorks } from "@/components/university/academic-works";
 import { ChatTurnsManager, scenesOf, turnAction, turnMarks, useRoomTurns } from "@/components/game/chat-turns";
 import { CombatPanel } from "@/components/game/combat-panel";
 import { IncidentPanel } from "@/components/game/incident-panel";
@@ -676,6 +677,8 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
                 </h2>
                 <p className="text-sm text-muted-foreground">Vuoi salvare la giocata prima di uscire? Finisce in Utility → Archivio giocate e la vedi solo tu.</p>
               </div>
+              {/* tiri di questa giocata da registrare come paper o assignment (solo se ho tirato) */}
+              {me && messages.some((m) => m.kind === "dado" && m.character_id === me.id) && <AcademicWorks characterId={me.id} roomId={roomId} compact />}
               {error && <p className="rounded-lg bg-destructive/15 px-3 py-2 text-center text-sm text-destructive">{error}</p>}
               <div className="flex flex-col gap-2">
                 <Button type="button" disabled={busy} onClick={() => exit(true)} className="rounded-full">

@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Award, BookOpen, Check, ChevronDown, ClipboardCopy, GraduationCap, NotebookPen, Plus, Search, Undo2, X } from "lucide-react";
+import { Award, BookOpen, Check, ChevronDown, ClipboardCopy, FileText, GraduationCap, NotebookPen, Plus, Search, Undo2, X } from "lucide-react";
+import { AcademicWorks } from "@/components/university/academic-works";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import type { AcademicExtras, AcademicOverview, Course, CoursePrerequisite, Effort, EnrollmentView, Homework } from "@/lib/types";
@@ -154,6 +155,7 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
                 busy={busy}
                 run={run}
               />
+              {isOwner && term.status === "in_progress" && data.current.some((e) => e.status === "enrolled") && <WorksToggle characterId={characterId} />}
             </>
           )}
         </section>
@@ -163,6 +165,20 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
 
       <Transcript data={data} byId={byId} catalog={catalog} homework={homework} />
     </div>
+  );
+}
+
+/* ------------------------------ Paper e assignment ------------------------------ */
+
+// Si apre a richiesta: la lettura parte solo quando serve
+function WorksToggle({ characterId }: { characterId: string }) {
+  const [open, setOpen] = useState(false);
+  return open ? (
+    <AcademicWorks characterId={characterId} />
+  ) : (
+    <Button type="button" size="sm" variant="secondary" onClick={() => setOpen(true)} className="self-start rounded-full">
+      <FileText /> Paper e assignment
+    </Button>
   );
 }
 
@@ -909,7 +925,8 @@ function CourseRow({ c, course, catalog, homework }: { c: EnrollmentView; course
             {hwPoints > 0 && ` (di cui +${hwPoints} dai compiti)`} (coursework {weights[0] ?? 20}%, midterm {weights[1] ?? 30}%, final {weights[2] ?? 50}%)
             {c.rolls[0] && (
               <>
-                {" "}· Modificatori: impegno {c.rolls[0].mods.impegno}, carico {c.rolls[0].mods.carico}, voci della scheda {c.rolls[0].mods.voci ? "(per prova, sopra)" : c.rolls[0].mods.tratti}, ripetizione {c.rolls[0].mods.ripetizione}, Master {c.rolls[0].mods.master}
+                {" "}· Modificatori: impegno {c.rolls[0].mods.impegno}, carico {c.rolls[0].mods.carico}, voci della scheda {c.rolls[0].mods.voci ? "(per prova, sopra)" : c.rolls[0].mods.tratti}, ripetizione {c.rolls[0].mods.ripetizione}
+                {(c.rolls[0].mods.lavori ?? 0) > 0 && `, paper e assignment +${c.rolls[0].mods.lavori}`}, Master {c.rolls[0].mods.master}
                 {c.rolls[0].mods.nota_master && ` (“${c.rolls[0].mods.nota_master}”)`}
               </>
             )}

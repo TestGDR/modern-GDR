@@ -586,6 +586,8 @@ export type ExamRoll = {
     cd_voci?: number;
     /** Sangue freddo: il d10 ritirato */
     sangue_freddo?: number | null;
+    /** paper e assignment registrati per il corso */
+    lavori?: number;
   };
   total: number;
   cd: number;
