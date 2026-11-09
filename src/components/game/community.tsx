@@ -71,7 +71,8 @@ export function CommunityButtons({
         <FloatingWindow
           label={open === "assenze" ? "Assenze" : open === "ricerca" ? "Ricerca di gioco" : "Pettegolezzi"}
           onClose={() => setOpen(null)}
-          initialWidth={open === "pettegolezzi" ? 980 : 560}
+          initialWidth={open === "pettegolezzi" ? 900 : 560}
+          maxHeight={open === "pettegolezzi" ? 700 : undefined}
           header={
             <h2 className="pb-4 font-heading text-3xl tracking-wide">{open === "assenze" ? "Assenze" : open === "ricerca" ? "Cerco gioco" : "Voci e pettegolezzi"}</h2>
           }
@@ -829,7 +830,7 @@ function GossipArchive({ rows, canManage, onDeleted }: { rows: ArchiveRow[] | nu
       {filtered.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">Nessun pettegolezzo con questi filtri.</p>
       ) : (
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+        <div className="grid gap-3 md:grid-cols-[12rem_minmax(0,1fr)]">
           {/* Elenco */}
           <div className="flex flex-col gap-2">
             <ul className="flex flex-col gap-2">
@@ -848,11 +849,8 @@ function GossipArchive({ rows, canManage, onDeleted }: { rows: ArchiveRow[] | nu
                     >
                       <Ear className="size-4 shrink-0 text-peach" />
                       <span className="min-w-0 flex-1">
-                        <span className="flex items-baseline gap-2">
-                          <span className="truncate text-xs font-semibold">{r.zone || "Senza zona"}</span>
-                          <span className="ml-auto shrink-0 text-[0.65rem] text-muted-foreground">{shortWhen(r.created_at, now)}</span>
-                        </span>
-                        <span className="block truncate text-xs text-foreground/80">{r.body}</span>
+                        <span className="block truncate text-xs font-semibold">{r.zone || "Senza zona"}</span>
+                        <span className="block text-[0.65rem] text-muted-foreground">{shortWhen(r.created_at, now)}</span>
                       </span>
                     </button>
                   </li>

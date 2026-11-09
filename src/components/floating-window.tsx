@@ -29,6 +29,8 @@ type FloatingWindowProps = {
   initialWidth?: number;
   /** Se indicata, la finestra parte con questa altezza (e centrata) */
   initialHeight?: number;
+  /** Altezza massima in pixel (il contenuto scorre dentro) */
+  maxHeight?: number;
   /**
    * Senza intestazione né margini: il contenuto riempie la finestra
    * e si trascina dagli elementi con l'attributo `data-window-drag`.
@@ -56,6 +58,7 @@ export function FloatingWindow({
   children,
   initialWidth = 400,
   initialHeight,
+  maxHeight,
   chromeless = false,
   className,
   raiseKey,
@@ -154,7 +157,7 @@ export function FloatingWindow({
         top: rect.y,
         width: rect.w,
         height: rect.h ?? undefined,
-        maxHeight: rect.h ? undefined : `calc(100dvh - ${rect.y + MARGIN}px)`,
+        maxHeight: rect.h ? undefined : maxHeight ? `min(${maxHeight}px, calc(100dvh - ${rect.y + MARGIN}px))` : `calc(100dvh - ${rect.y + MARGIN}px)`,
       }
     : initialHeight
       ? {
@@ -169,7 +172,7 @@ export function FloatingWindow({
           top: `calc(max(16px, 10vh) + ${offset}px)`,
           translate: "-50% 0",
           width: `min(${initialWidth}px, calc(100vw - ${MARGIN * 3}px))`,
-          maxHeight: `calc(90dvh - ${MARGIN}px)`,
+          maxHeight: maxHeight ? `min(${maxHeight}px, calc(90dvh - ${MARGIN}px))` : `calc(90dvh - ${MARGIN}px)`,
         };
 
   // In modalità chromeless si trascina dagli elementi marcati con data-window-drag
