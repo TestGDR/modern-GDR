@@ -174,6 +174,25 @@ function useRegisterWindow(entry: Omit<WindowEntry, "key" | "raise">) {
 }
 
 let reopenDone = false;
+// finestra da riaprire dopo il ritorno alla pagina di sotto
+let reopenTarget: string | null = null;
+// già tornati alla pagina di sotto (i controlli a tempo non servono più)
+let reopenBack = false;
+
+/**
+ * Pagina caricata da un clic dentro il gioco (non F5 né indietro): succede quando
+ * Next.js carica la pagina da capo invece di aprirla in finestra (sito appena
+ * aggiornato o connessione caduta per un attimo). Allora la finestra si riapre.
+ */
+function cameFromGame() {
+  try {
+    const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    if (nav && nav.type !== "navigate") return false;
+    return !!document.referrer && new URL(document.referrer).origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Pagina caricata direttamente sull'indirizzo di una finestra (F5, link):
@@ -192,8 +211,25 @@ export function ModalReopen() {
       if (reopenDone) return; // già in corso
       reopenDone = true;
       origin = savedOrigin();
-      router.replace(origin, { scroll: false });
+      const wanted = pathname + window.location.search;
+      reopenTarget = cameFromGame() ? wanted : null;
+      const target = origin;
+      router.replace(target, { scroll: false });
+      // se il ritorno tarda si riprova; se non arriva, si ricarica la pagina di sotto
+      setTimeout(() => {
+        if (!reopenBack && isModalPath(window.location.pathname)) router.replace(target, { scroll: false });
+      }, 5000);
+      setTimeout(() => {
+        if (!reopenBack && isModalPath(window.location.pathname)) window.location.replace(target);
+      }, 12000);
       return;
+    }
+    // tornati alla pagina di sotto: si apre la finestra richiesta (stavolta in finestra)
+    reopenBack = true;
+    if (reopenTarget) {
+      const t = reopenTarget;
+      reopenTarget = null;
+      router.push(t, { scroll: false });
     }
     setTimeout(() => setDone(true), 0);
   }, [pathname, router, startedOnModal, done]);
