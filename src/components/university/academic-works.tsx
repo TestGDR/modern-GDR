@@ -35,7 +35,18 @@ const hour = (iso: string) => new Date(iso).toLocaleTimeString("it-IT", { hour: 
  * Una lettura all'apertura e una scrittura per ogni registrazione, niente altro.
  * Con roomId solo i tiri di quella chat.
  */
-export function AcademicWorks({ characterId, roomId = null, compact = false }: { characterId: string; roomId?: string | null; compact?: boolean }) {
+export function AcademicWorks({
+  characterId,
+  roomId = null,
+  compact = false,
+  explain = true,
+}: {
+  characterId: string;
+  roomId?: string | null;
+  compact?: boolean;
+  /** in chat: dire perché non c'è niente da registrare (solo se si vede un proprio tiro) */
+  explain?: boolean;
+}) {
   const supabase = useMemo(() => createClient(), []);
   const [data, setData] = useState<Options | null>(null);
   const [busy, setBusy] = useState(false);
@@ -80,7 +91,7 @@ export function AcademicWorks({ characterId, roomId = null, compact = false }: {
   if (!data) return null;
   // niente da registrare: nella finestra di uscita si dice perché
   if (!data.open) {
-    if (!compact) return null;
+    if (!compact || !explain) return null;
     return (
       <p className="rounded-xl bg-white/5 px-3 py-2 text-left text-xs text-muted-foreground">
         <GraduationCap className="mr-1 inline size-3.5 text-peach" />
@@ -91,6 +102,7 @@ export function AcademicWorks({ characterId, roomId = null, compact = false }: {
     );
   }
   if (compact && data.rolls.length === 0) {
+    if (!explain) return null;
     return (
       <p className="rounded-xl bg-white/5 px-3 py-2 text-left text-xs text-muted-foreground">
         <GraduationCap className="mr-1 inline size-3.5 text-peach" />
