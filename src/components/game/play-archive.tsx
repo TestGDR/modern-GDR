@@ -28,35 +28,71 @@ type ArchiveInfo = { purge_at: string; warning: boolean };
 
 const SUMMARY = "id, room_name, place_name, character_name, started_at, ended_at, message_count, note, characters";
 
-/** File di testo della giocata */
-function asText(a: ArchiveFull) {
-  const head = [
-    `${a.room_name}${a.place_name ? ` · ${a.place_name}` : ""}`,
-    `${formatDateTime(a.started_at)} – ${formatDateTime(a.ended_at)}`,
-    `Personaggi: ${a.characters.map((c) => c.name).join(", ")}`,
-    a.note ? `Nota: ${a.note}` : "",
-    "",
-  ].filter((l, i) => l !== "" || i === 4);
-  const lines = a.messages.map((m) => {
-    const time = new Date(m.at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-    if (m.kind === "sistema") return `[${time}] ${m.name} ${m.content}`;
-    const to = m.recipient ? ` → ${m.recipient}` : "";
-    return `[${time}] ${m.name}${to}: ${m.content}`;
-  });
-  return [...head, ...lines].join("\n");
+const escapeHtml = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/** Testo di un messaggio: il parlato tra < > o «» evidenziato, i pensieri tra [ ] in corsivo */
+function formatBody(t: string) {
+  return escapeHtml(t)
+    .replace(/&lt;([^\n]*?)&gt;/g, '<span class="speech">&lt;$1&gt;</span>')
+    .replace(/«([^\n]*?)»/g, '<span class="speech">«$1»</span>')
+    .replace(/\[([^\n\]]*?)\]/g, '<span class="thought">[$1]</span>')
+    .replace(/\n/g, "<br>");
 }
 
-function download(name: string, text: string) {
-  const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  a.click();
+/** Pagina HTML della giocata (si apre con il browser) */
+function asHtml(a: ArchiveFull) {
+  const time = (at: string) => new Date(at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
+  const rows = a.messages
+    .map((m) => {
+      if (m.kind === "sistema") return `<p class="sys">${time(m.at)} · <b>${escapeHtml(m.name)}</b> ${formatBody(m.content)}</p>`;
+      const to = m.recipient ? ` → ${escapeHtml(m.recipient)}` : "";
+      return `<div class="msg ${escapeHtml(m.kind)}"><div class="head"><b>${escapeHtml(m.name)}${to}</b><span>${time(m.at)}</span></div><p>${formatBody(m.content)}</p></div>`;
+    })
+    .join("\n");
+  const title = `${a.room_name}${a.place_name ? ` · ${a.place_name}` : ""}`;
+  return `<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(title)}</title>
+<style>
+body{margin:0;padding:24px 16px;background:#1a1230;color:#e4dfdb;font:16px/1.6 system-ui,sans-serif}
+main{max-width:760px;margin:0 auto}
+h1{margin:0;color:#ffb38a;letter-spacing:.05em}
+.date{color:#a9a1b8;font-size:13px;margin:4px 0 4px}
+.cast{color:#c8b8ff;font-size:14px;margin:0 0 8px}
+.note{background:rgba(255,179,138,.1);border-left:3px solid #ffb38a;padding:8px 12px;border-radius:8px;margin:0 0 24px;font-size:14px}
+.msg{background:rgba(255,255,255,.05);border-radius:14px;padding:10px 14px;margin:10px 0}
+.msg p{margin:4px 0 0}
+.head{display:flex;gap:8px;align-items:baseline}
+.head b{color:#ffb38a}.head span{margin-left:auto;color:#a9a1b8;font-size:12px}
+.master{background:rgba(160,90,200,.2)}.master .head b{color:#e48fe0}
+.png .head b{color:#e48fe0}
+.dado .head b,.combattimento .head b,.incidente .head b{color:#ff8fab}
+.speech{color:#ffb38a;font-weight:600}
+.thought{color:#c8b8ff;font-style:italic}
+.sys{text-align:center;color:#a9a1b8;font-size:13px}
+</style></head>
+<body><main><h1>${escapeHtml(title)}</h1>
+<p class="date">${escapeHtml(formatDateTime(a.started_at))} – ${escapeHtml(formatDateTime(a.ended_at))}</p>
+<p class="cast">Personaggi: ${escapeHtml(a.characters.map((c) => c.name).join(", "))}</p>
+${a.note ? `<p class="note">${escapeHtml(a.note).replace(/\n/g, "<br>")}</p>` : ""}
+${rows}
+</main></body></html>
+`;
+}
+
+function download(name: string, content: string) {
+  const url = URL.createObjectURL(new Blob([content], { type: "text/html;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
   URL.revokeObjectURL(url);
 }
 
 const fileName = (a: ArchiveSummary) =>
-  `${(a.room_name || "giocata").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")}-${a.started_at.slice(0, 10)}.txt`;
+  `${(a.room_name || "giocata").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")}-${a.started_at.slice(0, 10)}.html`;
 
 export function PlayArchive() {
   const supabase = useMemo(() => createClient(), []);
@@ -95,7 +131,7 @@ export function PlayArchive() {
 
   async function downloadOne(a: ArchiveSummary) {
     const full = open?.id === a.id ? open : (await supabase.from("play_archives").select(`${SUMMARY}, messages`).eq("id", a.id).maybeSingle<ArchiveFull>()).data;
-    if (full) download(fileName(full), asText(full));
+    if (full) download(fileName(full), asHtml(full));
   }
 
   async function remove(a: ArchiveSummary) {
@@ -152,7 +188,7 @@ export function PlayArchive() {
         <p className="flex items-start gap-2 rounded-xl border border-peach/50 bg-peach/15 px-4 py-3 text-sm text-peach">
           <TriangleAlert className="mt-0.5 size-4 shrink-0" />
           <span>
-            Il <strong>{purge}</strong> tutte le giocate salvate verranno cancellate. Scarica (.txt) quelle che vuoi tenere.
+            Il <strong>{purge}</strong> tutte le giocate salvate verranno cancellate. Scarica quelle che vuoi tenere (pagina HTML).
           </span>
         </p>
       ) : (
@@ -234,7 +270,7 @@ function ArchiveHeader({
           <Button type="button" size="icon-sm" variant="ghost" onClick={() => setEditing((v) => !v)} aria-label="Nota" title="Nota personale">
             <NotebookPen />
           </Button>
-          <Button type="button" size="icon-sm" variant="ghost" onClick={onDownload} aria-label="Scarica" title="Scarica (.txt)">
+          <Button type="button" size="icon-sm" variant="ghost" onClick={onDownload} aria-label="Scarica" title="Scarica (HTML)">
             <Download />
           </Button>
           <Button type="button" size="icon-sm" variant="ghost" onClick={onRemove} aria-label="Elimina" title="Elimina" className="text-destructive">
