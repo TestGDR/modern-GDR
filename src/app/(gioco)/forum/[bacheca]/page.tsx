@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { Lock, Pin, Plus, Star } from "lucide-react";
+import { UnreadDot } from "@/components/game/forum-client";
 import { NewThreadForm } from "@/components/game/forum-forms";
 import { ForumShell } from "@/components/game/forum-shell";
 import { LoadingBlocks } from "@/components/game/loading";
@@ -72,7 +73,7 @@ async function Content({ params }: { params: PageProps<"/forum/[bacheca]">["para
                 <Link href={`/forum/${board.slug}/${t.id}`} className={cn("flex items-start gap-3 px-2 py-3 transition-colors hover:bg-white/5", t.is_important && "bg-peach/5")}>
                   <div className="min-w-0 flex-1">
                     <p className={cn("flex items-center gap-2 font-heading text-xl tracking-wide", t.is_important ? "text-peach" : "text-foreground")}>
-                      {unreadIds.has(t.id) && <span className="size-2.5 shrink-0 rounded-full bg-flamingo" aria-label="Messaggi nuovi" />}
+                      {unreadIds.has(t.id) && <UnreadDot threadId={t.id} updatedAt={t.updated_at} />}
                       {t.is_pinned && <Pin className="size-4 shrink-0 text-peach" aria-label="Fissata in alto" />}
                       {t.is_important && <Star className="size-4 shrink-0 fill-peach text-peach" aria-label="Importante" />}
                       {t.is_locked && <Lock className="size-4 shrink-0 text-muted-foreground" aria-label="Chiusa" />}

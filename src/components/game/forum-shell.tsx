@@ -9,8 +9,6 @@ import { getForumNav, getForumUnread } from "@/lib/data";
 export async function ForumShell({ children }: { children: React.ReactNode }) {
   const player = await requirePlayer();
   const [nav, unread] = await Promise.all([getForumNav(), getForumUnread()]);
-  const unreadByBoard: Record<string, number> = {};
-  for (const u of unread) unreadByBoard[u.board_id] = (unreadByBoard[u.board_id] ?? 0) + 1;
 
   return (
     <div className="@container">
@@ -21,8 +19,7 @@ export async function ForumShell({ children }: { children: React.ReactNode }) {
             title: s.title,
             boards: s.forum_boards.map((b) => ({ id: b.id, slug: b.slug, name: b.name, locked: b.access !== "pubblica" })),
           }))}
-          unreadByBoard={unreadByBoard}
-          unreadTotal={unread.length}
+          unread={unread}
           canManage={can(player, "forum.sezioni")}
         />
         <div className="min-w-0 @3xl:border-l @3xl:border-white/10 @3xl:pl-6">{children}</div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CheckCheck, ChevronDown, Lock, MessagesSquare, Settings2 } from "lucide-react";
+import { readLocally, useForumReadVersion } from "@/components/game/forum-client";
 import { markForumRead } from "@/lib/actions/forum";
 import { cn } from "@/lib/utils";
 
@@ -19,15 +20,20 @@ let closedMemory = new Set<string>();
 /** Colonna di sinistra del forum: ultime discussioni, leggi tutto, categorie richiudibili */
 export function ForumSidebar({
   sections,
-  unreadByBoard,
-  unreadTotal,
+  unread,
   canManage,
 }: {
   sections: NavSection[];
-  unreadByBoard: Record<string, number>;
-  unreadTotal: number;
+  /** discussioni con messaggi nuovi quando la pagina è arrivata dal server */
+  unread: { thread_id: string; board_id: string }[];
   canManage: boolean;
 }) {
+  // le discussioni lette in questa visita non contano più (senza ricaricare la pagina)
+  useForumReadVersion();
+  const stillUnread = unread.filter((u) => !readLocally(u.thread_id));
+  const unreadTotal = stillUnread.length;
+  const unreadByBoard: Record<string, number> = {};
+  for (const u of stillUnread) unreadByBoard[u.board_id] = (unreadByBoard[u.board_id] ?? 0) + 1;
   const pathname = usePathname();
   // su schermi stretti la colonna è chiusa finché non si apre
   const [open, setOpen] = useState(false);
