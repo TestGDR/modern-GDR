@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Flag,
   GraduationCap,
   MapPin,
   PartyPopper,
@@ -38,7 +39,27 @@ const CATEGORY: Record<CalendarItem["category"], { label: string; dot: string; c
   staff: { label: "Staff", dot: "bg-orchid", chip: "border-orchid/50 bg-orchid/25", icon: Shield },
   sport: { label: "Sport", dot: "bg-mint", chip: "border-mint/50 bg-mint/20", icon: Trophy },
   universita: { label: "Università", dot: "bg-sand", chip: "border-sand/50 bg-sand/20", icon: BookOpen },
+  festivita: { label: "Festività", dot: "bg-violet", chip: "border-violet/60 bg-violet/30", icon: Flag },
 };
+// categorie che lo staff può dare ai suoi eventi (le festività le mette il calendario)
+const STAFF_CATEGORIES = (Object.keys(CATEGORY) as CalendarItem["category"][]).filter((c) => c !== "festivita");
+
+/** Gli eventi di tutto il giorno che durano più giorni (esami, pause) compaiono in ogni giorno */
+function itemDays(it: CalendarItem): string[] {
+  const first = dayKey(it.starts_at);
+  if (!it.all_day || !it.ends_at) return [first];
+  const out: string[] = [];
+  const d = new Date(`${first}T12:00:00Z`);
+  const last = dayKey(it.ends_at);
+  for (let i = 0; i < 31; i++) {
+    const k = d.toISOString().slice(0, 10);
+    out.push(k);
+    if (k >= last) break;
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return out;
+}
+const timeLabel = (it: CalendarItem) => (it.all_day ? "tutto il giorno" : timeOf(it.starts_at));
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 
 /** "2026-10-30" del giorno in ora italiana */
@@ -86,8 +107,7 @@ export function CalendarApp({ canManage }: { canManage: boolean }) {
   const shown = items.filter((it) => !filter || it.category === filter);
   const byDay = new Map<string, CalendarItem[]>();
   for (const it of shown) {
-    const k = dayKey(it.starts_at);
-    byDay.set(k, [...(byDay.get(k) ?? []), it]);
+    for (const k of itemDays(it)) byDay.set(k, [...(byDay.get(k) ?? []), it]);
   }
   const dayItems = byDay.get(selected) ?? [];
   const current = shown.find((it) => it.id === eventId) ?? dayItems[0] ?? null;
@@ -259,7 +279,7 @@ export function CalendarApp({ canManage }: { canManage: boolean }) {
                         >
                           <Icon className="size-3.5 shrink-0" />
                           <span className="truncate">{it.title}</span>
-                          <span className="ml-auto shrink-0 text-muted-foreground">{timeOf(it.starts_at)}</span>
+                          <span className="ml-auto shrink-0 text-muted-foreground">{timeLabel(it)}</span>
                         </button>
                       </li>
                     );
@@ -293,8 +313,18 @@ function EventDetail({ item, canManage, onEdit, onDelete }: { item: CalendarItem
         </li>
         <li className="flex items-center gap-2">
           <Clock className="size-4 shrink-0 text-muted-foreground" />
-          Dalle {timeOf(item.starts_at)}
-          {item.ends_at && ` alle ${timeOf(item.ends_at)}`}
+          {item.all_day ? (
+            item.ends_at ? (
+              `Fino a ${new Date(item.ends_at).toLocaleDateString("it-IT", { timeZone: "Europe/Rome", weekday: "long", day: "numeric", month: "long" })}`
+            ) : (
+              "Tutto il giorno"
+            )
+          ) : (
+            <>
+              Dalle {timeOf(item.starts_at)}
+              {item.ends_at && ` alle ${timeOf(item.ends_at)}`}
+            </>
+          )}
         </li>
         {item.location && (
           <li className="flex items-center gap-2">
@@ -303,7 +333,15 @@ function EventDetail({ item, canManage, onEdit, onDelete }: { item: CalendarItem
         )}
         <li className="flex items-center gap-2">
           <Users className="size-4 shrink-0 text-muted-foreground" />
-          {item.source === "sport" ? "Athletic Department" : item.source === "social" ? `Organizza ${item.organizer ?? "un personaggio"} · evento del social` : "Evento organizzato dallo staff"}
+          {item.source === "sport"
+            ? "Athletic Department"
+            : item.source === "social"
+              ? `Organizza ${item.organizer ?? "un personaggio"} · evento del social`
+              : item.source === "universita"
+                ? "Calendario accademico"
+                : item.source === "festivita"
+                  ? "Festività americana"
+                  : "Evento organizzato dallo staff"}
           {item.phase && item.phase !== "regular" && ` · ${PHASE_LABEL[item.phase]}`}
         </li>
         {item.status === "cancelled" && <li className="text-destructive">Annullato</li>}
@@ -385,7 +423,7 @@ function EventForm({ item, day, onDone, onCancel }: { item: CalendarItem | null;
       <input className={inputClass} value={f.title} maxLength={120} placeholder="Titolo" onChange={(e) => setF({ ...f, title: e.target.value })} />
       <div className="grid gap-2">
         <select className={inputClass} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value as CalendarItem["category"] })}>
-          {(Object.keys(CATEGORY) as CalendarItem["category"][]).map((c) => (
+          {STAFF_CATEGORIES.map((c) => (
             <option key={c} value={c}>
               {CATEGORY[c].label}
             </option>

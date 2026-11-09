@@ -732,10 +732,10 @@ export type TermStudent = {
 
 export type CalendarItem = {
   id: string;
-  source: "evento" | "sport" | "social";
+  source: "evento" | "sport" | "social" | "universita" | "festivita";
   title: string;
   description: string;
-  category: "evento" | "festa" | "lezione" | "staff" | "sport" | "universita";
+  category: "evento" | "festa" | "lezione" | "staff" | "sport" | "universita" | "festivita";
   starts_at: string;
   ends_at: string | null;
   location: string;
@@ -746,6 +746,8 @@ export type CalendarItem = {
   recap?: string | null;
   /** eventi del social: nome di chi organizza */
   organizer?: string;
+  /** date dell'università e festività: tutto il giorno (con ends_at: più giorni) */
+  all_day?: boolean;
 };
 
 export type SportSeasonKind = "fall" | "winter" | "spring" | "year_round";
