@@ -20,6 +20,15 @@ let origin = "/mappa";
 // La stessa pagina, ricordata anche dopo un ricaricamento
 const ORIGIN_KEY = "gdr_pagina_sotto";
 
+/**
+ * Torna alla pagina di sotto senza chiederla di nuovo al server: mentre la finestra
+ * è aperta quella pagina è ancora sullo schermo (rotta intercettata), quindi basta
+ * cambiare l'indirizzo. Next.js aggiorna usePathname da solo.
+ */
+function backToOrigin() {
+  window.history.pushState(null, "", origin);
+}
+
 function savedOrigin() {
   try {
     const v = sessionStorage.getItem(ORIGIN_KEY);
@@ -70,7 +79,6 @@ const ModalStackContext = createContext<StackCtx | null>(null);
  */
 export function ModalGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [entries, setEntries] = useState<WindowEntry[]>([]);
   // finestra dell'indirizzo attuale chiusa con la X: non si riapre finché l'indirizzo non cambia
   const closedAt = useRef<string | null>(null);
@@ -93,12 +101,12 @@ export function ModalGate({ children }: { children: React.ReactNode }) {
       setEntries([]);
       if (isModalPath(window.location.pathname)) {
         closedAt.current = window.location.pathname;
-        router.push(origin, { scroll: false });
+        backToOrigin();
       }
     };
     window.addEventListener(CLOSE_ALL_EVENT, onCloseAll);
     return () => window.removeEventListener(CLOSE_ALL_EVENT, onCloseAll);
-  }, [router]);
+  }, []);
 
   const host = useMemo<Host>(
     () => ({
@@ -124,18 +132,10 @@ export function ModalGate({ children }: { children: React.ReactNode }) {
       // era la finestra dell'indirizzo attuale: si torna alla pagina di sotto
       if (isModalPath(window.location.pathname) && windowKey(window.location.pathname) === id) {
         closedAt.current = window.location.pathname;
-        const target = origin;
-        const from = window.location.pathname + window.location.search;
-        router.push(target, { scroll: false });
-        // se il ritorno tarda (server lento) si riprova in silenzio
-        for (const delay of [4000, 10000]) {
-          setTimeout(() => {
-            if (window.location.pathname + window.location.search === from) router.push(target, { scroll: false });
-          }, delay);
-        }
+        backToOrigin();
       }
     },
-    [router],
+    [],
   );
 
   return (
