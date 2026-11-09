@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Archive, BedDouble, BookUser, BriefcaseBusiness, Drama, KeyRound, Landmark, PenLine, Shield, ShoppingBag, Sparkles, Star, Store, VenetianMask } from "lucide-react";
+import { Archive, BedDouble, BookUser, BriefcaseBusiness, Drama, Dumbbell, KeyRound, Landmark, PenLine, ScrollText, Shield, ShoppingBag, Sparkles, Star, Store, VenetianMask } from "lucide-react";
 import { PageHeader } from "@/components/game/page-header";
 
 export const metadata: Metadata = { title: "Utility" };
@@ -46,13 +46,20 @@ const GROUPS = [
       { href: "/utility/password", label: "Cambio password", hint: "La password con cui entri nel gioco", icon: KeyRound, color: "text-sand" },
     ],
   },
+  {
+    title: "Regole del gioco",
+    boxes: [
+      { href: "/utility/tratti", label: "Vantaggi e tratti", hint: "Vantaggi, svantaggi e tratti con le descrizioni", icon: ScrollText, color: "text-orchid" },
+      { href: "/utility/abilita", label: "Abilità", hint: "Caratteristiche e abilità con le descrizioni", icon: Dumbbell, color: "text-mint" },
+    ],
+  },
 ];
 
 // Pannello Utility: le sezioni si aprono nella stessa finestra
 export default function UtilityPage() {
   return (
     <>
-      <PageHeader title="Utility" subtitle="Anagrafe, PNG, lavori e gruppi, banca, investimenti, mercato e attività, dormitori, il tuo account." />
+      <PageHeader title="Utility" subtitle="Anagrafe, PNG, lavori e gruppi, banca, investimenti, mercato e attività, dormitori, il tuo account e le regole del gioco." />
       <div className="flex flex-col gap-5">
         {GROUPS.map((g) => (
           <section key={g.title}>
