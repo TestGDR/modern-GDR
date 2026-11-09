@@ -44,6 +44,8 @@ export type Org = {
   category_id: string | null;
   /** Solo i gruppi: nascosto (lo vedono solo i membri e lo staff) */
   hidden: boolean;
+  /** Solo i lavori: ambito (una linguetta in Utility → Lavori) */
+  area: JobArea;
   sort_order: number;
   active: boolean;
   roles: OrgRole[];
@@ -71,5 +73,14 @@ export const ORG_LABELS = {
   job: { one: "lavoro", many: "Lavori", permission: "lavori.gestire" },
   group: { one: "gruppo", many: "Gruppi", permission: "gruppi.gestire" },
 } as const;
+
+/** Ambiti dei lavori (jobs.area), nell'ordine delle linguette */
+export type JobArea = "college" | "attivita" | "indipendente";
+export const JOB_AREAS: { value: JobArea; label: string }[] = [
+  { value: "college", label: "Nel college" },
+  { value: "attivita", label: "Locali e attività" },
+  { value: "indipendente", label: "Lavori indipendenti" },
+];
+export const isJobArea = (v: unknown): v is JobArea => v === "college" || v === "attivita" || v === "indipendente";
 
 export const JOB_KIND_LABEL: Record<JobKind, string> = { full_time: "Full time", part_time: "Part time" };

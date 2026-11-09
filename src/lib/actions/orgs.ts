@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import type { ActionResult } from "@/lib/actions/admin";
 import { requirePlayer } from "@/lib/auth";
 import { isUuid } from "@/lib/data";
-import { ORG_TABLES, type JobKind, type OrgKind } from "@/lib/orgs";
+import { ORG_TABLES, isJobArea, type JobArea, type JobKind, type OrgKind } from "@/lib/orgs";
 import { createClient } from "@/lib/supabase/server";
 
 // Lavori e gruppi: pannello di gestione (permessi nelle policy) e scelta
@@ -50,6 +50,8 @@ export type OrgInput = {
   categoryId?: string | null;
   /** gruppi: nascosto (niente icona in scheda e online, lo vedono solo membri e staff) */
   hidden?: boolean;
+  /** lavori: ambito */
+  area?: JobArea;
 };
 
 export async function saveOrg(kind: OrgKind, input: OrgInput): Promise<ActionResult> {
@@ -64,6 +66,7 @@ export async function saveOrg(kind: OrgKind, input: OrgInput): Promise<ActionRes
   if (kind === "group" && input.tags) row.tags = input.tags.filter((t) => t === "malavita");
   if (kind === "group") row.category_id = input.categoryId && isUuid(input.categoryId) ? input.categoryId : null;
   if (kind === "group" && typeof input.hidden === "boolean") row.hidden = input.hidden;
+  if (kind === "job") row.area = isJobArea(input.area) ? input.area : "attivita";
   await requirePlayer();
   const supabase = await createClient();
   if (input.id) {

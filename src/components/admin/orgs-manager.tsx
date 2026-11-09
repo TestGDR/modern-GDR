@@ -22,7 +22,7 @@ import {
   type RoleInput,
 } from "@/lib/actions/orgs";
 import { formatDollars } from "@/lib/bank";
-import { ORG_LABELS, type GroupCategory, type JobKind, type Org, type OrgKind, type OrgRole } from "@/lib/orgs";
+import { JOB_AREAS, ORG_LABELS, isJobArea, type GroupCategory, type JobKind, type Org, type OrgKind, type OrgRole } from "@/lib/orgs";
 import { cn } from "@/lib/utils";
 
 // L'editor (TipTap) si carica solo quando serve
@@ -71,11 +71,9 @@ export function OrgsManager({ kind, orgs, characters, categories = [] }: Props) 
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-2">
                       <span className="font-medium">{o.name}</span>
-                      {kind === "group" && (
-                        <span className="rounded-full bg-white/10 px-2 py-0.5 text-[0.7rem] text-lavender">
-                          {categories.find((c) => c.id === o.category_id)?.name ?? "Senza ambito"}
-                        </span>
-                      )}
+                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[0.7rem] text-lavender">
+                        {kind === "group" ? (categories.find((c) => c.id === o.category_id)?.name ?? "Senza ambito") : JOB_AREAS.find((a) => a.value === o.area)?.label}
+                      </span>
                       <StatusPill active={o.active} />
                       {o.hidden && <span className="rounded-full bg-night/60 px-2 py-0.5 text-[0.7rem] text-orchid">Nascosto</span>}
                     </span>
@@ -110,6 +108,7 @@ function OrgForm({ kind, org, categories, onDone }: { kind: OrgKind; org?: Org; 
     tags: org?.tags ?? [],
     categoryId: org ? org.category_id : (categories.find((c) => !c.for_sport)?.id ?? null),
     hidden: org?.hidden ?? false,
+    area: org?.area ?? "attivita",
   });
   const { pending, error, execute } = useAdminAction();
   const label = ORG_LABELS[kind];
@@ -123,7 +122,7 @@ function OrgForm({ kind, org, categories, onDone }: { kind: OrgKind; org?: Org; 
     >
       <p className="font-heading text-xl tracking-wide text-peach">{org ? `Modifica ${org.name}` : `Nuovo ${label.one}`}</p>
       <ErrorText error={error} />
-      <div className={cn("grid gap-3", kind === "group" && "sm:grid-cols-[1fr_12rem]")}>
+      <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
         <FieldLabel label="Nome">
           <input className={inputClass} value={form.name} maxLength={60} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
         </FieldLabel>
@@ -134,6 +133,17 @@ function OrgForm({ kind, org, categories, onDone }: { kind: OrgKind; org?: Org; 
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
+                </option>
+              ))}
+            </select>
+          </FieldLabel>
+        )}
+        {kind === "job" && (
+          <FieldLabel label="Ambito" hint="La linguetta di Utility → Lavori">
+            <select className={inputClass} value={form.area ?? "attivita"} onChange={(e) => setForm({ ...form, area: isJobArea(e.target.value) ? e.target.value : "attivita" })}>
+              {JOB_AREAS.map((a) => (
+                <option key={a.value} value={a.value}>
+                  {a.label}
                 </option>
               ))}
             </select>

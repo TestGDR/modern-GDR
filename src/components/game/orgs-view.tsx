@@ -8,7 +8,7 @@ import { NeedsCharacter } from "@/components/game/needs-character";
 import { SafeHtml } from "@/components/guide/safe-html";
 import { joinJob, leaveJob } from "@/lib/actions/orgs";
 import { formatDollars, periodLabel } from "@/lib/bank";
-import { JOB_KIND_LABEL, type GroupCategory, type JobKind, type Org, type OrgKind, type OrgRole } from "@/lib/orgs";
+import { JOB_AREAS, JOB_KIND_LABEL, type GroupCategory, type JobKind, type Org, type OrgKind, type OrgRole } from "@/lib/orgs";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -65,7 +65,7 @@ export function OrgsView({ kind, orgs, categories = [], characterId, periodDays,
     );
   }
 
-  const sections: Section[] = kind === "job" ? [{ title: "Lavori", items: visible }] : groupSections(visible, categories);
+  const sections: Section[] = kind === "job" ? JOB_AREAS.map((a) => ({ title: a.label, items: visible.filter((o) => o.area === a.value) })) : groupSections(visible, categories);
   const current = Math.min(tab, sections.length - 1);
 
   return (
