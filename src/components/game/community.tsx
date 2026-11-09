@@ -732,10 +732,10 @@ const DAYS = [
 ] as const;
 type DaysValue = (typeof DAYS)[number]["value"];
 
-const pill = "relative flex h-10 items-center gap-2 rounded-full border border-white/15 bg-night/30 pl-3 pr-2 text-sm";
-const pillSelect = "h-full min-w-0 cursor-pointer appearance-none bg-transparent pr-6 text-sm text-foreground outline-none [&>option]:bg-night";
+const pill = "relative flex h-8 items-center gap-1.5 rounded-full border border-white/15 bg-night/30 pl-2.5 pr-2 text-xs";
+const pillSelect = "h-full min-w-0 cursor-pointer appearance-none bg-transparent pr-5 text-xs text-foreground outline-none [&>option]:bg-night";
 const pageBtn =
-  "grid h-8 w-11 place-items-center rounded-full border border-white/15 text-muted-foreground hover:bg-white/10 hover:text-white disabled:opacity-35 disabled:hover:bg-transparent";
+  "grid h-7 w-9 place-items-center rounded-full border border-white/15 text-muted-foreground hover:bg-white/10 hover:text-white disabled:opacity-35 disabled:hover:bg-transparent";
 
 /** Archivio: cerca, filtra per zona e giorno, elenco a pagine e pettegolezzo aperto accanto */
 function GossipArchive({ rows, canManage, onDeleted }: { rows: ArchiveRow[] | null; canManage: boolean; onDeleted: () => void }) {
@@ -784,17 +784,17 @@ function GossipArchive({ rows, canManage, onDeleted }: { rows: ArchiveRow[] | nu
       {/* Ricerca e filtri */}
       <div className="flex flex-wrap items-center gap-2 rounded-3xl border border-white/10 bg-white/5 p-2">
         <label className={cn(pill, "min-w-48 flex-1")}>
-          <Search className="size-4 shrink-0 text-muted-foreground" />
+          <Search className="size-3.5 shrink-0 text-muted-foreground" />
           <input
             value={query}
             onChange={(e) => (setQuery(e.target.value), resetPage())}
             placeholder="Cerca un pettegolezzo…"
             aria-label="Cerca un pettegolezzo"
-            className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            className="h-full min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
           />
         </label>
         <label className={pill}>
-          <MapPin className="size-4 shrink-0 text-muted-foreground" />
+          <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
           <select value={zone} onChange={(e) => (setZone(e.target.value), resetPage())} aria-label="Zona" className={pillSelect}>
             <option value="">Tutte le zone</option>
             {zones.map((z) => (
@@ -803,10 +803,10 @@ function GossipArchive({ rows, canManage, onDeleted }: { rows: ArchiveRow[] | nu
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 size-4 text-muted-foreground" />
+          <ChevronDown className="pointer-events-none absolute right-2 size-3.5 text-muted-foreground" />
         </label>
         <label className={pill}>
-          <CalendarDays className="size-4 shrink-0 text-muted-foreground" />
+          <CalendarDays className="size-3.5 shrink-0 text-muted-foreground" />
           <select value={days} onChange={(e) => (setDays(e.target.value as DaysValue), resetPage())} aria-label="Giorno" className={pillSelect}>
             {DAYS.map((d) => (
               <option key={d.value} value={d.value}>
@@ -814,15 +814,15 @@ function GossipArchive({ rows, canManage, onDeleted }: { rows: ArchiveRow[] | nu
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 size-4 text-muted-foreground" />
+          <ChevronDown className="pointer-events-none absolute right-2 size-3.5 text-muted-foreground" />
         </label>
         <label className={cn(pill, "sm:ml-auto")}>
-          <ArrowUpDown className="size-4 shrink-0 text-muted-foreground" />
+          <ArrowUpDown className="size-3.5 shrink-0 text-muted-foreground" />
           <select value={newest ? "recenti" : "vecchi"} onChange={(e) => (setNewest(e.target.value === "recenti"), resetPage())} aria-label="Ordine" className={pillSelect}>
             <option value="recenti">Più recenti</option>
             <option value="vecchi">Meno recenti</option>
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 size-4 text-muted-foreground" />
+          <ChevronDown className="pointer-events-none absolute right-2 size-3.5 text-muted-foreground" />
         </label>
       </div>
 
@@ -842,17 +842,17 @@ function GossipArchive({ rows, canManage, onDeleted }: { rows: ArchiveRow[] | nu
                       onClick={() => setSelected(r.id)}
                       aria-pressed={active}
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors",
+                        "flex w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition-colors",
                         active ? "border-white/40 bg-orchid/25" : "border-white/10 bg-white/5 hover:bg-white/10",
                       )}
                     >
-                      <Ear className="size-6 shrink-0 text-peach" />
+                      <Ear className="size-4 shrink-0 text-peach" />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-baseline gap-2">
-                          <span className="truncate font-semibold">{r.zone || "Senza zona"}</span>
-                          <span className="ml-auto shrink-0 text-xs text-muted-foreground">{shortWhen(r.created_at, now)}</span>
+                          <span className="truncate text-xs font-semibold">{r.zone || "Senza zona"}</span>
+                          <span className="ml-auto shrink-0 text-[0.65rem] text-muted-foreground">{shortWhen(r.created_at, now)}</span>
                         </span>
-                        <span className="block truncate text-sm text-foreground/85">{r.body}</span>
+                        <span className="block truncate text-xs text-foreground/80">{r.body}</span>
                       </span>
                     </button>
                   </li>
@@ -882,13 +882,13 @@ function GossipArchive({ rows, canManage, onDeleted }: { rows: ArchiveRow[] | nu
 
           {/* Pettegolezzo aperto */}
           {open && (
-            <article className="flex min-h-56 flex-col gap-3 rounded-3xl border border-white/15 bg-white/5 p-4 sm:p-5">
-              <header className="flex items-center gap-3 border-b border-white/15 pb-3">
-                <Ear className="size-7 shrink-0 text-peach" />
-                <h3 className="min-w-0 flex-1 truncate text-xl font-semibold">{open.zone || "Senza zona"}</h3>
-                <span className="shrink-0 text-sm text-muted-foreground">{longWhen(open.created_at, now)}</span>
+            <article className="flex min-h-40 flex-col gap-2 rounded-2xl border border-white/15 bg-white/5 p-3 sm:p-4">
+              <header className="flex items-center gap-2 border-b border-white/15 pb-2">
+                <Ear className="size-4 shrink-0 text-peach" />
+                <h3 className="min-w-0 flex-1 truncate text-sm font-semibold">{open.zone || "Senza zona"}</h3>
+                <span className="shrink-0 text-xs text-muted-foreground">{longWhen(open.created_at, now)}</span>
               </header>
-              <p className="text-lg leading-relaxed whitespace-pre-line italic">«{open.body}»</p>
+              <p className="text-sm leading-relaxed whitespace-pre-line italic">«{open.body}»</p>
               {canManage && (
                 <div className="mt-auto flex">
                   <DeleteReport id={open.id} onDone={onDeleted} />
