@@ -635,7 +635,7 @@ function BgCatalog() {
         { key: "cost_pf", label: "Costo PF", type: "number" },
         { key: "fame_points", label: "Fama", type: "number" },
         { key: "infamy_points", label: "Infamia", type: "number" },
-        { key: "social_followers", label: "Follower", type: "number" },
+        { key: "social_followers", label: "Follower (max 50.000)", type: "number" },
         { key: "sort_order", label: "Ordine", type: "number" },
         { key: "active", label: "Attiva", type: "checkbox" },
         { key: "description", label: "Descrizione", type: "textarea" },
