@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 // Regole e controlli sono nel database (business_*).
 
 type Skill = { id: string; name: string; attribute: string };
+type Tab = "mia" | "citta" | "vendita";
 
 export function BusinessApp({ characterId }: { characterId: string | null }) {
   const supabase = useMemo(() => createClient(), []);
@@ -27,6 +28,8 @@ export function BusinessApp({ characterId }: { characterId: string | null }) {
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(0);
+  // linguetta scelta (null = quella di partenza: la mia attività se ce l'ho, altrimenti i locali)
+  const [tab, setTab] = useState<Tab | null>(null);
 
   const load = useCallback(async () => {
     const [t, b, s, g] = await Promise.all([
@@ -68,15 +71,33 @@ export function BusinessApp({ characterId }: { characterId: string | null }) {
   if (!types) return <Loader2 className="mx-auto animate-spin text-muted-foreground" />;
   const days = settings.attivita_giorni ?? 30;
   const skillText = (id: string | null) => (id && skills[id] ? `${skills[id].attribute} + ${skills[id].name}` : "—");
+  const current: Tab = tab ?? (mine ? "mia" : "citta");
+  const tabs: { key: Tab; label: string }[] = [
+    ...(mine ? [{ key: "mia" as const, label: "La mia attività" }] : []),
+    { key: "citta", label: "Locali della città" },
+    { key: "vendita", label: `In vendita (${types.length})` },
+  ];
 
   return (
     <div className="flex flex-col gap-4">
       {error && <p className="rounded-xl bg-destructive/15 px-3 py-2 text-sm text-destructive">{error}</p>}
       {info && <p className="rounded-xl bg-mint/15 px-3 py-2 text-sm text-mint">{info}</p>}
 
-      {!characterId && <p className="text-sm text-muted-foreground">Per comprare un&apos;attività serve un personaggio approvato.</p>}
+      <nav className="flex flex-wrap gap-1 self-start rounded-2xl bg-white/5 p-1" aria-label="Sezioni">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            aria-current={current === t.key ? "page" : undefined}
+            className={cn("rounded-full px-3 py-1.5 text-xs", current === t.key ? "bg-flamingo/30 text-white" : "text-muted-foreground hover:bg-white/5")}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
 
-      {mine && (
+      {current === "mia" && mine && (
         <MyBusiness
           business={mine}
           reports={reports}
@@ -102,8 +123,10 @@ export function BusinessApp({ characterId }: { characterId: string | null }) {
         />
       )}
 
+      {current === "vendita" && (
       <section className="flex flex-col gap-2">
-        <h2 className="font-heading text-xl tracking-wide text-peach">Attività in vendita</h2>
+        {!characterId && <p className="text-sm text-muted-foreground">Per comprare un&apos;attività serve un personaggio approvato.</p>}
+        {mine && <p className="text-xs text-lavender">Hai già un&apos;attività: per comprarne un&apos;altra devi prima vendere la tua.</p>}
         <p className="text-xs text-muted-foreground">
           Una volta al mese la gestisci con un tiro (caratteristica + abilità + d10 contro {settings.attivita_cd ?? 14}): mese d&apos;oro +50%, normale la rendita, fiacco
           niente, disastroso perdi metà della rendita. Una sola attività per personaggio; si rivende al {settings.attivita_rivendita ?? 70}% del prezzo.
@@ -114,8 +137,9 @@ export function BusinessApp({ characterId }: { characterId: string | null }) {
           ))}
         </ul>
       </section>
+      )}
 
-      <VenuesDirectory />
+      {current === "citta" && <VenuesDirectory />}
     </div>
   );
 }

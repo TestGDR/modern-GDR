@@ -258,7 +258,7 @@ export function VenuesDirectory() {
 
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="font-heading text-xl tracking-wide text-peach">Locali e attività della città</h2>
+      <p className="text-xs text-muted-foreground">Tutti i locali di Neon Campus, della città e dei personaggi. Aprine uno per leggerne la descrizione e il menu; si ordina in chat, dal pulsante «Locale».</p>
       <label className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
         <input className={cn(inputClass, "pl-8")} value={q} placeholder="Cerca per nome, tipo, titolare o quartiere" onChange={(e) => setQ(e.target.value)} />
