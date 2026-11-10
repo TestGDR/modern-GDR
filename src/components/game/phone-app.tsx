@@ -31,7 +31,6 @@ import { Button } from "@/components/ui/button";
 import { FormattedText } from "@/components/game/chat-parts";
 import { formatTime, initials } from "@/lib/format";
 import {
-  PHONE_BUCKET,
   formatPhone,
   normalizePhone,
   type PhoneBlock,
@@ -144,7 +143,7 @@ function Avatar({ name, url, size = "size-10" }: { name: string; url: string | n
   );
 }
 
-export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initialThread }: Props) {
+export function PhoneApp({ characterId, maxNumbers, initialNumber, initialThread }: Props) {
   const supabase = useMemo(() => createClient(), []);
   const [numbers, setNumbers] = useState<PhoneNumber[] | null>(null);
   const [current, setCurrent] = useState<string | null>(initialNumber);
@@ -478,8 +477,6 @@ export function PhoneApp({ userId, characterId, maxNumbers, initialNumber, initi
           <Contacts supabase={supabase} me={me} contacts={contacts} onChanged={loadAll} onWrite={openChatWith} onError={setError} />
         ) : screen === "profile" ? (
           <Profile
-            supabase={supabase}
-            userId={userId}
             me={me}
             canAdd={numbers.length < maxNumbers}
             maxNumbers={maxNumbers}
@@ -1438,8 +1435,6 @@ function Contacts({
 /* ------------------------------ Profilo ------------------------------ */
 
 function Profile({
-  supabase,
-  userId,
   me,
   canAdd,
   maxNumbers,
@@ -1447,8 +1442,6 @@ function Profile({
   onSaved,
   onAddNumber,
 }: {
-  supabase: Supabase;
-  userId: string;
   me: PhoneNumber;
   canAdd: boolean;
   maxNumbers: number;
@@ -1460,19 +1453,15 @@ function Profile({
   const [status, setStatus] = useState(me.status_text);
   const [avatar, setAvatar] = useState(me.avatar_url);
   const [note, setNote] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const file = useRef<HTMLInputElement>(null);
+  const [link, setLink] = useState(me.avatar_url ?? "");
+  const linkInput = useRef<HTMLInputElement>(null);
 
-  async function upload(f: File) {
-    if (f.size > 2 * 1024 * 1024) return setNote("La foto deve pesare al massimo 2 MB.");
-    setUploading(true);
-    const ext = f.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-    const path = `${userId}/${me.id}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from(PHONE_BUCKET).upload(path, f, { contentType: f.type });
-    setUploading(false);
-    if (error) return setNote("Foto non caricata. Riprova.");
-    setAvatar(supabase.storage.from(PHONE_BUCKET).getPublicUrl(path).data.publicUrl);
-    setNote("Foto pronta: premi Salva.");
+  // la foto è il link di un'immagine (https://…), niente caricamento dal computer
+  function applyLink(v: string) {
+    setLink(v);
+    const url = v.trim();
+    if (!url) return setAvatar(null);
+    if (/^https:\/\/\S+$/.test(url) && url.length <= 500) setAvatar(url);
   }
 
   return (
@@ -1480,6 +1469,8 @@ function Profile({
       className="flex h-full flex-col gap-3 overflow-y-auto p-4"
       onSubmit={async (e) => {
         e.preventDefault();
+        const url = link.trim();
+        if (url && (!/^https:\/\/\S+$/.test(url) || url.length > 500)) return setNote("La foto va indicata con un link che inizia con https://");
         if (await rpc("phone_update_profile", { p_number: me.id, p_name: name, p_avatar: avatar, p_status: status })) {
           setNote("Profilo salvato.");
           onSaved();
@@ -1487,23 +1478,12 @@ function Profile({
       }}
     >
       <div className="flex items-center gap-4">
-        <button type="button" onClick={() => file.current?.click()} className="relative" aria-label="Cambia la foto del profilo">
+        <button type="button" onClick={() => linkInput.current?.focus()} className="relative" aria-label="Cambia la foto del profilo">
           <Avatar name={name || "?"} url={avatar} size="size-20" />
           <span className="absolute right-0 bottom-0 grid size-7 place-items-center rounded-full bg-flamingo text-white">
             <Camera className="size-4" />
           </span>
         </button>
-        <input
-          ref={file}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) upload(f);
-            e.target.value = "";
-          }}
-        />
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground">Il tuo numero</p>
           <p className="flex items-center gap-2 font-heading text-2xl tracking-wide">
@@ -1512,7 +1492,6 @@ function Profile({
               <Copy className="size-4" />
             </button>
           </p>
-          {uploading && <p className="text-xs text-muted-foreground">Caricamento della foto…</p>}
         </div>
       </div>
       <label className="flex flex-col gap-1 text-sm">
@@ -1523,8 +1502,21 @@ function Profile({
         Info
         <input value={status} onChange={(e) => setStatus(e.target.value)} maxLength={140} placeholder="Es. Disponibile" className={inputCls} />
       </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Foto del profilo (link)
+        <input
+          ref={linkInput}
+          value={link}
+          onChange={(e) => applyLink(e.target.value)}
+          maxLength={500}
+          inputMode="url"
+          placeholder="https://… (link diretto a un'immagine)"
+          className={inputCls}
+        />
+        <span className="text-xs text-muted-foreground">Incolla il link di un&apos;immagine già online (deve iniziare con https://), poi premi Salva.</span>
+      </label>
       {avatar && (
-        <button type="button" onClick={() => setAvatar(null)} className="w-fit text-xs text-muted-foreground underline">
+        <button type="button" onClick={() => applyLink("")} className="w-fit text-xs text-muted-foreground underline">
           Togli la foto
         </button>
       )}
