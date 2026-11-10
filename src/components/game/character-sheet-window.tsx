@@ -500,7 +500,7 @@ function DataList({ character, rules, affiliations }: { character: SheetCharacte
     fallback: t.icon,
     emoji: !t.groupIcon,
     label: `${t.sport}${t.position ? ` · ${t.position}` : ""} (${squad[t.status]})`,
-    href: t.groupId ? `/utility/gruppi?apri=${t.groupId}` : "/sport",
+    href: t.groupId ? `/utility/squadre?apri=${t.groupId}` : "/sport",
   }));
   return (
     <div className="flex flex-col">

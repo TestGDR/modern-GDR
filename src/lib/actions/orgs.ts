@@ -246,3 +246,11 @@ export async function leaveJob(characterId: string, jobId: string): Promise<Acti
   const { error } = await supabase.rpc("leave_job", { p_character: characterId, p_job: jobId });
   return done(error);
 }
+
+/** Gestione → Gruppi → Squadre: solo la descrizione (nome, icona e ruoli vengono da Gestione → Sport) */
+export async function saveTeamDescription(id: string, description: string): Promise<ActionResult> {
+  if (!isUuid(id)) return { ok: false, error: "Squadra non valida." };
+  await requirePlayer();
+  const supabase = await createClient();
+  return checked(supabase.from("game_groups").update({ description: clean(description, 20000) }).eq("id", id).eq("kind", "sport").select("id"));
+}

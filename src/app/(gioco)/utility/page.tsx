@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Archive, BedDouble, BookUser, BriefcaseBusiness, Drama, Dumbbell, KeyRound, Landmark, PenLine, ScrollText, Shield, ShoppingBag, Sparkles, Star, Store, VenetianMask } from "lucide-react";
+import { Archive, BedDouble, BookUser, BriefcaseBusiness, Drama, Dumbbell, KeyRound, Landmark, PenLine, ScrollText, Shield, ShoppingBag, Sparkles, Star, Store, Trophy, VenetianMask } from "lucide-react";
 import { PageHeader } from "@/components/game/page-header";
 
 export const metadata: Metadata = { title: "Utility" };
@@ -22,7 +22,8 @@ const GROUPS = [
     title: "Lavoro e gruppi",
     boxes: [
       { href: "/utility/lavori", label: "Lavori", hint: "Full time e part time: scegli il tuo", icon: BriefcaseBusiness, color: "text-peach" },
-      { href: "/utility/gruppi", label: "Gruppi", hint: "Gruppi di gioco e squadre sportive", icon: Shield, color: "text-lavender" },
+      { href: "/utility/gruppi", label: "Gruppi", hint: "Confraternite, club e associazioni", icon: Shield, color: "text-lavender" },
+      { href: "/utility/squadre", label: "Squadre del college", hint: "Le squadre sportive: ruoli, atleti e descrizioni", icon: Trophy, color: "text-mint" },
     ],
   },
   {

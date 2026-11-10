@@ -22,6 +22,8 @@ type Props = {
   maxGroups: number;
   /** Apre subito la pagina di questo lavoro o gruppo (dalla scheda: ?apri=<id>) */
   initialOpenId?: string | null;
+  /** Utility → Squadre del college: solo le squadre sportive */
+  teams?: boolean;
 };
 
 /**
@@ -29,7 +31,7 @@ type Props = {
  * cliccando un nome si apre la sua pagina con descrizione, ruoli e membri.
  * I lavori si scelgono da qui (ruolo e orario); i ruoli pieni sono grigi.
  */
-export function OrgsView({ kind, orgs, categories = [], characterId, periodDays, maxGroups, initialOpenId = null }: Props) {
+export function OrgsView({ kind, orgs, categories = [], characterId, periodDays, maxGroups, initialOpenId = null, teams = false }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [tab, setTab] = useState(0);
@@ -51,6 +53,7 @@ export function OrgsView({ kind, orgs, categories = [], characterId, periodDays,
       <OrgPage
         org={open}
         kind={kind}
+        teams={teams}
         characterId={characterId}
         periodDays={periodDays}
         pending={pending}
@@ -65,7 +68,12 @@ export function OrgsView({ kind, orgs, categories = [], characterId, periodDays,
     );
   }
 
-  const sections: Section[] = kind === "job" ? JOB_AREAS.map((a) => ({ title: a.label, items: visible.filter((o) => o.area === a.value) })) : groupSections(visible, categories);
+  const sections: Section[] =
+    kind === "job"
+      ? JOB_AREAS.map((a) => ({ title: a.label, items: visible.filter((o) => o.area === a.value) }))
+      : teams
+        ? [{ title: "Squadre", sport: true, items: visible }]
+        : groupSections(visible, categories);
   const current = Math.min(tab, sections.length - 1);
 
   return (
@@ -75,9 +83,9 @@ export function OrgsView({ kind, orgs, categories = [], characterId, periodDays,
         <section className="glass flex flex-col gap-2 rounded-2xl p-4 text-sm">
           <p className="flex items-center gap-2 font-heading text-2xl tracking-wide">
             {kind === "job" ? <BriefcaseBusiness className="size-5 text-sand" /> : <Users className="size-5 text-mint" />}
-            {kind === "job" ? "I tuoi lavori" : "I tuoi gruppi"}
+            {kind === "job" ? "I tuoi lavori" : teams ? "Le tue squadre" : "I tuoi gruppi"}
           </p>
-          {mine.length === 0 && <p className="text-muted-foreground">{kind === "job" ? "Nessun lavoro: aprine uno qui sotto e scegli il ruolo." : "Non fai parte di nessun gruppo."}</p>}
+          {mine.length === 0 && <p className="text-muted-foreground">{kind === "job" ? "Nessun lavoro: aprine uno qui sotto e scegli il ruolo." : teams ? "Non fai parte di nessuna squadra." : "Non fai parte di nessun gruppo."}</p>}
           <ul className="flex flex-col gap-1">
             {mine.map((o) => {
               const me = o.members.find((m) => m.character_id === characterId);
@@ -88,7 +96,7 @@ export function OrgsView({ kind, orgs, categories = [], characterId, periodDays,
                     <OrgIcon url={o.icon_url} />
                     <span className="font-medium">{o.name}</span>
                     {me?.mode && <ModeBadge mode={me.mode} />}
-                    {o.sport && <SportBadge />}
+                    {o.sport && !teams && <SportBadge />}
                     {role && <span className="text-muted-foreground">· {role.name}</span>}
                   </button>
                 </li>
@@ -98,13 +106,15 @@ export function OrgsView({ kind, orgs, categories = [], characterId, periodDays,
           <p className="text-xs text-muted-foreground">
             {kind === "job"
               ? "Puoi avere un full time, un part time, un full time e un part time insieme, oppure due part time. Mai due full time. I ruoli segnati «dallo staff» si chiedono con un ticket."
-              : `I gruppi di gioco li assegna lo staff: per entrare apri un ticket. Al massimo ${maxGroups} gruppi per personaggio; le squadre sportive non contano.`}
+              : teams
+                ? "Le squadre le assegna lo staff: per entrare apri un ticket. Una sola squadra per personaggio; non conta nel numero dei gruppi."
+                : `I gruppi di gioco li assegna lo staff: per entrare apri un ticket. Al massimo ${maxGroups} gruppi per personaggio; le squadre sportive non contano.`}
           </p>
         </section>
       ) : (
         <NeedsCharacter
           className="glass rounded-2xl"
-          text={kind === "job" ? "Per scegliere un lavoro serve un personaggio approvato." : "I gruppi si assegnano ai personaggi approvati."}
+          text={kind === "job" ? "Per scegliere un lavoro serve un personaggio approvato." : teams ? "Le squadre si assegnano ai personaggi approvati." : "I gruppi si assegnano ai personaggi approvati."}
         />
       )}
 
@@ -137,11 +147,11 @@ export function OrgsView({ kind, orgs, categories = [], characterId, periodDays,
           <section key={s.title} role={sections.length > 1 ? "tabpanel" : undefined} className="flex flex-col gap-2">
             {s.sport && (
               <p className="text-xs text-muted-foreground">
-                Ogni sport ha la sua squadra: si entra e si esce dalla pagina{" "}
+                Ogni sport ha la sua squadra, con i ruoli in campo. Calendario, risultati, classifiche e allenamenti sono nella pagina{" "}
                 <Link href="/sport" className="text-peach hover:underline">
                   Sport
                 </Link>
-                , dove ci sono anche calendario, risultati e classifiche. Niente stipendio.
+                . Niente stipendio.
               </p>
             )}
             <ul className="flex flex-col gap-1.5">
@@ -200,6 +210,7 @@ function payRange(roles: OrgRole[]) {
 function OrgPage({
   org,
   kind,
+  teams,
   characterId,
   periodDays,
   pending,
@@ -210,6 +221,7 @@ function OrgPage({
 }: {
   org: Org;
   kind: OrgKind;
+  teams: boolean;
   characterId: string | null;
   periodDays: number;
   pending: boolean;
@@ -224,7 +236,7 @@ function OrgPage({
   return (
     <div className="flex flex-col gap-4">
       <button type="button" onClick={onBack} className="flex w-fit items-center gap-1.5 text-sm text-lavender hover:underline">
-        <ArrowLeft className="size-4" /> {kind === "job" ? "Tutti i lavori" : "Tutti i gruppi"}
+        <ArrowLeft className="size-4" /> {kind === "job" ? "Tutti i lavori" : teams ? "Tutte le squadre" : "Tutti i gruppi"}
       </button>
 
       <header className="flex flex-wrap items-center gap-2">
@@ -297,7 +309,7 @@ function OrgPage({
                       );
                     })}
                   </div>
-                ) : (
+                ) : org.sport ? null : (
                   <p className="text-xs text-sand">{r.salary > 0 ? `${formatDollars(r.salary)} ${periodLabel(periodDays)}` : "Senza stipendio"}</p>
                 )}
               </li>

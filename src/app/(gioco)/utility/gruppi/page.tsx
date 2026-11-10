@@ -16,7 +16,7 @@ export default function Page({ searchParams }: { searchParams?: Params }) {
   return (
     <>
       <BackToUtility />
-      <PageHeader title="Gruppi" subtitle="Confraternite, squadre, associazioni: descrizioni, ruoli e membri." />
+      <PageHeader title="Gruppi" subtitle="Confraternite, club, associazioni: descrizioni, ruoli e membri. Le squadre sportive sono in Squadre del college." />
       <Suspense fallback={<LoadingBlocks />}>
         <Content searchParams={searchParams} />
       </Suspense>
@@ -38,8 +38,8 @@ async function Content({ searchParams }: { searchParams?: Params }) {
       key={params.apri ?? "elenco"}
       initialOpenId={params.apri ?? null}
       kind="group"
-      orgs={orgs}
-      categories={categories}
+      orgs={orgs.filter((o) => !o.sport)}
+      categories={categories.filter((c) => !c.for_sport)}
       characterId={activeCharacter(player)?.id ?? null}
       periodDays={Math.max(1, setting("stipendio_giorni", 1))}
       maxGroups={setting("max_gruppi", 3)}

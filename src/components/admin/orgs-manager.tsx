@@ -18,6 +18,7 @@ import {
   saveGroupCategory,
   saveOrg,
   saveOrgRole,
+  saveTeamDescription,
   type OrgInput,
   type RoleInput,
 } from "@/lib/actions/orgs";
@@ -721,6 +722,53 @@ export function PanelTabs({ tabs, initial = 0 }: { tabs: { label: string; conten
         ))}
       </nav>
       <div role="tabpanel">{tabs[tab]?.content}</div>
+    </div>
+  );
+}
+
+/* ------------------------------ Squadre sportive ------------------------------ */
+
+/** Gestione → Gruppi → Squadre: la descrizione di ogni squadra (Utility → Squadre del college) */
+export function TeamsDescriptions({ teams }: { teams: Org[] }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-sm text-muted-foreground">
+        Qui scrivi la descrizione di ogni squadra, che i giocatori leggono in Utility → Squadre del college. Nome, icona, ruoli e atleti si cambiano da Gestione → Sport.
+      </p>
+      {teams.length === 0 && <p className="text-sm text-muted-foreground">Nessuna squadra.</p>}
+      <ul className="flex flex-col gap-1.5">
+        {teams.map((t) => (
+          <li key={t.id} className="glass flex flex-col gap-2 rounded-xl p-3">
+            <button type="button" onClick={() => setOpenId(openId === t.id ? null : t.id)} className="flex items-center gap-2 text-left">
+              <Trophy className="size-4 shrink-0 text-mint" />
+              <span className="flex-1 font-medium">{t.name}</span>
+              {!t.active && <span className="text-xs text-muted-foreground">non attiva</span>}
+              <Pencil className="size-4 text-muted-foreground" />
+            </button>
+            {openId === t.id && <TeamDescriptionForm team={t} onDone={() => setOpenId(null)} />}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function TeamDescriptionForm({ team, onDone }: { team: Org; onDone: () => void }) {
+  const [description, setDescription] = useState(plainToHtml(team.description ?? ""));
+  const { pending, error, execute } = useAdminAction();
+  return (
+    <div className="flex flex-col gap-2">
+      <ErrorText error={error} />
+      <RichEditor value={description} onChange={setDescription} minHeight="min-h-48" />
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={onDone}>
+          Annulla
+        </Button>
+        <Button type="button" disabled={pending} className="rounded-full px-6" onClick={() => execute(() => saveTeamDescription(team.id, description), onDone)}>
+          {pending ? "Salvataggio…" : "Salva"}
+        </Button>
+      </div>
     </div>
   );
 }
