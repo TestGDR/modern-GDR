@@ -30,7 +30,7 @@ const GROUPS = [
     boxes: [
       { href: "/utility/banca", label: "Servizi bancari", hint: "Stipendio, conto e soldi agli altri", icon: Landmark, color: "text-sand" },
       { href: "/utility/mercato", label: "Mercato", hint: "Oggetti, esperienze, alcolici con il tuo conto", icon: ShoppingBag, color: "text-flamingo" },
-      { href: "/utility/attivita", label: "Attività", hint: "Compra un locale e gestiscilo ogni mese", icon: Store, color: "text-peach" },
+      { href: "/utility/attivita", label: "Attività", hint: "Tutti i locali della città; compra il tuo e gestiscilo", icon: Store, color: "text-peach" },
     ],
   },
   {

@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { Briefcase, Loader2, Pencil, Store, TrendingUp } from "lucide-react";
+import { Briefcase, Loader2, Pencil, TrendingUp } from "lucide-react";
 import { inputClass } from "@/components/admin/admin-ui";
+import { VenuesDirectory } from "@/components/game/venue";
 import { Button } from "@/components/ui/button";
 import { formatDollars } from "@/lib/bank";
-import { OUTCOME_LABEL, type BusinessOwner, type BusinessReport, type BusinessType, type CharacterBusiness } from "@/lib/finance";
+import { OUTCOME_LABEL, type BusinessReport, type BusinessType, type CharacterBusiness } from "@/lib/finance";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +21,6 @@ export function BusinessApp({ characterId }: { characterId: string | null }) {
   const [types, setTypes] = useState<BusinessType[] | null>(null);
   const [mine, setMine] = useState<CharacterBusiness | null>(null);
   const [reports, setReports] = useState<BusinessReport[]>([]);
-  const [owners, setOwners] = useState<BusinessOwner[]>([]);
   const [skills, setSkills] = useState<Record<string, Skill>>({});
   const [settings, setSettings] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
@@ -30,16 +29,14 @@ export function BusinessApp({ characterId }: { characterId: string | null }) {
   const [now, setNow] = useState(0);
 
   const load = useCallback(async () => {
-    const [t, b, d, s, g] = await Promise.all([
+    const [t, b, s, g] = await Promise.all([
       supabase.from("business_types").select("*").eq("active", true).order("sort_order"),
       characterId ? supabase.from("character_businesses").select("*").eq("character_id", characterId).maybeSingle<CharacterBusiness>() : Promise.resolve({ data: null }),
-      supabase.rpc("business_directory"),
       supabase.from("skills").select("id, name, attribute:attributes(code)"),
-      supabase.from("game_settings").select("key, value").like("key", "attivita_%"),
+      supabase.from("game_settings").select("key, value").or("key.like.attivita_%,key.eq.locale_incasso_pct"),
     ]);
     setTypes((t.data ?? []) as BusinessType[]);
     setMine((b.data as CharacterBusiness | null) ?? null);
-    setOwners((d.data ?? []) as BusinessOwner[]);
     setSkills(
       Object.fromEntries(
         ((s.data ?? []) as unknown as { id: string; name: string; attribute: { code: string } | null }[]).map((x) => [x.id, { id: x.id, name: x.name, attribute: x.attribute?.code ?? "" }]),
@@ -86,6 +83,7 @@ export function BusinessApp({ characterId }: { characterId: string | null }) {
           skill={skillText(mine.skill_id)}
           days={days}
           resale={settings.attivita_rivendita ?? 70}
+          share={settings.locale_incasso_pct ?? 30}
           neglect={settings.attivita_trascurata ?? 2}
           now={now}
           busy={busy}
@@ -117,24 +115,7 @@ export function BusinessApp({ characterId }: { characterId: string | null }) {
         </ul>
       </section>
 
-      {owners.length > 0 && (
-        <section className="flex flex-col gap-1">
-          <h2 className="font-heading text-xl tracking-wide text-peach">Le attività della città</h2>
-          <ul className="grid gap-1 text-sm sm:grid-cols-2">
-            {owners.map((o) => (
-              <li key={`${o.character_id}-${o.name}`} className="flex items-baseline justify-between gap-2 rounded-lg bg-white/5 px-2.5 py-1">
-                <span className="truncate">
-                  <Store className="mr-1 inline size-3.5 text-sand" />
-                  {o.name} <span className="text-xs text-muted-foreground">· {o.type}</span>
-                </span>
-                <Link href={`/scheda/${o.character_id}`} className="shrink-0 text-xs hover:underline">
-                  {o.owner}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <VenuesDirectory />
     </div>
   );
 }
@@ -145,6 +126,7 @@ function MyBusiness({
   skill,
   days,
   resale,
+  share,
   neglect,
   now,
   busy,
@@ -157,6 +139,7 @@ function MyBusiness({
   skill: string;
   days: number;
   resale: number;
+  share: number;
   neglect: number;
   now: number;
   busy: boolean;
@@ -210,6 +193,10 @@ function MyBusiness({
       </div>
       <p className="text-[0.7rem] text-muted-foreground">
         Se non la gestisci entro 5 giorni dalla scadenza, va avanti da sola con −{neglect} al tiro.
+      </p>
+      <p className="text-[0.7rem] text-muted-foreground">
+        Il tuo locale è nell&apos;elenco qui sotto: aprilo per scriverne descrizione e immagine. La chat dove si trova e i prodotti li decide lo staff; di ogni vendita
+        ricevi il {share}% sul conto.
       </p>
       {reports.length > 0 && (
         <ul className="flex flex-col gap-0.5 text-xs">

@@ -95,7 +95,7 @@ export async function getChatRoom(id: string, characterId: string | null) {
 
   const [settings, now] = await Promise.all([getChatSettings(), requestTime()]);
   const since = freshSince(now.getTime(), settings.ttl_minutes);
-  const [canEnter, present, hidden, messages, guests, busy, invisible] = await Promise.all([
+  const [canEnter, present, hidden, messages, guests, busy, invisible, venue] = await Promise.all([
     supabase.rpc("can_enter_room", { r: id }),
     supabase.rpc("chat_present", { p_room: id }),
     supabase.rpc("chat_hidden_count", { p_room: id }),
@@ -119,6 +119,8 @@ export async function getChatRoom(id: string, characterId: string | null) {
     // Giocata in corso in un'altra chat: prima va chiusa quella
     characterId ? supabase.rpc("my_giocata") : Promise.resolve({ data: null }),
     supabase.rpc("i_am_invisible"),
+    // il locale che sta in questa chat (pannello «Locale»)
+    supabase.from("venues").select("id, name").eq("room_id", id).eq("active", true).maybeSingle<{ id: string; name: string }>(),
   ]);
 
   const visible = (messages.data ?? [])
@@ -139,6 +141,7 @@ export async function getChatRoom(id: string, characterId: string | null) {
       return g && g.room_id !== id ? { id: g.room_id, name: g.name } : null;
     })(),
     invisible: invisible.data === true,
+    venue: venue.data ?? null,
   };
 }
 

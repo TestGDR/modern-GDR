@@ -12,7 +12,7 @@ export default function Page() {
   return (
     <>
       <BackToPanel />
-      <PageHeader title="Attività" subtitle="Le attività in vendita in città e quelle dei personaggi." />
+      <PageHeader title="Attività" subtitle="I locali nelle chat, le attività in vendita e quelle dei personaggi." />
       <Suspense fallback={<LoadingBlocks />}>
         <Content />
       </Suspense>

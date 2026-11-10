@@ -1,7 +1,7 @@
 // Mercato, inventario e alterazioni: tipi e testi condivisi.
 // Prezzi, cariche e effetti stanno nel database (market_items): qui solo la presentazione.
 
-export type MarketCategory = "animali" | "veicoli" | "gioielli" | "elettronica" | "abbigliamento" | "casa" | "esperienze" | "alcolici" | "sigarette" | "droghe" | "altro";
+export type MarketCategory = "animali" | "veicoli" | "gioielli" | "elettronica" | "abbigliamento" | "casa" | "esperienze" | "cibo" | "alcolici" | "sigarette" | "droghe" | "altro";
 
 export const CATEGORY_LABEL: Record<MarketCategory, string> = {
   animali: "Animali",
@@ -11,6 +11,7 @@ export const CATEGORY_LABEL: Record<MarketCategory, string> = {
   abbigliamento: "Abbigliamento",
   casa: "Casa",
   esperienze: "Esperienze",
+  cibo: "Cibo e bevande",
   alcolici: "Alcolici",
   sigarette: "Sigarette",
   droghe: "Droghe",

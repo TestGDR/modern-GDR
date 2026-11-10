@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { inputClass, textareaClass } from "@/components/admin/admin-ui";
+import { VenuesManager } from "@/components/admin/venues-manager";
 import { Button } from "@/components/ui/button";
 import { formatDollars } from "@/lib/bank";
 import type { BusinessType } from "@/lib/finance";
@@ -44,6 +45,7 @@ export function BusinessManager() {
   return (
     <div className="flex flex-col gap-4">
       {error && <p className="text-sm text-destructive">{error}</p>}
+      <VenuesManager />
       <section className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <h2 className="font-heading text-xl tracking-wide text-peach">Catalogo</h2>

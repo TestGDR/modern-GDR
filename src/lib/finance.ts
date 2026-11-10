@@ -76,3 +76,69 @@ export const RISK_LABEL: Record<InvestmentProduct["risk"], string> = { basso: "R
 export function pctText(n: number) {
   return `${n > 0 ? "+" : ""}${n.toLocaleString("it-IT", { maximumFractionDigits: 1 })}%`;
 }
+
+/** Locale in una chat (venue_card / venues_list) */
+export type VenueCard = {
+  id: string;
+  name: string;
+  category: string;
+  image_url: string | null;
+  active: boolean;
+  kind: "pg" | "png";
+  job_id: string | null;
+  owner_character_id: string | null;
+  owner_name: string | null;
+  owner_npc_id: string | null;
+  owner_npc_avatar: string | null;
+  room_id: string | null;
+  room_name: string | null;
+  district: string | null;
+  products: number;
+};
+
+/** Prodotto di un locale (venue_get) */
+export type VenueItem = {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  price: number;
+  image_url: string | null;
+  charges: number | null;
+  use_text: string;
+  effect: "alcol" | "droga" | null;
+};
+
+/** Dettaglio del locale (venue_get) */
+export type VenueDetail = VenueCard & { description: string; can_edit: boolean; job_name: string | null; items: VenueItem[] };
+
+/** Riga della tabella venue_products (Gestione → Attività) */
+export type VenueProduct = {
+  id: string;
+  venue_id: string;
+  name: string;
+  description: string;
+  category: string;
+  price: number;
+  image_url: string | null;
+  charges: number | null;
+  use_text: string;
+  effect: unknown;
+  active: boolean;
+  sort_order: number;
+};
+
+/** Riga della tabella venues (Gestione → Attività) */
+export type VenueRow = {
+  id: string;
+  name: string;
+  category: string;
+  job_id: string | null;
+  business_id: number | null;
+  owner_npc_id: string | null;
+  room_id: string | null;
+  description: string;
+  image_url: string | null;
+  active: boolean;
+  sort_order: number;
+};

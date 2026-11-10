@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArrowDown, ArrowLeft, Bandage, ChevronDown, Crown, Dices, Eye, EyeOff, LayoutGrid, LogIn, LogOut, NotebookPen, Package, Repeat, Save, SendHorizontal, SkipForward, SlidersHorizontal, Swords, Users } from "lucide-react";
+import { Archive, ArrowDown, ArrowLeft, Bandage, ChevronDown, Crown, Dices, Eye, EyeOff, LayoutGrid, LogIn, LogOut, NotebookPen, Package, Repeat, Save, SendHorizontal, SkipForward, SlidersHorizontal, Store, Swords, Users } from "lucide-react";
 import { ItemsPanel } from "@/components/game/chat-items";
 import { ChatToolWindow, NotepadPanel, SaveChatPanel } from "@/components/game/chat-tools";
 import { ChatPrefsPanel } from "@/components/game/prefs-panel";
@@ -20,6 +20,7 @@ import {
   type DiceSkill,
 } from "@/components/game/chat-parts";
 import { StashPanel, useRoomStash } from "@/components/game/chat-stash";
+import { VenueView } from "@/components/game/venue";
 import { ChatTagsBar } from "@/components/game/chat-tags";
 import { AcademicWorks } from "@/components/university/academic-works";
 import { ChatTurnsManager, scenesOf, turnAction, turnMarks, useRoomTurns } from "@/components/game/chat-turns";
@@ -64,7 +65,7 @@ type Props = {
 const byTime = (a: Message, b: Message) => a.created_at.localeCompare(b.created_at) || a.id - b.id;
 
 /** Comandi della chat: ognuno si apre nella sua finestra */
-type Tool = "scontro" | "incidente" | "oggetti" | "cassa" | "dadi" | "master" | "note" | "salva" | "impostazioni";
+type Tool = "scontro" | "incidente" | "oggetti" | "cassa" | "locale" | "dadi" | "master" | "note" | "salva" | "impostazioni";
 
 /**
  * Stanza di chat (dal Westeros: ChatRoom.tsx). Tempo reale con Supabase,
@@ -570,6 +571,8 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
     { id: "scontro", label: "Combattimento", icon: <Swords />, show: true },
     { id: "incidente", label: "Incidente", icon: <Bandage />, show: true },
     { id: "oggetti", label: "Oggetti", icon: <Package />, show: true },
+    // il locale che sta in questa chat: descrizione e acquisti
+    { id: "locale", label: "Locale", icon: <Store />, show: !!data.venue },
     // la cassa compare quando c'è dentro qualcosa (lo staff la vede sempre per riempirla)
     { id: "cassa", label: "Cassa comune", icon: <Archive />, show: canStash || stash.rows.length > 0 },
     { id: "salva", label: "Salva chat", icon: <Save />, show: true },
@@ -852,6 +855,11 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
             <ChatToolWindow title="Cassa comune" icon={<Archive className="size-5" />} width={520} onClose={() => closeTool("cassa")}>
               <StashPanel roomId={roomId} characterId={me.id} rows={stash.rows} canManage={canStash} joined={joined} onChanged={stash.reload} onError={setError} />
               {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+            </ChatToolWindow>
+          )}
+          {tools.includes("locale") && data.venue && (
+            <ChatToolWindow title={data.venue.name} icon={<Store className="size-5" />} tone="text-sand" width={520} onClose={() => closeTool("locale")}>
+              <VenueView venueId={data.venue.id} roomId={roomId} characterId={me.id} joined={joined} />
             </ChatToolWindow>
           )}
           {tools.includes("master") && (
