@@ -12,7 +12,7 @@ export default function Page() {
   return (
     <>
       <BackToPanel />
-      <PageHeader title="Voci nuove dei personaggi" subtitle="I personaggi già approvati possono aggiungere una volta voci del catalogo nuovo, pagandole con i PX rimasti." />
+      <PageHeader title="Voci nuove dei personaggi" subtitle="I personaggi già approvati possono aggiungere una volta dei tratti (non vantaggi né svantaggi), pagandoli con i PX rimasti." />
       <Suspense fallback={<LoadingBlocks />}>
         <Content />
       </Suspense>

@@ -28,9 +28,8 @@ export type OptionRequest = {
   items: { option_id: string; name: string; kind: string; scope: string; level: number; choice: string; cost: number; description: string }[];
 };
 
+// Dopo l'approvazione solo tratti: vantaggi e svantaggi no (controllo anche nel database)
 const GROUPS: { key: string; title: string; filter: (o: CreationOption) => boolean }[] = [
-  { key: "vantaggi", title: "Vantaggi", filter: (o) => o.kind === "vantaggio" && o.scope !== "ambientazione" },
-  { key: "svantaggi", title: "Svantaggi", filter: (o) => o.kind === "svantaggio" && o.scope !== "ambientazione" },
   { key: "tratti", title: "Tratti", filter: (o) => o.kind === "tratto" && !o.is_origin && o.scope !== "ambientazione" },
   { key: "ambientazione", title: "Ambientazione", filter: (o) => o.scope === "ambientazione" && !o.is_origin },
   { key: "provenienza", title: "Provenienza", filter: (o) => o.is_origin },
@@ -115,7 +114,7 @@ export function OptionRequestPanel({ character, rules, build }: { character: Cha
       ) : (
         <div className="flex flex-col gap-2">
           <p className="text-sm text-muted-foreground">
-            Puoi aggiungere <strong>una volta</strong> voci del catalogo nuovo, pagandole con i PX che ti restano ({character.px} PX). Gli svantaggi ne danno, ma in tutto (con quelli della creazione) al massimo il tetto delle impostazioni. Le approva lo staff.
+            Puoi aggiungere <strong>una volta</strong> dei tratti, pagandoli con i PX che ti restano ({character.px} PX). Vantaggi e svantaggi si scelgono solo in creazione. Le approva lo staff.
           </p>
           {rejected && (
             <p className="text-xs text-destructive">
@@ -157,7 +156,7 @@ function RequestForm({
   const cost = pickedOptions.reduce((s, o) => s + o.cost_px * picked[o.id].level, 0);
   const counts = traitCounts([...rules.options.filter((o) => owned.has(o.id)), ...pickedOptions], settings);
   const current = GROUPS.find((g) => g.key === group) ?? GROUPS[0];
-  const items = rules.options.filter((o) => o.kind !== "tenore" && o.active && o.available && !owned.has(o.id) && current.filter(o));
+  const items = rules.options.filter((o) => o.kind === "tratto" && o.active && o.available && !owned.has(o.id) && current.filter(o));
   const blockedBy = (o: CreationOption) =>
     [...owned, ...Object.keys(picked)].find((id) => id !== o.id && (o.incompatible_ids.includes(id) || rules.options.find((x) => x.id === id)?.incompatible_ids.includes(o.id)));
 
