@@ -201,7 +201,7 @@ export function SaveChatPanel({
           .order("id", { ascending: true })
           .range(i, Math.min(i + 999, SAVE_MAX - 1));
         if (error || !data) break;
-        all.push(...(data as Message[]));
+        all.push(...(data as Message[]).filter((m) => m.kind !== "sussurro" || m.character_id === characterId || m.recipient_id === characterId));
         if (data.length < 1000) break;
       }
       if (alive) {

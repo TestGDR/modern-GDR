@@ -45,8 +45,9 @@ function asHtml(a: ArchiveFull) {
   const rows = a.messages
     .map((m) => {
       if (m.kind === "sistema") return `<p class="sys">${time(m.at)} · <b>${escapeHtml(m.name)}</b> ${formatBody(m.content)}</p>`;
-      const to = m.recipient ? ` → ${escapeHtml(m.recipient)}` : "";
-      return `<div class="msg ${escapeHtml(m.kind)}"><div class="head"><b>${escapeHtml(m.name)}${to}</b><span>${time(m.at)}</span></div><p>${formatBody(m.content)}</p></div>`;
+      const to = m.recipient ? ` ${m.kind === "sussurro" ? "sussurra a" : "→"} ${escapeHtml(m.recipient)}` : "";
+      const off = m.kind === "fuori_gioco" ? " (OFF)" : "";
+      return `<div class="msg ${escapeHtml(m.kind)}"><div class="head"><b>${escapeHtml(m.name)}${off}${to}</b><span>${time(m.at)}</span></div><p>${formatBody(m.content)}</p></div>`;
     })
     .join("\n");
   const title = `${a.room_name}${a.place_name ? ` · ${a.place_name}` : ""}`;
@@ -67,6 +68,8 @@ h1{margin:0;color:#ffb38a;letter-spacing:.05em}
 .master{background:rgba(160,90,200,.2)}.master .head b{color:#e48fe0}
 .png .head b{color:#e48fe0}
 .dado .head b,.combattimento .head b,.incidente .head b{color:#ff8fab}
+.sussurro{background:rgba(120,90,200,.2)}.sussurro .head b{color:#c8b8ff}
+.fuori_gioco{background:none;color:#a9a1b8;font-size:14px}.fuori_gioco .head b{color:#a9a1b8}
 .speech{color:#ffb38a;font-weight:600}
 .thought{color:#c8b8ff;font-style:italic}
 .sys{text-align:center;color:#a9a1b8;font-size:13px}
@@ -160,7 +163,15 @@ export function PlayArchive() {
         <ArchiveHeader a={open} onDownload={() => downloadOne(open)} onRemove={() => remove(open)} onNote={(n) => saveNote(open, n)} />
         <ol className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-night/40 p-3 sm:p-5">
           {open.messages.map((m, i) => (
-            <li key={i} className={cn("text-sm leading-relaxed", m.kind === "sistema" && "text-center text-xs text-muted-foreground")}>
+            <li
+              key={i}
+              className={cn(
+                "text-sm leading-relaxed",
+                m.kind === "sistema" && "text-center text-xs text-muted-foreground",
+                m.kind === "fuori_gioco" && "text-xs text-muted-foreground",
+                m.kind === "sussurro" && "rounded-lg bg-lavender/10 px-2 py-1",
+              )}
+            >
               <span className="mr-2 text-xs text-muted-foreground">{new Date(m.at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}</span>
               {m.kind === "sistema" ? (
                 <>
@@ -170,8 +181,14 @@ export function PlayArchive() {
                 <>
                   <strong className={cn("font-heading tracking-wide", m.kind === "master" ? "text-orchid" : m.kind === "dado" ? "text-peach" : "text-sand")}>
                     {m.kind === "master" ? "Master" : firstName(m.name)}
+                    {m.kind === "fuori_gioco" && " (OFF)"}
                   </strong>
-                  {m.recipient && <span className="text-lavender"> → {m.recipient}</span>}{" "}
+                  {m.recipient && (
+                    <span className="text-lavender">
+                      {" "}
+                      {m.kind === "sussurro" ? "sussurra a" : "→"} {firstName(m.recipient)}
+                    </span>
+                  )}{" "}
                   <span className="whitespace-pre-line">{m.content}</span>
                 </>
               )}
