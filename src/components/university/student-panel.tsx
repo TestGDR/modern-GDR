@@ -31,7 +31,7 @@ type Catalog = {
   settings: Record<string, number | number[]>;
 };
 
-export function StudentPanel({ characterId, isOwner }: { characterId: string; isOwner: boolean }) {
+export function StudentPanel({ characterId, isOwner, canManage = false }: { characterId: string; isOwner: boolean; canManage?: boolean }) {
   const supabase = useMemo(() => createClient(), []);
   const [data, setData] = useState<AcademicOverview | null | "vietato">(null);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
@@ -157,6 +157,7 @@ export function StudentPanel({ characterId, isOwner }: { characterId: string; is
               <CurrentCourses
                 data={data}
                 canWithdraw={isOwner && term.status === "in_progress" && term.withdraw_open}
+                canReinstate={canManage && (term.status === "in_progress" || term.status === "registration_open")}
                 homework={term.status === "in_progress" ? homework : []}
                 homeworkRules={catalog?.settings}
                 extras={isOwner ? extras : null}
@@ -720,6 +721,7 @@ function Registration({
 function CurrentCourses({
   data,
   canWithdraw,
+  canReinstate = false,
   homework,
   homeworkRules,
   extras,
@@ -730,6 +732,8 @@ function CurrentCourses({
 }: {
   data: AcademicOverview;
   canWithdraw: boolean;
+  /** staff: annulla un ritiro fatto per sbaglio */
+  canReinstate?: boolean;
   homework: Homework[];
   homeworkRules: Catalog["settings"] | undefined;
   extras: AcademicExtras | null;
@@ -764,7 +768,21 @@ function CurrentCourses({
           <span className="text-xs text-muted-foreground">{e.credits} cr</span>
           {e.status === "enrolled" && data.term?.status === "in_progress" && <TutorButton enrollment={e} extras={extras} busy={busy} run={run} />}
           {e.status === "withdrawn" ? (
-            <span className="text-xs font-semibold text-muted-foreground">W</span>
+            <>
+              <span className="text-xs font-semibold text-muted-foreground">W</span>
+              {canReinstate && (
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => window.confirm(`Annullare il ritiro da ${e.code}? Il personaggio torna iscritto al corso e riceve un messaggio di SISTEMA.`) && run("academic_staff_reinstate", { p_enrollment: e.id })}
+                  className="rounded-full border border-white/15"
+                >
+                  <Undo2 /> Annulla ritiro
+                </Button>
+              )}
+            </>
           ) : (
             canWithdraw &&
             e.status === "enrolled" && (

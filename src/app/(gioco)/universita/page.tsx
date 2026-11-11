@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { LoadingBlocks } from "@/components/game/loading";
 import { NeedsCharacter } from "@/components/game/needs-character";
 import { StudentPanel } from "@/components/university/student-panel";
-import { activeCharacter, requirePlayer } from "@/lib/auth";
+import { activeCharacter, can, requirePlayer } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Università" };
 
@@ -28,7 +28,7 @@ async function Content({ searchParams }: { searchParams?: Promise<{ pg?: string 
         <p className="text-sm text-muted-foreground">Corsi, compiti, esami e pagelle del college.</p>
       </div>
       {id ? (
-        <StudentPanel characterId={id} isOwner={id === mine?.id} />
+        <StudentPanel characterId={id} isOwner={id === mine?.id} canManage={can(player, "universita.gestire")} />
       ) : (
         <NeedsCharacter className="glass rounded-2xl" text="Per iscriverti ai corsi serve un personaggio approvato." />
       )}

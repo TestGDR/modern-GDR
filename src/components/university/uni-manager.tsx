@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BookOpen, CalendarRange, ChevronDown, Dices, GraduationCap, Pencil, Plus, Save, Send, Settings2, Trash2, X } from "lucide-react";
+import { BookOpen, CalendarRange, ChevronDown, Dices, GraduationCap, Pencil, Plus, Save, Send, Settings2, Trash2, Undo2, X } from "lucide-react";
 import { inputClass } from "@/components/admin/admin-ui";
 import { SettingRow } from "@/components/admin/settings-manager";
 import { Button } from "@/components/ui/button";
@@ -289,16 +289,38 @@ function TermStudents({ termId, editable }: { termId: string; editable: boolean 
       {error && <p className="text-sm text-destructive">{error}</p>}
       <p className="text-xs text-muted-foreground">{students.length} studenti</p>
       {students.map((s) => (
-        <StudentCard key={s.character_id} s={s} editable={editable} busy={busy} onModifier={async (id, v, note) => {
-          await run("academic_set_modifier", { p_enrollment: id, p_value: v, p_note: note });
-          await load();
-        }} />
+        <StudentCard
+          key={s.character_id}
+          s={s}
+          editable={editable}
+          busy={busy}
+          onModifier={async (id, v, note) => {
+            await run("academic_set_modifier", { p_enrollment: id, p_value: v, p_note: note });
+            await load();
+          }}
+          onReinstate={async (id) => {
+            await run("academic_staff_reinstate", { p_enrollment: id });
+            await load();
+          }}
+        />
       ))}
     </div>
   );
 }
 
-function StudentCard({ s, editable, busy, onModifier }: { s: TermStudent; editable: boolean; busy: boolean; onModifier: (id: number, v: number, note: string) => Promise<void> }) {
+function StudentCard({
+  s,
+  editable,
+  busy,
+  onModifier,
+  onReinstate,
+}: {
+  s: TermStudent;
+  editable: boolean;
+  busy: boolean;
+  onModifier: (id: number, v: number, note: string) => Promise<void>;
+  onReinstate: (id: number) => Promise<void>;
+}) {
   const [open, setOpen] = useState(false);
   const courses = s.courses ?? [];
   const credits = courses.filter((c) => c.status !== "withdrawn").reduce((t, c) => t + c.credits, 0);
@@ -316,7 +338,14 @@ function StudentCard({ s, editable, busy, onModifier }: { s: TermStudent; editab
       {open && (
         <ul className="flex flex-col gap-1 px-3 pb-3">
           {courses.map((c) => (
-            <EnrollmentRow key={c.id} c={c} editable={editable && c.status === "enrolled"} busy={busy} onModifier={onModifier} />
+            <EnrollmentRow
+              key={c.id}
+              c={c}
+              editable={editable && c.status === "enrolled"}
+              busy={busy}
+              onModifier={onModifier}
+              onReinstate={editable && c.status === "withdrawn" ? () => onReinstate(c.id) : null}
+            />
           ))}
           {courses.length === 0 && <li className="text-xs text-muted-foreground">Nessun corso (rientro dalla sospensione).</li>}
         </ul>
@@ -325,7 +354,20 @@ function StudentCard({ s, editable, busy, onModifier }: { s: TermStudent; editab
   );
 }
 
-function EnrollmentRow({ c, editable, busy, onModifier }: { c: TermStudent["courses"] extends (infer T)[] | null ? T : never; editable: boolean; busy: boolean; onModifier: (id: number, v: number, note: string) => Promise<void> }) {
+function EnrollmentRow({
+  c,
+  editable,
+  busy,
+  onModifier,
+  onReinstate,
+}: {
+  c: TermStudent["courses"] extends (infer T)[] | null ? T : never;
+  editable: boolean;
+  busy: boolean;
+  onModifier: (id: number, v: number, note: string) => Promise<void>;
+  /** ritiro per sbaglio: lo staff lo annulla (semestre non ancora simulato) */
+  onReinstate: (() => Promise<void>) | null;
+}) {
   const [value, setValue] = useState(c.master_modifier ?? 0);
   const [note, setNote] = useState(c.master_note ?? "");
   const [rolls, setRolls] = useState(false);
@@ -343,6 +385,18 @@ function EnrollmentRow({ c, editable, busy, onModifier }: { c: TermStudent["cour
           </button>
         )}
         {c.status === "withdrawn" && <span className="text-xs font-semibold">W</span>}
+        {onReinstate && (
+          <Button
+            type="button"
+            size="xs"
+            variant="ghost"
+            disabled={busy}
+            onClick={() => window.confirm(`Annullare il ritiro da ${c.code}? Lo studente torna iscritto al corso e riceve un messaggio di SISTEMA.`) && onReinstate()}
+            className="rounded-full border border-white/15"
+          >
+            <Undo2 /> Annulla ritiro
+          </Button>
+        )}
       </div>
       {editable && (
         <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
