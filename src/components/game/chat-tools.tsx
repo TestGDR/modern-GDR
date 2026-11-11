@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { Download, FileText, SendHorizontal } from "lucide-react";
 import { FloatingWindow } from "@/components/floating-window";
 import { Button } from "@/components/ui/button";
 import { KIND_LABEL } from "@/lib/chat";
 import { firstName } from "@/lib/format";
+import { createClient } from "@/lib/supabase/client";
 import type { Message, MessageKind } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -157,15 +159,73 @@ function download(name: string, content: string, type: string) {
   URL.revokeObjectURL(url);
 }
 
-/** Salva chat: scarica i messaggi visibili in HTML o testo, se ho scritto almeno 3 azioni */
-export function SaveChatPanel({ roomName, messages, myActions }: { roomName: string; messages: Message[]; myActions: number }) {
+/** Messaggi salvabili al massimo (come l'archivio delle giocate) */
+const SAVE_MAX = 3000;
+
+/**
+ * Salva chat: scarica in HTML o testo tutta la giocata, da «Entra in chat» a ora,
+ * letta dal database (anche i messaggi che dopo «Aggiorna» non sono più sullo schermo),
+ * se ho scritto almeno 3 azioni. Senza giocata aperta: i messaggi sullo schermo.
+ */
+export function SaveChatPanel({
+  roomName,
+  roomId,
+  characterId,
+  messages: onScreen,
+}: {
+  roomName: string;
+  roomId: string;
+  characterId: string;
+  messages: Message[];
+}) {
+  const supabase = useMemo(() => createClient(), []);
+  const [loaded, setLoaded] = useState<Message[] | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const { data: from } = await supabase.rpc("chat_session_start", { p_room: roomId, p_character: characterId });
+      if (typeof from !== "string") {
+        if (alive) setLoading(false);
+        return;
+      }
+      const all: Message[] = [];
+      for (let i = 0; i < SAVE_MAX; i += 1000) {
+        const { data, error } = await supabase
+          .from("messages")
+          .select("*")
+          .eq("room_id", roomId)
+          .gte("created_at", from)
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(i, Math.min(i + 999, SAVE_MAX - 1));
+        if (error || !data) break;
+        all.push(...(data as Message[]));
+        if (data.length < 1000) break;
+      }
+      if (alive) {
+        setLoaded(all);
+        setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [supabase, roomId, characterId]);
+
+  const messages = loaded ?? onScreen;
+  const myActions = messages.filter((m) => m.character_id === characterId && m.kind === "azione").length;
+  if (loading) return <p className="text-sm text-muted-foreground">Carico la giocata…</p>;
   const allowed = myActions >= SAVE_MIN_ACTIONS;
   const base = `${roomName.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "chat"}-${new Date().toISOString().slice(0, 10)}`;
   return (
     <div className="flex flex-col gap-3 text-sm">
       {allowed ? (
         <>
-          <p className="text-muted-foreground">Scarica i {messages.length} messaggi che vedi ora in questa chat.</p>
+          <p className="text-muted-foreground">
+            {loaded ? `Scarica tutta la giocata: ${messages.length} messaggi da quando sei entrato in chat.` : `Scarica i ${messages.length} messaggi che vedi ora in questa chat.`}
+          </p>
           <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" className="rounded-full" onClick={() => download(`${base}.html`, asHtml(roomName, messages), "text/html")}>
               <Download /> Scarica HTML

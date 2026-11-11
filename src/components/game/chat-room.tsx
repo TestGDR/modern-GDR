@@ -561,8 +561,6 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
   // «Salva»: i messaggi da quando sono entrato in chat (l'ultimo «è entrato in chat» mio)
   const myEntry = me ? messages.findLastIndex((m) => m.character_id === me.id && m.kind === "sistema" && m.content === "è entrato in chat.") : -1;
   const sinceJoin = myEntry >= 0 ? messages.slice(myEntry) : messages;
-  // per salvare la chat servono almeno 3 mie azioni
-  const myActions = me ? messages.filter((m) => m.character_id === me.id && m.kind === "azione").length : 0;
 
   // i comandi della chat, nello stesso ordine nella barra e nel menu del cellulare
   const commands: { id: Tool; label: string; icon: React.ReactNode; show: boolean }[] = [
@@ -880,7 +878,7 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
           )}
           {tools.includes("salva") && (
             <ChatToolWindow title="Salva chat" icon={<Save className="size-5" />} onClose={() => closeTool("salva")}>
-              <SaveChatPanel roomName={room.name} messages={sinceJoin} myActions={myActions} />
+              <SaveChatPanel roomName={room.name} roomId={roomId} characterId={me.id} messages={sinceJoin} />
             </ChatToolWindow>
           )}
           {error && <p className="text-sm text-destructive">{error}</p>}
