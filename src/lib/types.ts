@@ -816,6 +816,8 @@ export type SportEvent = {
   phase: SportPhase;
   starts_at: string;
   venue: "home" | "away" | "neutral";
+  /** gare in campo neutro: l'impianto */
+  site: string;
   room_id: string | null;
   mode: "simulated" | "played_in_chat";
   status: SportEventStatus;

@@ -72,6 +72,9 @@ export const EVENT_STATUS_LABEL: Record<SportEvent["status"], string> = {
   published: "Concluso",
 };
 export const VENUE_LABEL: Record<SportEvent["venue"], string> = { home: "In casa", away: "In trasferta", neutral: "Campo neutro" };
+/** "Campo neutro · Pacific Shores Stadium · Las Vegas, NV" (con il posto, se c'è) */
+export const venueText = (e: { venue: SportEvent["venue"]; site?: string | null }) =>
+  e.venue === "neutral" && e.site ? `${VENUE_LABEL.neutral} · ${e.site}` : VENUE_LABEL[e.venue];
 export const EVENT_KINDS: SportEvent["kind"][] = ["partita", "incontro", "gara", "regata", "meeting", "torneo"];
 
 /** Data e ora in italiano (ora italiana) */

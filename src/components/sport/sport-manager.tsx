@@ -16,6 +16,7 @@ import {
   SEASON_LABEL,
   SQUAD_LABEL,
   VENUE_LABEL,
+  venueText,
   dieValue,
   rollAverage,
   rollsText,
@@ -335,7 +336,7 @@ function EventsTab({ sport, lookup }: { sport: Sport; lookup: Lookup }) {
                   {eventDate(e.starts_at)} · {et.filter((t) => t.team_id !== school?.id).map((t) => teamName(t.team_id)).join(", ") || "senza avversari"}
                 </button>
                 <span className="text-xs text-muted-foreground">
-                  {e.kind} · {VENUE_LABEL[e.venue]} · {PHASE_LABEL[e.phase]} · {e.mode === "simulated" ? "simulato" : "giocato in chat"}
+                  {e.kind} · {venueText(e)} · {PHASE_LABEL[e.phase]} · {e.mode === "simulated" ? "simulato" : "giocato in chat"}
                 </span>
                 <span className={cn("ml-auto rounded-full px-2 py-0.5 text-[0.7rem]", e.status === "published" ? "bg-mint/20" : e.status === "simulated" ? "bg-peach/25" : "bg-white/10")}>
                   {EVENT_STATUS_LABEL[e.status]}

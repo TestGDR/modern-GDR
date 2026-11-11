@@ -15,7 +15,7 @@ import {
   PHASE_LABEL,
   SEASON_LABEL,
   SQUAD_LABEL,
-  VENUE_LABEL,
+  venueText,
   eventDate,
   positionRollText,
   rollsText,
@@ -487,7 +487,7 @@ export function TeamView({ sport, catalog }: { sport: Sport; catalog: Catalog })
                             .join(" – ")}
                     </span>
                     <span className="ml-auto text-xs text-muted-foreground">
-                      {VENUE_LABEL[e.venue]} · {e.phase !== "regular" ? `${PHASE_LABEL[e.phase]} · ` : ""}
+                      {venueText(e)} · {e.phase !== "regular" ? `${PHASE_LABEL[e.phase]} · ` : ""}
                       {published ? "Concluso" : EVENT_STATUS_LABEL[e.status === "simulated" ? "scheduled" : e.status]}
                     </span>
                   </button>

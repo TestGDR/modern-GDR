@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Dices, Loader2, Megaphone, Save } from "lucide-react";
 import { PushPicker, type Push } from "@/components/sport/push-picker";
 import { Button } from "@/components/ui/button";
-import { SQUAD_LABEL, VENUE_LABEL, eventDate } from "@/lib/sport";
+import { SQUAD_LABEL, eventDate, venueText } from "@/lib/sport";
 import { createClient } from "@/lib/supabase/client";
 import type { Sport, SportRosterEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ type EventInfo = {
   starts_at: string;
   status: string;
   venue: "home" | "away" | "neutral";
+  site: string;
   sport: { name: string; icon: string } | null;
   teams: { team: { name: string; is_player_school: boolean } | null }[];
 };
@@ -45,7 +46,7 @@ function opponents(ev: EventInfo) {
   return names.length > 2 ? `${names.length} università` : names.join(", ");
 }
 
-const EVENT_SELECT = "id, sport_id, starts_at, status, venue, sport:sports(name, icon), teams:sport_event_teams(team:sport_teams(name, is_player_school))";
+const EVENT_SELECT = "id, sport_id, starts_at, status, venue, site, sport:sports(name, icon), teams:sport_event_teams(team:sport_teams(name, is_player_school))";
 
 /* ------------------------------ Giocatore: le mie convocazioni ------------------------------ */
 
@@ -123,7 +124,7 @@ export function MyCallups({ characterId, onRolled }: { characterId: string; onRo
                   {ev.sport?.icon} {ev.sport?.name} · {opponents(ev)}
                 </span>
                 <span className="block text-xs text-muted-foreground">
-                  {eventDate(ev.starts_at)} · {VENUE_LABEL[ev.venue]}
+                  {eventDate(ev.starts_at)} · {venueText(ev)}
                   {!roll && open && ` · tira entro ${deadlineLabel(ev.starts_at)}`}
                 </span>
               </span>
@@ -296,7 +297,7 @@ function EventCallups({
           {ev.sport?.icon} {opponents(ev)}
         </span>
         <span className="text-xs text-muted-foreground">
-          {eventDate(ev.starts_at)} · {VENUE_LABEL[ev.venue]} · «Gareggia» fino al {deadlineLabel(ev.starts_at)}
+          {eventDate(ev.starts_at)} · {venueText(ev)} · «Gareggia» fino al {deadlineLabel(ev.starts_at)}
         </span>
       </div>
       <ul className="grid gap-1 sm:grid-cols-2">
