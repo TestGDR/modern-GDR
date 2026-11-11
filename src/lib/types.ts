@@ -748,6 +748,8 @@ export type CalendarItem = {
   organizer?: string;
   /** date dell'università e festività: tutto il giorno (con ends_at: più giorni) */
   all_day?: boolean;
+  /** Conference/Nationals senza la nostra università (non qualificata): grigio */
+  locked?: boolean;
 };
 
 export type SportSeasonKind = "fall" | "winter" | "spring" | "year_round";

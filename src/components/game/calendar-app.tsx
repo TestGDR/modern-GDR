@@ -215,6 +215,7 @@ export function CalendarApp({ canManage }: { canManage: boolean }) {
                             CATEGORY[it.category]?.chip,
                             current?.id === it.id && "ring-1 ring-white",
                             it.status === "cancelled" && "line-through opacity-50",
+                            it.locked && "border-white/15 bg-white/5 text-white/45 grayscale",
                           )}
                           title={it.title}
                         >
@@ -275,6 +276,7 @@ export function CalendarApp({ canManage }: { canManage: boolean }) {
                           className={cn(
                             "flex w-full items-center gap-2 rounded-lg border px-2 py-1 text-left text-xs",
                             current?.id === it.id ? CATEGORY[it.category]?.chip : "border-white/10 hover:bg-white/5",
+                            it.locked && "text-white/45 grayscale",
                           )}
                         >
                           <Icon className="size-3.5 shrink-0" />
@@ -301,7 +303,7 @@ function EventDetail({ item, canManage, onEdit, onDelete }: { item: CalendarItem
   const cat = CATEGORY[item.category] ?? CATEGORY.evento;
   const Icon = cat.icon;
   return (
-    <article className={cn("flex flex-col gap-2", item.status === "cancelled" && "opacity-70")}>
+    <article className={cn("flex flex-col gap-2", (item.status === "cancelled" || item.locked) && "opacity-70")}>
       <p className={cn("self-start rounded-full border px-2 py-0.5 text-[0.7rem]", cat.chip)}>{cat.label}</p>
       <h4 className={cn("flex items-start gap-2 font-heading text-2xl leading-tight tracking-wide", item.status === "cancelled" && "line-through")}>
         <Icon className="mt-1 size-5 shrink-0 text-peach" /> {item.title}
@@ -345,6 +347,7 @@ function EventDetail({ item, canManage, onEdit, onDelete }: { item: CalendarItem
           {item.phase && item.phase !== "regular" && ` · ${PHASE_LABEL[item.phase]}`}
         </li>
         {item.status === "cancelled" && <li className="text-destructive">Annullato</li>}
+        {item.locked && <li className="text-muted-foreground">Non qualificata: niente gare né convocazioni per la nostra università</li>}
         {item.status === "postponed" && <li className="text-peach">Rinviato: la nuova data arriverà presto</li>}
       </ul>
       {item.description && (
