@@ -308,13 +308,15 @@ export function PhoneApp({ characterId, maxNumbers, initialNumber, initialThread
   }, [openThread, current]);
 
   // ----- nomi -----
+  // nome del profilo; lo staff (messaggi.log) vede anche il personaggio a cui appartiene il numero
+  const profileName = (p: PhoneProfile) => `~ ${p.display_name}${p.owner_name && p.owner_name !== p.display_name ? ` (${p.owner_name})` : ""}`;
   const contactByDigits = useMemo(() => new Map(contacts.map((c) => [c.digits, c])), [contacts]);
   const nameOf = useCallback(
     (numberId: string | null) => {
       if (!numberId) return "";
       const p = profiles[numberId];
       if (!p) return "Numero sconosciuto";
-      return contactByDigits.get(p.digits)?.name ?? `~ ${p.display_name}`;
+      return contactByDigits.get(p.digits)?.name ?? profileName(p);
     },
     [profiles, contactByDigits],
   );
@@ -326,7 +328,7 @@ export function PhoneApp({ characterId, maxNumbers, initialNumber, initialThread
       const p = other ? profiles[other] : null;
       const saved = p ? contactByDigits.get(p.digits) : undefined;
       return {
-        name: saved?.name ?? (p ? `~ ${p.display_name}` : "Numero sconosciuto"),
+        name: saved?.name ?? (p ? profileName(p) : "Numero sconosciuto"),
         avatar: p?.avatar_url ?? null,
         sub: p ? formatPhone(p.digits) : "",
         other,

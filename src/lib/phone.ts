@@ -17,6 +17,8 @@ export type PhoneProfile = {
   display_name: string;
   avatar_url: string | null;
   status_text: string;
+  /** solo per lo staff con messaggi.log: il personaggio a cui appartiene il numero */
+  owner_name?: string | null;
 };
 
 export type PhoneThread = {
