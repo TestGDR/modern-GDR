@@ -4,10 +4,32 @@ import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, CalendarDays, ImagePlus, MapPin, PenLine, Tag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, MediaItem, useSocial } from "@/components/social/social-ui";
-import { detectMedia, handleOf, PERSON, type Media, type SocialPerson } from "@/lib/social";
+import { detectMedia, handleOf, PERSON, splitMentions, type Media, type SocialPerson } from "@/lib/social";
 import { cn } from "@/lib/utils";
 
 type MyEvent = { id: string; title: string; starts_at: string };
+
+type SocialClient = ReturnType<typeof useSocial>["supabase"];
+
+/**
+ * Salva i tag del post: le persone scelte più quelle scritte nel testo con @nome
+ * (i tag già presenti restano, sé stessi no). Restituisce un errore se non riesce.
+ */
+export async function saveTags(supabase: SocialClient, postId: string, chosen: string[], body: string, meId: string | undefined) {
+  const handles = [...new Set(splitMentions(body).flatMap((p) => (p.handle ? [p.handle.toLowerCase()] : [])))];
+  let fromText: string[] = [];
+  if (handles.length) {
+    const { data } = await supabase.from("social_profiles").select("character_id, handle").in("handle", handles);
+    fromText = ((data ?? []) as { character_id: string }[]).map((r) => r.character_id);
+  }
+  const ids = [...new Set([...chosen, ...fromText])].filter((id) => id !== meId);
+  if (!ids.length) return null;
+  const { error } = await supabase
+    .from("social_tags")
+    .upsert(ids.map((id) => ({ post_id: postId, character_id: id })), { onConflict: "post_id,character_id", ignoreDuplicates: true });
+  if (error) console.error(error.message);
+  return error ? "Post pubblicato, ma i tag non sono stati salvati." : null;
+}
 
 /** Cerca personaggi approvati per nome o @nome */
 export function usePersonSearch(query: string) {
@@ -107,8 +129,13 @@ export function Composer({ onPublished, eventId }: { onPublished: (id: string) =
       setBusy(false);
       return setError(e?.message.includes("https") ? "Un link non è valido: usa indirizzi https://" : "Post non pubblicato.");
     }
-    if (tags.length) await supabase.from("social_tags").insert(tags.map((t) => ({ post_id: data.id, character_id: t.id })));
+    // nome scritto nel campo dei tag ma non cliccato: se la persona è una sola (o il nome è esatto) si tagga lo stesso
+    const q = tagQuery.trim().replace(/^@/, "").toLowerCase();
+    const typed = q ? (found.find((p) => p.social?.handle?.toLowerCase() === q || p.name.toLowerCase() === q || p.name.split(" ")[0].toLowerCase() === q) ?? (found.length === 1 ? found[0] : null)) : null;
+    const chosen = [...tags, ...(typed ? [typed] : [])].map((t) => t.id);
+    const tagError = await saveTags(supabase, data.id, chosen, body, me.id);
     setBusy(false);
+    if (tagError) window.alert(tagError);
     onPublished(data.id);
   }
 
@@ -216,6 +243,7 @@ export function Composer({ onPublished, eventId }: { onPublished: (id: string) =
           <Tag className="size-4 shrink-0 text-muted-foreground" />
           <input value={tagQuery} onChange={(e) => setTagQuery(e.target.value)} placeholder="Tagga persone: scrivi nome o @nome" className={input} />
         </label>
+        <p className="text-xs text-muted-foreground">Clicca la persona proposta per taggarla. Anche chi scrivi nel testo con @nome viene taggato.</p>
         {found.length > 0 && (
           <ul className="flex flex-wrap gap-1.5">
             {found.map((p) => (

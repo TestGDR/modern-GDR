@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CalendarDays, MapPin, MessageCircle, MoreHorizontal, Pencil, SendHorizontal, SmilePlus, Trash2 } from "lucide-react";
+import { saveTags } from "@/components/social/composer";
 import { Avatar, Caption, Carousel, PersonName, useSocial } from "@/components/social/social-ui";
 import { PERSON, REACTIONS, socialTime, type Reaction, type SocialComment, type SocialPost } from "@/lib/social";
 import { firstName } from "@/lib/format";
@@ -113,6 +114,9 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
     if (e || !data) return setError(e?.message.includes("Aggiungi") ? e.message : "Modifica non salvata.");
     setCurrent({ body: data.body, location: data.location, edited: data.edited_at });
     setEditPost(null);
+    // chi è scritto nel testo con @nome diventa un tag
+    const tagError = await saveTags(supabase, post.id, [], data.body, me?.id);
+    if (tagError) setError("Modifica salvata, ma i tag non sono stati salvati.");
     onChanged();
   }
 
