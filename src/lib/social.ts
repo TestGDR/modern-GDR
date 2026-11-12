@@ -53,6 +53,8 @@ export type SocialComment = {
   created_at: string;
   edited_at?: string | null;
   character_id: string;
+  /** risposta a questo commento */
+  reply_to_id?: number | null;
   author: SocialPerson | null;
 };
 
@@ -67,7 +69,7 @@ export type SocialDm = {
 
 export type SocialNotification = {
   id: number;
-  kind: "follow" | "reaction" | "comment" | "tag" | "evento_invito" | "evento_nuovo" | "evento_partecipa" | "evento_promemoria";
+  kind: "follow" | "reaction" | "comment" | "tag" | "mention" | "reply" | "evento_invito" | "evento_nuovo" | "evento_partecipa" | "evento_promemoria";
   post_id: string | null;
   event_id?: string | null;
   detail: string;

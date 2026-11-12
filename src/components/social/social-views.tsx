@@ -458,6 +458,8 @@ const KIND_TEXT: Record<SocialNotification["kind"], string> = {
   reaction: "ha reagito al tuo post",
   comment: "ha commentato:",
   tag: "ti ha taggato in un post.",
+  mention: "ti ha citato in un commento:",
+  reply: "ha risposto al tuo commento:",
   evento_invito: "ti ha invitato a",
   evento_nuovo: "ha creato l'evento",
   evento_partecipa: "parteciperà al tuo evento",
@@ -503,7 +505,7 @@ export function ActivityView({ onRead }: { onRead: () => void }) {
             <p className="min-w-0 flex-1 text-sm">
               <PersonName person={n.actor} className="mr-1" />
               {KIND_TEXT[n.kind]} {n.kind === "reaction" && n.detail}
-              {n.kind === "comment" && <span className="text-muted-foreground"> {n.detail}</span>}
+              {(n.kind === "comment" || n.kind === "mention" || n.kind === "reply") && <span className="text-muted-foreground"> {n.detail}</span>}
               {n.kind.startsWith("evento_") && n.detail && <b className="font-semibold"> «{n.detail}»</b>}
               <span className="ml-1.5 text-xs text-muted-foreground">{socialTime(n.created_at)}</span>
             </p>

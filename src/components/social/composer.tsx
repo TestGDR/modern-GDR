@@ -31,33 +31,40 @@ export async function saveTags(supabase: SocialClient, postId: string, chosen: s
   return error ? "Post pubblicato, ma i tag non sono stati salvati." : null;
 }
 
-/** Cerca personaggi approvati per nome o @nome */
-export function usePersonSearch(query: string) {
+/**
+ * Cerca personaggi approvati per nome o @nome (nel database, anche senza
+ * punti e trattini bassi: «spacecowboy» trova @space_cowboy).
+ * searched = la ricerca di questo testo è finita (per dire «nessuno trovato»).
+ */
+export function usePersonSearchState(query: string) {
   const { supabase } = useSocial();
-  const [results, setResults] = useState<SocialPerson[]>([]);
-  const term = query.trim().replace(/^@/, "").replace(/[%_,()]/g, "");
+  const [state, setState] = useState<{ term: string; results: SocialPerson[] }>({ term: "", results: [] });
+  const term = query.trim().replace(/^@/, "").slice(0, 60);
   useEffect(() => {
     if (term.length < 2) return;
     let alive = true;
     const t = setTimeout(async () => {
-      const [{ data: byName }, { data: byHandle }] = await Promise.all([
-        supabase.from("characters").select(PERSON).eq("status", "approvata").ilike("name", `%${term}%`).limit(10).overrideTypes<SocialPerson[], { merge: false }>(),
-        supabase
-          .from("social_profiles")
-          .select(`character:characters(${PERSON})`)
-          .ilike("handle", `%${term.toLowerCase()}%`)
-          .limit(10)
-          .overrideTypes<{ character: SocialPerson | null }[], { merge: false }>(),
-      ]);
-      const all = [...(byHandle ?? []).map((x) => x.character), ...(byName ?? [])].filter((p): p is SocialPerson => p !== null);
-      if (alive) setResults(all.filter((p, i) => all.findIndex((x) => x.id === p.id) === i).slice(0, 12));
+      const { data: ids } = await supabase.rpc("social_people_search", { p_term: term });
+      const order = ((ids ?? []) as string[]).filter(Boolean);
+      let people: SocialPerson[] = [];
+      if (order.length) {
+        const { data } = await supabase.from("characters").select(PERSON).in("id", order).overrideTypes<SocialPerson[], { merge: false }>();
+        people = (data ?? []).sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+      }
+      if (alive) setState({ term, results: people });
     }, 250);
     return () => {
       alive = false;
       clearTimeout(t);
     };
   }, [term, supabase]);
-  return term.length >= 2 ? results : [];
+  const ready = term.length >= 2 && state.term === term;
+  return { results: ready ? state.results : [], searched: ready };
+}
+
+/** Cerca personaggi approvati per nome o @nome */
+export function usePersonSearch(query: string) {
+  return usePersonSearchState(query).results;
 }
 
 /** Valori del post dopo una modifica (per aggiornare subito la scheda del post) */
@@ -117,7 +124,8 @@ export function Composer({
   const [tagQuery, setTagQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const found = usePersonSearch(tagQuery).filter((p) => p.id !== me?.id && !tags.some((t) => t.id === p.id));
+  const tagSearch = usePersonSearchState(tagQuery);
+  const found = tagSearch.results.filter((p) => p.id !== me?.id && !tags.some((t) => t.id === p.id));
 
   function addLink() {
     const m = detectMedia(link);
@@ -293,7 +301,10 @@ export function Composer({
           <Tag className="size-4 shrink-0 text-muted-foreground" />
           <input value={tagQuery} onChange={(e) => setTagQuery(e.target.value)} placeholder="Tagga persone: scrivi nome o @nome" className={input} />
         </label>
-        <p className="text-xs text-muted-foreground">Clicca la persona proposta per taggarla. Anche chi scrivi nel testo con @nome viene taggato.</p>
+        {tagSearch.searched && found.length === 0 && (
+          <p className="text-xs text-peach">Nessun personaggio trovato con «{tagQuery.trim()}»: controlla il nome o il @nome.</p>
+        )}
+        <p className="text-xs text-muted-foreground">Scrivi il nome o il @nome e clicca la persona proposta qui sotto: diventa una pillola rosa. Anche chi scrivi nel testo con @nome viene taggato.</p>
         {found.length > 0 && (
           <ul className="flex flex-wrap gap-1.5">
             {found.map((p) => (

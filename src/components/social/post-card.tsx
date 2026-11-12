@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { CalendarDays, MapPin, MessageCircle, MoreHorizontal, Pencil, SendHorizontal, SmilePlus, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { CalendarDays, MapPin, MessageCircle, MoreHorizontal, Pencil, SendHorizontal, SmilePlus, Trash2, X } from "lucide-react";
 import { Composer } from "@/components/social/composer";
 import { Avatar, Caption, Carousel, PersonName, useSocial } from "@/components/social/social-ui";
 import { PERSON, REACTIONS, socialTime, type Reaction, type SocialComment, type SocialPost } from "@/lib/social";
@@ -17,6 +17,9 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
   const [comments, setComments] = useState<SocialComment[] | null>(null);
   const [commentCount, setCommentCount] = useState(post.social_comments[0]?.count ?? 0);
   const [text, setText] = useState("");
+  // risposta a un commento (chi l'ha scritto riceve la notifica)
+  const [replyTo, setReplyTo] = useState<{ id: number; name: string } | null>(null);
+  const commentInput = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   // modifica: del post (testo e luogo) e di un commento
   const [editing, setEditing] = useState(false);
@@ -76,7 +79,7 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
   async function loadComments() {
     const { data } = await supabase
       .from("social_comments")
-      .select(`id, body, created_at, edited_at, character_id, author:characters(${PERSON})`)
+      .select(`id, body, created_at, edited_at, character_id, reply_to_id, author:characters(${PERSON})`)
       .eq("post_id", post.id)
       .order("created_at")
       .limit(200)
@@ -88,10 +91,34 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
   async function comment() {
     const body = text.trim();
     if (!me || !body) return;
-    const { error: e } = await supabase.from("social_comments").insert({ post_id: post.id, character_id: me.id, body: body.slice(0, 1000) });
+    const { error: e } = await supabase.from("social_comments").insert({ post_id: post.id, character_id: me.id, body: body.slice(0, 1000), reply_to_id: replyTo?.id ?? null });
     if (e) return setError("Commento non pubblicato.");
     setText("");
+    setReplyTo(null);
     await loadComments();
+  }
+
+  function startReply(c: SocialComment) {
+    const handle = c.author?.social?.handle;
+    setReplyTo({ id: c.id, name: handle ? `@${handle}` : firstName(c.author?.name) });
+    if (handle && !text.includes(`@${handle}`)) setText(`@${handle} ${text}`);
+    setTimeout(() => commentInput.current?.focus(), 0);
+  }
+
+  // commenti in ordine, con le risposte sotto il commento da cui parte la discussione
+  function threaded(list: SocialComment[]) {
+    const byId = new Map(list.map((c) => [c.id, c]));
+    const rootOf = (c: SocialComment) => {
+      let cur = c;
+      for (let i = 0; i < 50 && cur.reply_to_id && byId.has(cur.reply_to_id); i++) cur = byId.get(cur.reply_to_id)!;
+      return cur;
+    };
+    const out: { c: SocialComment; nested: boolean }[] = [];
+    for (const r of list.filter((c) => rootOf(c) === c)) {
+      out.push({ c: r, nested: false });
+      for (const child of list.filter((c) => c !== r && rootOf(c) === r)) out.push({ c: child, nested: true });
+    }
+    return out;
   }
 
   async function removeComment(id: number) {
@@ -268,8 +295,8 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
         )}
         {comments && (
           <ul className="mt-1 flex flex-col gap-1.5">
-            {comments.map((c) => (
-              <li key={c.id} className="group flex items-start gap-2">
+            {threaded(comments).map(({ c, nested }) => (
+              <li key={c.id} className={cn("group flex items-start gap-2", nested && "ml-8")}>
                 <Avatar person={c.author} size="size-6" />
                 {editComment?.id === c.id ? (
                   <form
@@ -302,6 +329,11 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
                       {socialTime(c.created_at)}
                       {c.edited_at && " · modificato"}
                     </span>
+                    {me && (
+                      <button type="button" onClick={() => startReply(c)} className="ml-2 text-[0.7rem] font-semibold text-muted-foreground hover:text-foreground">
+                        Rispondi
+                      </button>
+                    )}
                   </p>
                 )}
                 {/* modifica ed eliminazione: l'autore del commento o la moderazione */}
@@ -320,6 +352,14 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
             {comments.length === 0 && <li className="text-xs text-muted-foreground">Ancora nessun commento.</li>}
           </ul>
         )}
+        {me && comments && replyTo && (
+          <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+            Rispondi a <b className="text-lavender">{replyTo.name}</b>
+            <button type="button" onClick={() => setReplyTo(null)} aria-label="Non rispondere più" className="hover:text-foreground">
+              <X className="size-3.5" />
+            </button>
+          </p>
+        )}
         {me && comments && (
           <form
             className="mt-1 flex items-center gap-2"
@@ -329,10 +369,11 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
             }}
           >
             <input
+              ref={commentInput}
               value={text}
               onChange={(e) => setText(e.target.value)}
               maxLength={1000}
-              placeholder="Aggiungi un commento… (@nome per citare)"
+              placeholder={replyTo ? `Rispondi a ${replyTo.name}…` : "Aggiungi un commento… (@nome per citare)"}
               aria-label="Commento"
               className="h-9 min-w-0 flex-1 rounded-full border border-white/15 bg-night/50 px-3 text-sm outline-none focus-visible:border-peach/60"
             />
