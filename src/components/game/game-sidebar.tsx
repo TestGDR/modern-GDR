@@ -90,7 +90,7 @@ export function SidebarFrame({ children }: { children: React.ReactNode }) {
       {open && <div className="fixed inset-0 z-30 bg-night/60 lg:hidden" onClick={() => setOpen(false)} aria-hidden="true" />}
       <aside
         className={cn(
-          "fixed bottom-0 left-0 z-40 flex w-72 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar backdrop-blur-xl transition-transform",
+          "fixed bottom-0 left-0 z-40 flex w-72 flex-col overflow-y-auto border-r lg:overflow-hidden border-sidebar-border bg-sidebar backdrop-blur-xl transition-transform",
           "top-20 lg:top-0 lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
@@ -475,7 +475,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
         <Users className="size-5 text-mint" />
         <span className="rounded-full bg-mint/15 px-2 py-0.5 text-xs text-mint">{players ? list.length : "…"}</span>
       </button>
-      <div className="skin-online hidden max-h-[250px] flex-col gap-2 overflow-hidden rounded-2xl bg-white/5 pb-3 lg:flex">
+      <div className="skin-online hidden min-h-24 flex-1 flex-col gap-2 overflow-hidden rounded-2xl bg-white/5 pb-3 lg:flex">
         {/* Il titolo (al centro, su una fascia sua) apre l'elenco esteso; il nome apre la scheda */}
         <button
           type="button"
@@ -719,10 +719,11 @@ export function GameSidebar({
   const { roomId, info } = useCurrentRoom();
   const map = useCurrentMap(!roomId);
   return (
-    <div className="flex flex-col gap-4 p-4">
+    // niente scroll nella barra: si restringe solo il riquadro «Online» (scorre l'elenco dei nomi)
+    <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
       <PrefsLoader />
       <div className="hidden justify-center lg:flex">
-        <Logo href="/bacheca" size="sm" skinAware />
+        <Logo href="/bacheca" size="xs" skinAware />
       </div>
       <PlaceCard info={info} map={roomId ? null : map} />
       <MainButtons />

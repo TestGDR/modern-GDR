@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 type LogoProps = {
   /** Destinazione del link; null = logo senza link */
   href?: string | null;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   className?: string;
   /** Da caricare subito (es. al centro della homepage) */
   priority?: boolean;
@@ -16,6 +16,7 @@ type LogoProps = {
 
 // Larghezza del logo (l'immagine è 1200x490)
 const sizes = {
+  xs: "w-40",
   sm: "w-52",
   md: "w-64",
   lg: "w-[min(88vw,640px)]",
@@ -32,7 +33,7 @@ export function Logo({ href = "/", size = "md", className, priority, skinAware =
       height={490}
       loading={priority ? "eager" : undefined}
       fetchPriority={priority ? "high" : undefined}
-      sizes={size === "lg" ? "(max-width: 728px) 88vw, 640px" : size === "md" ? "256px" : "208px"}
+      sizes={size === "lg" ? "(max-width: 728px) 88vw, 640px" : size === "md" ? "256px" : size === "xs" ? "160px" : "208px"}
       className={cn("h-auto drop-shadow-[0_4px_24px_rgb(91_75_181/0.45)]", sizes[size], skinAware && "skin-classic")}
     />
   );
@@ -43,7 +44,7 @@ export function Logo({ href = "/", size = "md", className, priority, skinAware =
       alt={siteConfig.name}
       width={1200}
       height={561}
-      sizes={size === "lg" ? "(max-width: 728px) 88vw, 640px" : size === "md" ? "256px" : "208px"}
+      sizes={size === "lg" ? "(max-width: 728px) 88vw, 640px" : size === "md" ? "256px" : size === "xs" ? "160px" : "208px"}
       className={cn("skin-sunset h-auto drop-shadow-[0_4px_20px_rgb(255_120_90/0.45)]", sizes[size])}
     />
   ) : null;
