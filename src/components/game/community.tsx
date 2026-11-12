@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowUpDown, CalendarDays, CalendarX2, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Dices, Ear, MapPin, Search, Trash2, X } from "lucide-react";
+import { ArrowUpDown, CalendarDays, CalendarX2, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Dices, Ear, HeartHandshake, MapPin, Search, Trash2, X } from "lucide-react";
 import { FloatingWindow } from "@/components/floating-window";
+import { BondsPanel } from "@/components/game/bonds";
 import { Button } from "@/components/ui/button";
 import { firstName, formatDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
@@ -49,7 +50,10 @@ export function CommunityButtons({
   const gossip = useGossipWaiting(canGossip);
   // voci nuove (pettegolezzi approvati dopo l'ultima apertura)
   const gossipNew = useSeenCounter("gossip_new");
-  const [open, setOpen] = useState<"assenze" | "ricerca" | "pettegolezzi" | null>(null);
+  // legami cercati da altri dopo l'ultima apertura
+  const bonds = useSeenCounter("bond_new");
+  const [open, setOpen] = useState<"assenze" | "ricerca" | "pettegolezzi" | "legami" | null>(null);
+  const titles = { assenze: ["Assenze", "Assenze"], ricerca: ["Ricerca di gioco", "Cerco gioco"], pettegolezzi: ["Pettegolezzi", "Voci e pettegolezzi"], legami: ["Cerca legami", "Cerca legami"] } as const;
 
   const badge = (n: number) =>
     n > 0 && <span className="absolute -top-1 right-1 grid min-w-4 place-items-center rounded-full bg-flamingo px-1 text-[0.6rem] leading-4 font-bold text-white">{n}</span>;
@@ -66,20 +70,24 @@ export function CommunityButtons({
         <button type="button" title="Pettegolezzi" aria-label="Pettegolezzi" className={cn(smallBtn, gossip.n + gossipNew.n > 0 && "blink-call")} onClick={() => (setOpen("pettegolezzi"), gossipNew.markSeen())}>
           <Ear /> {badge(gossip.n + gossipNew.n)}
         </button>
+        <button type="button" title="Cerca legami" aria-label="Cerca legami" className={cn(smallBtn, bonds.n > 0 && "blink-call")} onClick={() => (setOpen("legami"), bonds.markSeen())}>
+          <HeartHandshake /> {badge(bonds.n)}
+        </button>
       </div>
       {open && (
         <FloatingWindow
-          label={open === "assenze" ? "Assenze" : open === "ricerca" ? "Ricerca di gioco" : "Pettegolezzi"}
+          label={titles[open][0]}
           onClose={() => setOpen(null)}
-          initialWidth={open === "pettegolezzi" ? 900 : 560}
-          maxHeight={open === "pettegolezzi" ? 700 : undefined}
+          initialWidth={open === "pettegolezzi" ? 900 : open === "legami" ? 720 : 560}
+          maxHeight={open === "pettegolezzi" || open === "legami" ? 700 : undefined}
           header={
-            <h2 className="pb-4 font-heading text-3xl tracking-wide">{open === "assenze" ? "Assenze" : open === "ricerca" ? "Cerco gioco" : "Voci e pettegolezzi"}</h2>
+            <h2 className="pb-4 font-heading text-3xl tracking-wide">{titles[open][1]}</h2>
           }
         >
           {open === "assenze" && <AbsencesPanel canManage={canAbsences} />}
           {open === "ricerca" && <RequestsPanel canManage={canRequests} canPost={!!characterId} />}
           {open === "pettegolezzi" && <GossipPanel canManage={canGossip} characterId={characterId} onChanged={gossip.refresh} />}
+          {open === "legami" && <BondsPanel characterId={characterId} canManage={canRequests} />}
         </FloatingWindow>
       )}
     </>

@@ -33,6 +33,8 @@ export type Counters = {
   press_new: number;
   /** pezzi in redazione da pubblicare (solo per chi pubblica) */
   press_review: number;
+  /** legami cercati da altri dopo l'ultima apertura di Cerca legami */
+  bond_new: number;
 };
 
 export const EMPTY_COUNTERS: Counters = {
@@ -50,6 +52,7 @@ export const EMPTY_COUNTERS: Counters = {
   calendar_new: 0,
   press_new: 0,
   press_review: 0,
+  bond_new: 0,
 };
 
 const CACHE_MS = 45_000;
@@ -155,6 +158,7 @@ function start() {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "calendar_events" }, later)
       // giornale: uscite e pezzi mandati in redazione
       .on("postgres_changes", { event: "*", schema: "public", table: "press_items" }, later)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "bond_searches" }, later)
       .subscribe();
   });
 
@@ -209,13 +213,14 @@ export function useCounters(): Counters {
 }
 
 /** Contatori con il segno «visto»: il simbolo si illumina finché non si apre la sezione */
-export type SeenKind = "absences" | "play_requests" | "gossip_new" | "calendar_new" | "press_new";
+export type SeenKind = "absences" | "play_requests" | "gossip_new" | "calendar_new" | "press_new" | "bond_new";
 const SEEN_TABLE: Record<SeenKind, string> = {
   absences: "absences_seen",
   play_requests: "play_requests_seen",
   gossip_new: "gossip_seen",
   calendar_new: "calendar_seen",
   press_new: "press_seen",
+  bond_new: "bond_seen",
 };
 
 /** Quante novità e il segno «visto» (aperto qui: zero subito, poi si rilegge); sound = suono alle novità */
