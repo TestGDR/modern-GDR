@@ -70,6 +70,7 @@ export const PERMISSION_AREAS: PermissionArea[] = [
       { key: "alloggi.gestire", label: "Gestire gli alloggi", description: "Dormitori e camere del college, catalogo delle case, assegnare e togliere case e camere" },
       { key: "attivita.gestire", label: "Gestire le attività", description: "Catalogo delle attività in vendita, togliere un'attività a un personaggio" },
       { key: "mercato.gestire", label: "Gestire il mercato", description: "Oggetti in vendita e mercato nero, regali ai personaggi, togliere alterazioni" },
+      { key: "giornale.gestire", label: "Gestire il giornale", description: "Pubblicare, correggere e ritirare articoli e podcast del Campus Wire; scegliere i gruppi che scrivono e i ruoli che pubblicano" },
       { key: "calendario.gestire", label: "Gestire il calendario", description: "Aggiungere, modificare e cancellare gli eventi del calendario del gioco" },
       { key: "combattimento.gestire", label: "Gestire il combattimento", description: "Vedere dadi e PF degli scontri, decidere le difese, chiudere gli scontri, modificare PF e ferite" },
       { key: "chat.moderare", label: "Moderare le chat", description: "Entrare in tutte le chat, anche chiuse o su invito, eliminare messaggi, invitare e allontanare" },

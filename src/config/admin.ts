@@ -15,6 +15,7 @@ import {
   Map as MapIcon,
   MessageSquareText,
   MessagesSquare,
+  Newspaper,
   ScrollText,
   Settings2,
   ShieldCheck,
@@ -71,6 +72,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { href: "/gestione/mondo", category: "mondo", title: "Mondo", description: "Mappe, quartieri e chat: immagini, posizione dei punti sulla mappa, accesso e gruppi di chat.", icon: MapIcon, permissions: ["mondo.gestire"] },
   { href: "/gestione/incidenti", category: "mondo", title: "Incidenti", description: "Gli incidenti del pannello della chat (tagli, cadute, moto…): gravità, dadi del danno e difficoltà.", icon: Bandage, permissions: ["combattimento.gestire"] },
   { href: "/gestione/chat", category: "mondo", title: "Chat", description: "Regole delle chat di gioco: lunghezza massima dei messaggi, quanto restano visibili, uscita per inattività.", icon: MessagesSquare, permissions: ["mondo.gestire"] },
+  { href: "/gestione/giornale", category: "mondo", title: "Giornale e podcast", description: "Campus Wire: i gruppi che scrivono articoli e podcast e i ruoli che li pubblicano (Direttore, Caporedattore…).", icon: Newspaper, permissions: ["giornale.gestire"] },
   { href: "/gestione/forum", category: "mondo", title: "Forum", description: "Categorie e sezioni del forum, con chi può leggerle (tutti, livelli o gruppi).", icon: MessageSquareText, permissions: ["forum.sezioni"] },
   { href: "/gestione/ticket", category: "mondo", title: "Sezioni dei ticket", description: "Le categorie dei ticket di assistenza e le istruzioni mostrate a chi ne apre uno.", icon: LifeBuoy, permissions: ["ticket.categorie"] },
   // Lavori, gruppi ed economia

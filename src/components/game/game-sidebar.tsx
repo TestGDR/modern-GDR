@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   BriefcaseBusiness,
   CalendarDays,
-  CircleUserRound,
   CloudSun,
   Eye,
   EyeOff,
@@ -17,6 +16,7 @@ import {
   Map as MapIcon,
   Menu,
   MessagesSquare,
+  Newspaper,
   RefreshCw,
   Trophy,
   Users,
@@ -41,7 +41,7 @@ import { signOut } from "@/lib/actions/auth";
 import { AVAILABILITY, loadPresenceState, savePresenceState, type Availability } from "@/lib/availability";
 import { onCurrentMap, readCurrentMap } from "@/lib/current-map";
 import { initials } from "@/lib/format";
-import { useSeenCounter } from "@/lib/counters";
+import { useCounters, useSeenCounter } from "@/lib/counters";
 import { useMySubTag } from "@/lib/chat-subtag";
 import { applyPrefs, loadPrefs, loadSkin } from "@/lib/prefs";
 import { createClient } from "@/lib/supabase/client";
@@ -273,11 +273,22 @@ function CalendarIcon() {
   );
 }
 
-/** Calendario, Social, Forum, Scheda, Ticket, Utility, Università, Sport: solo icone, il nome nel fumetto */
+/** Giornale: si illumina per le uscite nuove e, per chi pubblica, per i pezzi in redazione */
+function PressIcon() {
+  const counters = useCounters();
+  const n = counters.press_new + counters.press_review;
+  return (
+    <Link href="/giornale" className={cn(iconCls, "relative", n > 0 && "blink-call")} aria-label={n ? `Giornale: ${n} novità` : "Giornale"}>
+      <Newspaper />
+      {n > 0 && <span className="absolute -top-1 -right-1 grid min-w-4 place-items-center rounded-full bg-flamingo px-1 text-[0.6rem] leading-4 font-bold text-white">{n}</span>}
+    </Link>
+  );
+}
+
+/** Calendario, Social, Forum, Giornale, Ticket, Utility, Università, Sport: solo icone, il nome nel fumetto (la scheda si apre dal ritratto in alto) */
 function FeatureIcons() {
   const links: [string, string, React.ReactNode][] = [
     ["/calendario", "Calendario", <CalendarDays key="i" />],
-    ["/scheda", "Scheda", <CircleUserRound key="i" />],
     ["/utility", "Utility", <BriefcaseBusiness key="i" />],
     ["/universita", "Università", <GraduationCap key="i" />],
     ["/sport", "Sport", <Trophy key="i" />],
@@ -300,11 +311,13 @@ function FeatureIcons() {
       <HoverTip label="Forum">
         <ForumIcon />
       </HoverTip>
-      {link(links[1])}
+      <HoverTip label="Giornale e podcast">
+        <PressIcon />
+      </HoverTip>
       <HoverTip label="Ticket">
         <TicketIcon />
       </HoverTip>
-      {links.slice(2).map(link)}
+      {links.slice(1).map(link)}
     </div>
   );
 }
