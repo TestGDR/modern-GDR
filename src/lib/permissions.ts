@@ -127,6 +127,7 @@ export const PERMISSION_AREAS: PermissionArea[] = [
     items: [
       { key: "utenti.silenziare", label: "Silenziare o sospendere utenti" },
       { key: "utenti.bandire", label: "Bandire utenti" },
+      { key: "utenti.eliminare", label: "Eliminare utenti", description: "Cancellare per sempre un account con il suo personaggio e tutti i suoi dati (solo livelli inferiori al proprio)" },
       { key: "segnalazioni.gestire", label: "Vedere e gestire le segnalazioni" },
     ],
   },

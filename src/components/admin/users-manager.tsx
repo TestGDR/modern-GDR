@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Ban, Search, ShieldOff } from "lucide-react";
+import { Ban, Search, ShieldOff, Trash2 } from "lucide-react";
 import { ErrorText, inputClass, useAdminAction } from "@/components/admin/admin-ui";
 import { Button } from "@/components/ui/button";
 import { assignLevel } from "@/lib/actions/admin";
-import { banUser } from "@/lib/actions/site";
+import { banUser, deleteUser } from "@/lib/actions/site";
 import type { AdminUserRow } from "@/lib/admin-data";
 import { formatDateTime } from "@/lib/format";
 import type { UserLevel } from "@/lib/types";
@@ -19,6 +19,8 @@ type Props = {
   isAdmin: boolean;
   canAssign: boolean;
   canBan: boolean;
+  /** Eliminare utenti (permesso utenti.eliminare) */
+  canDelete: boolean;
   /** Giorni senza accessi né gioco per essere "inattivo" (Gestione → Impostazioni) */
   inactiveDays: number;
   /** Ora della richiesta (ms), per calcolare gli inattivi */
@@ -28,7 +30,7 @@ type Props = {
 const DAY = 24 * 60 * 60 * 1000;
 
 /** Elenco utenti: livello, ultimo accesso e gioco, filtro inattivi, sospensioni */
-export function UsersManager({ users, levels, myId, myRank, isAdmin, canAssign, canBan, inactiveDays, now }: Props) {
+export function UsersManager({ users, levels, myId, myRank, isAdmin, canAssign, canBan, canDelete, inactiveDays, now }: Props) {
   const [query, setQuery] = useState("");
   const [levelFilter, setLevelFilter] = useState("");
   const [onlyInactive, setOnlyInactive] = useState(false);
@@ -85,6 +87,7 @@ export function UsersManager({ users, levels, myId, myRank, isAdmin, canAssign, 
               levels={assignable}
               locked={locked}
               canBan={canBan && u.id !== myId && !higher && !level?.is_admin}
+              canDelete={canDelete && u.id !== myId && !higher && !level?.is_admin}
               inactive={isInactive(u)}
               now={now}
             />
@@ -101,6 +104,7 @@ function UserRow({
   levels,
   locked,
   canBan,
+  canDelete,
   inactive,
   now,
 }: {
@@ -109,6 +113,7 @@ function UserRow({
   levels: UserLevel[];
   locked: boolean;
   canBan: boolean;
+  canDelete: boolean;
   inactive: boolean;
   now: number;
 }) {
@@ -169,6 +174,29 @@ function UserRow({
               <Ban /> Sospendi
             </Button>
           ))}
+        {canDelete && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            disabled={pending}
+            onClick={() => {
+              const typed = window.prompt(
+                `Eliminare per sempre ${user.username}? Si cancellano l'account, il personaggio e tutti i suoi dati (messaggi, telefono, banca, social…). Non si torna indietro.\n\nPer confermare scrivi il nome: ${user.username}`,
+                "",
+              );
+              if (typed === null) return;
+              if (typed.trim().toLowerCase() !== user.username.trim().toLowerCase()) {
+                window.alert("Il nome non corrisponde: l'utente non è stato eliminato.");
+                return;
+              }
+              execute(() => deleteUser(user.id, typed));
+            }}
+            className="rounded-full text-destructive"
+          >
+            <Trash2 /> Elimina
+          </Button>
+        )}
       </div>
       {banned && (
         <p className="text-xs text-destructive">

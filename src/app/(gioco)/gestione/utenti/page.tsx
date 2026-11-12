@@ -36,6 +36,7 @@ async function Content() {
       isAdmin={player.level.is_admin}
       canAssign={can(player, "livelli.assegnare")}
       canBan={can(player, "utenti.bandire")}
+      canDelete={can(player, "utenti.eliminare")}
       inactiveDays={inactiveDays}
       now={now.getTime()}
     />

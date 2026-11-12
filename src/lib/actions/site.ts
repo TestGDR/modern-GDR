@@ -14,6 +14,7 @@ type DbError = { message: string; code?: string } | null;
 function result(error: DbError): ActionResult {
   if (!error) return { ok: true };
   if (error.code === "42501" || error.code === "P0001") return { ok: false, error: error.message };
+  if (error.code === "23503") return { ok: false, error: "Non si può eliminare: alcuni dati sono ancora collegati a questo utente." };
   return { ok: false, error: "Operazione non riuscita. Riprova." };
 }
 
@@ -39,6 +40,16 @@ export async function banUser(userId: string, until: string | null, reason: stri
   await requirePlayer();
   const supabase = await createClient();
   const { error } = await supabase.rpc("ban_user", { p_user: userId, p_until: until, p_reason: reason.slice(0, 300) });
+  if (!error) refresh();
+  return result(error);
+}
+
+/** Elimina per sempre un utente con il suo personaggio e tutti i suoi dati (confirm = il suo nome) */
+export async function deleteUser(userId: string, confirm: string): Promise<ActionResult> {
+  if (!isUuid(userId)) return { ok: false, error: "Utente non valido." };
+  await requirePlayer();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_delete_user", { p_user: userId, p_confirm: confirm.slice(0, 100) });
   if (!error) refresh();
   return result(error);
 }
