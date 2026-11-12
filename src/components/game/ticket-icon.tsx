@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LifeBuoy } from "lucide-react";
-import { sidebarIconClass } from "@/components/game/sidebar-styles";
+import { sidebarIconClass, sidebarPillClass } from "@/components/game/sidebar-styles";
 import { playEvent } from "@/lib/notify-sound";
 import { setTitleCount } from "@/lib/title-count";
 import { useCounters } from "@/lib/counters";
@@ -13,7 +13,8 @@ import { cn } from "@/lib/utils";
 // Icona "Ticket" della barra laterale (dal Westeros: useTicketUnread).
 // Quando compare un ticket da leggere: suono "off", avviso a comparsa e lampeggio.
 
-export function TicketIcon() {
+/** wide: pulsante lungo con la scritta (barra laterale, sotto il Forum) */
+export function TicketIcon({ wide = false }: { wide?: boolean }) {
   const pathname = usePathname();
   // contatori condivisi (una sola chiamata per tutte le icone: src/lib/counters.ts)
   const ids = useCounters().tickets;
@@ -40,11 +41,15 @@ export function TicketIcon() {
 
   return (
     <>
-      <Link href="/ticket" className={cn(sidebarIconClass, "relative", ids.length > 0 && "blink-call")} aria-label={ids.length ? `Ticket: ${ids.length} da leggere` : "Ticket"}>
+      <Link
+        href="/ticket"
+        className={cn(wide ? sidebarPillClass : cn(sidebarIconClass, "relative"), ids.length > 0 && "blink-call")}
+        aria-label={ids.length ? `Ticket: ${ids.length} da leggere` : "Ticket"}
+      >
         <LifeBuoy />
-        <span className="sr-only">Ticket</span>
+        {wide ? "Ticket" : <span className="sr-only">Ticket</span>}
         {ids.length > 0 && (
-          <span className="absolute -top-1 -right-1 grid min-w-4 place-items-center rounded-full bg-flamingo px-1 text-[0.6rem] leading-4 font-bold text-white">{ids.length}</span>
+          <span className={cn("absolute -top-1 grid min-w-4 place-items-center rounded-full bg-flamingo px-1 text-[0.6rem] leading-4 font-bold text-white", wide ? "right-3" : "-right-1")}>{ids.length}</span>
         )}
       </Link>
       {toast && (

@@ -18,6 +18,7 @@ import {
   MessagesSquare,
   Newspaper,
   RefreshCw,
+  ShoppingBag,
   Trophy,
   Users,
   X,
@@ -285,13 +286,17 @@ function PressIcon() {
   );
 }
 
-/** Calendario, Social, Forum, Giornale, Ticket, Utility, Università, Sport: solo icone, il nome nel fumetto (la scheda si apre dal ritratto in alto) */
+/**
+ * Icone affiancate, solo icona (il nome nel fumetto): Social, Calendario, Giornale,
+ * Mercato; sotto Università, Sport, Utility. Forum e Ticket sono pulsanti lunghi
+ * sotto la Guida; la scheda si apre dal ritratto in alto.
+ */
 function FeatureIcons() {
   const links: [string, string, React.ReactNode][] = [
-    ["/calendario", "Calendario", <CalendarDays key="i" />],
-    ["/utility", "Utility", <BriefcaseBusiness key="i" />],
+    ["/utility/mercato", "Mercato", <ShoppingBag key="i" />],
     ["/universita", "Università", <GraduationCap key="i" />],
     ["/sport", "Sport", <Trophy key="i" />],
+    ["/utility", "Utility", <BriefcaseBusiness key="i" />],
   ];
   const link = ([href, label, icon]: (typeof links)[number]) => (
     <HoverTip key={href} label={label}>
@@ -302,22 +307,16 @@ function FeatureIcons() {
   );
   return (
     <div className="grid grid-cols-4 justify-items-center gap-1">
-      <HoverTip label="Calendario">
-        <CalendarIcon />
-      </HoverTip>
       <HoverTip label="Social">
         <SocialIcon />
       </HoverTip>
-      <HoverTip label="Forum">
-        <ForumIcon />
+      <HoverTip label="Calendario">
+        <CalendarIcon />
       </HoverTip>
       <HoverTip label="Giornale e podcast">
         <PressIcon />
       </HoverTip>
-      <HoverTip label="Ticket">
-        <TicketIcon />
-      </HoverTip>
-      {links.slice(1).map(link)}
+      {links.map(link)}
     </div>
   );
 }
@@ -723,7 +722,12 @@ export function GameSidebar({
       </div>
       <PlaceCard info={info} map={roomId ? null : map} />
       <MainButtons />
-      {newsSlot}
+      {/* pulsanti lunghi: Guida, Forum, Ticket */}
+      <div className="flex flex-col gap-2">
+        {newsSlot}
+        <ForumIcon wide />
+        <TicketIcon wide />
+      </div>
       <FeatureIcons />
       {communitySlot}
       <OnlineBox place={info?.name ?? (roomId ? "In chat" : "Mappa")} placeKey={roomId ? `chat:${roomId}` : "mappa"} />

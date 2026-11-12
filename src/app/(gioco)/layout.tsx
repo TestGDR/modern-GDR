@@ -3,7 +3,7 @@ import { GameSidebar, SidebarFrame, SidebarShell } from "@/components/game/game-
 import { MainWatch, MAIN_ID } from "@/components/game/main-watch";
 import { ModalGate, ModalReopen } from "@/components/game/page-modal";
 import { MessageButtonsFallback } from "@/components/game/message-buttons";
-import { AdminTopIcon, PlayerGuide, PlayerCommunity, PlayerIdle, PlayerMessages, PlayerNews, PlayerPortrait, PortraitFallback, TopBar } from "@/components/game/top-bar";
+import { AdminTopIcon, PlayerGuide, PlayerCommunity, PlayerIdle, PlayerMessages, PlayerPortrait, PortraitFallback, TopBar } from "@/components/game/top-bar";
 import { DuskBackdrop } from "@/components/scenery/sunset-sky";
 
 // Struttura dell'area di gioco:
@@ -21,14 +21,9 @@ export default function GameLayout({ children, modal }: { children: React.ReactN
           <SidebarFrame>
             <GameSidebar
               newsSlot={
-                <>
-                  <Suspense>
-                    <PlayerNews />
-                  </Suspense>
-                  <Suspense>
-                    <PlayerGuide />
-                  </Suspense>
-                </>
+                <Suspense>
+                  <PlayerGuide />
+                </Suspense>
               }
               communitySlot={
                 <Suspense>

@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { MessagesSquare } from "lucide-react";
 import { FORUM_READ_EVENT } from "@/components/game/forum-client";
-import { sidebarIconClass } from "@/components/game/sidebar-styles";
+import { sidebarIconClass, sidebarPillClass } from "@/components/game/sidebar-styles";
 import { createClient } from "@/lib/supabase/client";
 import { refreshCounters, useCounters } from "@/lib/counters";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,8 @@ import { cn } from "@/lib/utils";
 // Icona "Forum" della barra laterale (dal Westeros: useForumUnread): discussioni
 // con messaggi nuovi. I post segnalati a tutti arrivano come messaggio di SISTEMA.
 
-export function ForumIcon() {
+/** wide: pulsante lungo con la scritta (barra laterale, sotto la Guida) */
+export function ForumIcon({ wide = false }: { wide?: boolean }) {
   const supabase = useMemo(() => createClient(), []);
   // contatori condivisi (una sola chiamata per tutte le icone: src/lib/counters.ts)
   const { forum_unread: unread } = useCounters();
@@ -28,6 +29,14 @@ export function ForumIcon() {
     };
   }, [supabase]);
 
+  if (wide) {
+    return (
+      <Link href="/forum" className={cn(sidebarPillClass, unread > 0 && "blink-call")} aria-label={unread ? `Forum: ${unread} discussioni nuove` : "Forum"}>
+        <MessagesSquare /> Forum
+        {unread > 0 && <span className="absolute -top-1 right-3 grid min-w-4 place-items-center rounded-full bg-flamingo px-1 text-[0.6rem] leading-4 font-bold text-white">{unread}</span>}
+      </Link>
+    );
+  }
   return (
     <Link href="/forum" className={cn(sidebarIconClass, "relative", unread > 0 && "blink-call")} aria-label={unread ? `Forum: ${unread} discussioni nuove` : "Forum"}>
       <MessagesSquare />
