@@ -475,7 +475,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
         <Users className="size-5 text-mint" />
         <span className="rounded-full bg-mint/15 px-2 py-0.5 text-xs text-mint">{players ? list.length : "…"}</span>
       </button>
-      <div className="skin-online hidden min-h-24 flex-1 flex-col gap-2 overflow-hidden rounded-2xl bg-white/5 pb-3 lg:flex">
+      <div className="skin-online hidden min-h-32 flex-1 flex-col gap-2 overflow-hidden rounded-2xl bg-white/5 pb-3 lg:flex">
         {/* Il titolo (al centro, su una fascia sua) apre l'elenco esteso; il nome apre la scheda */}
         <button
           type="button"
@@ -490,7 +490,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
           </span>
         </button>
         {here.length > 0 ? (
-          <span className="flex min-h-0 flex-col gap-0.5 overflow-y-auto px-3">
+          <span className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain px-3">
             {here.map((c) => {
               const inner = (
                 <>
@@ -506,7 +506,7 @@ function OnlineBox({ place, placeKey }: { place: string; placeKey: string }) {
                   key={c.userId}
                   href={sheetHref(c)}
                   title={`Apri la scheda di ${c.name}`}
-                  className="flex items-center gap-2 truncate rounded-lg px-1 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+                  className="flex shrink-0 items-center gap-2 truncate rounded-lg px-1 py-0.5 text-xs leading-5 text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
                 >
                   {inner}
                 </Link>
