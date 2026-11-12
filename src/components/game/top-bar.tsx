@@ -5,7 +5,7 @@ import { MenuButton } from "@/components/game/game-sidebar";
 import { MessageButtons } from "@/components/game/message-buttons";
 import { NewsButton } from "@/components/game/news-panel";
 import { ThemeToggle } from "@/components/game/theme-toggle";
-import { CommunityButtons } from "@/components/game/community";
+import { CommunityButtons, GossipButton } from "@/components/game/community";
 import { IdleLogout } from "@/components/game/site-watch";
 import { getChatSettings } from "@/lib/data";
 import { barButtonClass } from "@/components/game/sidebar-styles";
@@ -98,10 +98,16 @@ export async function PlayerCommunity() {
     <CommunityButtons
       canAbsences={can(player, "assenze.gestire")}
       canRequests={can(player, "ricerca.moderare")}
-      canGossip={can(player, "pettegolezzi.gestire")}
       characterId={activeCharacter(player)?.id ?? null}
     />
   );
+}
+
+/** Pettegolezzi (icona accanto a Utility), con il permesso dello staff */
+export async function PlayerGossip() {
+  const player = await getPlayer();
+  if (!player) return null;
+  return <GossipButton canManage={can(player, "pettegolezzi.gestire")} characterId={activeCharacter(player)?.id ?? null} />;
 }
 
 /**

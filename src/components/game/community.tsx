@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowUpDown, CalendarDays, CalendarX2, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Dices, Ear, HeartHandshake, MapPin, Search, Trash2, X } from "lucide-react";
 import { FloatingWindow } from "@/components/floating-window";
 import { BondsPanel } from "@/components/game/bonds";
+import { sidebarIconClass } from "@/components/game/sidebar-styles";
 import { Button } from "@/components/ui/button";
 import { firstName, formatDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
@@ -33,27 +34,59 @@ async function names(supabase: Supabase, ids: string[]) {
 const smallBtn =
   "skin-btn relative flex flex-1 items-center justify-center rounded-xl bg-white/5 py-1.5 text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground [&_svg]:size-4";
 
+/** Pettegolezzi: icona nella riga delle icone della barra laterale, accanto a Utility */
+export function GossipButton({ canManage, characterId }: { canManage: boolean; characterId: string | null }) {
+  const gossip = useGossipWaiting(canManage);
+  // voci nuove (pettegolezzi approvati dopo l'ultima apertura)
+  const gossipNew = useSeenCounter("gossip_new");
+  const [open, setOpen] = useState(false);
+  const n = gossip.n + gossipNew.n;
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={n ? `Pettegolezzi: ${n} novità` : "Pettegolezzi"}
+        className={cn(sidebarIconClass, n > 0 && "blink-call")}
+        onClick={() => {
+          setOpen(true);
+          gossipNew.markSeen();
+        }}
+      >
+        <Ear />
+        {n > 0 && <span className="absolute -top-1 -right-1 grid min-w-4 place-items-center rounded-full bg-flamingo px-1 text-[0.6rem] leading-4 font-bold text-white">{n}</span>}
+      </button>
+      {open && (
+        <FloatingWindow
+          label="Pettegolezzi"
+          onClose={() => setOpen(false)}
+          initialWidth={900}
+          maxHeight={700}
+          header={<h2 className="pb-4 font-heading text-3xl tracking-wide">Voci e pettegolezzi</h2>}
+        >
+          <GossipPanel canManage={canManage} characterId={characterId} onChanged={gossip.refresh} />
+        </FloatingWindow>
+      )}
+    </>
+  );
+}
+
+/** Assenze, Cerco gioco, Cerca legami: pulsanti sotto le icone */
 export function CommunityButtons({
   canAbsences,
   canRequests,
-  canGossip,
   characterId,
 }: {
   canAbsences: boolean;
   canRequests: boolean;
-  canGossip: boolean;
   /** Personaggio approvato (null: si legge soltanto) */
   characterId: string | null;
 }) {
   const absences = useSeenCounter("absences");
   const requests = useSeenCounter("play_requests");
-  const gossip = useGossipWaiting(canGossip);
-  // voci nuove (pettegolezzi approvati dopo l'ultima apertura)
-  const gossipNew = useSeenCounter("gossip_new");
   // legami cercati da altri dopo l'ultima apertura
   const bonds = useSeenCounter("bond_new");
-  const [open, setOpen] = useState<"assenze" | "ricerca" | "pettegolezzi" | "legami" | null>(null);
-  const titles = { assenze: ["Assenze", "Assenze"], ricerca: ["Ricerca di gioco", "Cerco gioco"], pettegolezzi: ["Pettegolezzi", "Voci e pettegolezzi"], legami: ["Cerca legami", "Cerca legami"] } as const;
+  const [open, setOpen] = useState<"assenze" | "ricerca" | "legami" | null>(null);
+  const titles = { assenze: ["Assenze", "Assenze"], ricerca: ["Ricerca di gioco", "Cerco gioco"], legami: ["Cerca legami", "Cerca legami"] } as const;
 
   const badge = (n: number) =>
     n > 0 && <span className="absolute -top-1 right-1 grid min-w-4 place-items-center rounded-full bg-flamingo px-1 text-[0.6rem] leading-4 font-bold text-white">{n}</span>;
@@ -67,9 +100,6 @@ export function CommunityButtons({
         <button type="button" title="Cerco gioco" aria-label="Cerco gioco" className={cn(smallBtn, requests.n > 0 && "blink-call")} onClick={() => (setOpen("ricerca"), requests.markSeen())}>
           <Search /> {badge(requests.n)}
         </button>
-        <button type="button" title="Pettegolezzi" aria-label="Pettegolezzi" className={cn(smallBtn, gossip.n + gossipNew.n > 0 && "blink-call")} onClick={() => (setOpen("pettegolezzi"), gossipNew.markSeen())}>
-          <Ear /> {badge(gossip.n + gossipNew.n)}
-        </button>
         <button type="button" title="Cerca legami" aria-label="Cerca legami" className={cn(smallBtn, bonds.n > 0 && "blink-call")} onClick={() => (setOpen("legami"), bonds.markSeen())}>
           <HeartHandshake /> {badge(bonds.n)}
         </button>
@@ -78,15 +108,14 @@ export function CommunityButtons({
         <FloatingWindow
           label={titles[open][0]}
           onClose={() => setOpen(null)}
-          initialWidth={open === "pettegolezzi" ? 900 : open === "legami" ? 1100 : 560}
-          maxHeight={open === "pettegolezzi" ? 700 : open === "legami" ? 720 : undefined}
+          initialWidth={open === "legami" ? 1100 : 560}
+          maxHeight={open === "legami" ? 720 : undefined}
           header={
             <h2 className="pb-4 font-heading text-3xl tracking-wide">{titles[open][1]}</h2>
           }
         >
           {open === "assenze" && <AbsencesPanel canManage={canAbsences} />}
           {open === "ricerca" && <RequestsPanel canManage={canRequests} canPost={!!characterId} />}
-          {open === "pettegolezzi" && <GossipPanel canManage={canGossip} characterId={characterId} onChanged={gossip.refresh} />}
           {open === "legami" && <BondsPanel characterId={characterId} canManage={canRequests} />}
         </FloatingWindow>
       )}

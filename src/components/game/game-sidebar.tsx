@@ -288,10 +288,10 @@ function PressIcon() {
 
 /**
  * Icone affiancate, solo icona (il nome nel fumetto): Social, Calendario, Giornale,
- * Mercato; sotto Università, Sport, Utility. Forum e Ticket sono pulsanti lunghi
+ * Mercato; sotto Università, Sport, Utility, Pettegolezzi. Forum e Ticket sono pulsanti lunghi
  * sotto la Guida; la scheda si apre dal ritratto in alto.
  */
-function FeatureIcons() {
+function FeatureIcons({ gossipSlot }: { gossipSlot: React.ReactNode }) {
   const links: [string, string, React.ReactNode][] = [
     ["/utility/mercato", "Mercato", <ShoppingBag key="i" />],
     ["/universita", "Università", <GraduationCap key="i" />],
@@ -317,6 +317,7 @@ function FeatureIcons() {
         <PressIcon />
       </HoverTip>
       {links.map(link)}
+      <HoverTip label="Pettegolezzi">{gossipSlot}</HoverTip>
     </div>
   );
 }
@@ -706,9 +707,12 @@ function PrefsLoader() {
 /** Barra laterale del gioco */
 export function GameSidebar({
   newsSlot,
+  gossipSlot,
   communitySlot,
 }: {
   newsSlot: React.ReactNode;
+  /** icona dei pettegolezzi (accanto a Utility) */
+  gossipSlot: React.ReactNode;
   /** Assenze, ricerca di gioco, pettegolezzi */
   communitySlot: React.ReactNode;
 }) {
@@ -728,7 +732,7 @@ export function GameSidebar({
         <ForumIcon wide />
         <TicketIcon wide />
       </div>
-      <FeatureIcons />
+      <FeatureIcons gossipSlot={gossipSlot} />
       {communitySlot}
       <OnlineBox place={info?.name ?? (roomId ? "In chat" : "Mappa")} placeKey={roomId ? `chat:${roomId}` : "mappa"} />
     </div>
