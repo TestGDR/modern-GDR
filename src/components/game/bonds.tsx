@@ -8,12 +8,14 @@ import { firstName } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
-// Cerca legami: annunci dei legami cercati (nome, descrizione, tag), «Trova»
-// come Tinder (legami degli altri con almeno un tag in comune: ✕ salta, ♥ mi
-// interessa), i match (♥ a vicenda) e i propri annunci.
+// Cerca legami: ogni personaggio ha un annuncio (titolo e presentazione) con
+// i ruoli che cerca (nome, descrizione, tag). «Trova» come Tinder propone i
+// ruoli degli altri con almeno un tag in comune con i propri (✕ salta, ♥ mi
+// interessa); ♥ a vicenda = match.
 
 type Person = { id: string; name: string; avatar_url: string | null };
-type Bond = { id: string; title: string; description: string; tags: string[]; created_at: string; character_id: string; owner_id: string; character: Person | null };
+type Role = { id: string; title: string; description: string; tags: string[]; created_at: string };
+type Ad = { character_id: string; owner_id: string; title: string; description: string; created_at: string; updated_at: string; character: Person | null; roles: Role[] };
 type Candidate = {
   id: string;
   title: string;
@@ -24,14 +26,16 @@ type Candidate = {
   owner_id: string;
   name: string;
   avatar_url: string | null;
+  ad_title: string | null;
   shared: string[] | null;
   my_titles: string[] | null;
 };
 type Match = { character_id: string; name: string; avatar_url: string | null; owner_id: string; created_at: string; titles: string[] };
-type Tab = "bacheca" | "trova" | "match" | "miei";
+type Tab = "bacheca" | "trova" | "match" | "mio";
 
 const field = "w-full rounded-lg border border-input bg-night/40 px-3 py-2 text-sm outline-none focus-visible:border-ring";
-const BOND_SELECT = "id, title, description, tags, created_at, character_id, owner_id, character:characters(id, name, avatar_url)";
+const AD_SELECT =
+  "character_id, owner_id, title, description, created_at, updated_at, character:characters!bond_ads_character_id_fkey(id, name, avatar_url), roles:bond_searches!bond_searches_ad_fk(id, title, description, tags, created_at)";
 
 function Portrait({ url, name, size = "size-10" }: { url: string | null; name: string; size?: string }) {
   return url ? (
@@ -68,18 +72,20 @@ function OffLink({ ownerId }: { ownerId: string }) {
   );
 }
 
+const byDate = (a: Role, b: Role) => a.created_at.localeCompare(b.created_at);
+
 export function BondsPanel({ characterId, canManage }: { characterId: string | null; canManage: boolean }) {
   const supabase = useMemo(() => createClient(), []);
   const [tab, setTab] = useState<Tab>("bacheca");
-  const [bonds, setBonds] = useState<Bond[] | null>(null);
+  const [ads, setAds] = useState<Ad[] | null>(null);
   const [uid, setUid] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [{ data }, { data: u }] = await Promise.all([
-      supabase.from("bond_searches").select(BOND_SELECT).order("created_at", { ascending: false }).limit(300).overrideTypes<Bond[], { merge: false }>(),
+      supabase.from("bond_ads").select(AD_SELECT).order("updated_at", { ascending: false }).limit(200).overrideTypes<Ad[], { merge: false }>(),
       supabase.auth.getUser(),
     ]);
-    setBonds(data ?? []);
+    setAds((data ?? []).map((a) => ({ ...a, roles: [...(a.roles ?? [])].sort(byDate) })));
     setUid(u.user?.id ?? null);
   }, [supabase]);
   useEffect(() => {
@@ -87,14 +93,14 @@ export function BondsPanel({ characterId, canManage }: { characterId: string | n
     return () => clearTimeout(t);
   }, [load]);
 
-  const mine = (bonds ?? []).filter((b) => b.character_id === characterId);
-  const myTags = [...new Set(mine.flatMap((b) => b.tags))];
+  const myAd = (ads ?? []).find((a) => a.character_id === characterId) ?? null;
+  const myTags = [...new Set((myAd?.roles ?? []).flatMap((r) => r.tags))];
 
   const tabs: [Tab, string][] = [
     ["bacheca", "Bacheca"],
     ["trova", "Trova"],
     ["match", "Match"],
-    ["miei", "I miei legami"],
+    ["mio", "Il mio annuncio"],
   ];
   return (
     <div className="flex flex-col gap-4">
@@ -110,29 +116,31 @@ export function BondsPanel({ characterId, canManage }: { characterId: string | n
           </button>
         ))}
       </div>
-      {tab === "bacheca" && <Board bonds={bonds} myTags={myTags} uid={uid} canManage={canManage} onChanged={load} />}
+      {tab === "bacheca" && <Board ads={ads} myTags={myTags} uid={uid} canManage={canManage} onChanged={load} />}
       {tab !== "bacheca" && !characterId && <p className="rounded-xl bg-white/5 p-3 text-sm text-muted-foreground">Per cercare legami serve un personaggio approvato.</p>}
-      {tab === "trova" && characterId && <Discover characterId={characterId} hasOwn={mine.length > 0} onAdd={() => setTab("miei")} />}
+      {tab === "trova" && characterId && <Discover characterId={characterId} hasOwn={(myAd?.roles.length ?? 0) > 0} onAdd={() => setTab("mio")} />}
       {tab === "match" && characterId && <Matches characterId={characterId} />}
-      {tab === "miei" && characterId && <MyBonds characterId={characterId} mine={mine} canManage={canManage} onChanged={load} />}
+      {tab === "mio" && characterId && ads !== null && <MyAd characterId={characterId} ad={myAd} canManage={canManage} onChanged={load} />}
     </div>
   );
 }
 
 /* ------------------------------ Bacheca ------------------------------ */
 
-function Board({ bonds, myTags, uid, canManage, onChanged }: { bonds: Bond[] | null; myTags: string[]; uid: string | null; canManage: boolean; onChanged: () => void }) {
+function Board({ ads, myTags, uid, canManage, onChanged }: { ads: Ad[] | null; myTags: string[]; uid: string | null; canManage: boolean; onChanged: () => void }) {
   const supabase = useMemo(() => createClient(), []);
   const [tag, setTag] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const term = q.trim().toLowerCase();
-  const list = (bonds ?? []).filter(
-    (b) => (!tag || b.tags.includes(tag)) && (!term || b.title.toLowerCase().includes(term) || b.description.toLowerCase().includes(term) || b.tags.some((t) => t.includes(term))),
-  );
+  const roleFits = (r: Role) =>
+    (!tag || r.tags.includes(tag)) && (!term || r.title.toLowerCase().includes(term) || r.description.toLowerCase().includes(term) || r.tags.some((t) => t.includes(term)));
+  const list = (ads ?? [])
+    .filter((a) => a.roles.length > 0)
+    .filter((a) => a.roles.some(roleFits) || (!tag && term !== "" && (a.title.toLowerCase().includes(term) || a.description.toLowerCase().includes(term))));
 
-  async function remove(b: Bond) {
-    if (!window.confirm(`Togliere «${b.title}»?`)) return;
-    await supabase.from("bond_searches").delete().eq("id", b.id);
+  async function remove(a: Ad) {
+    if (!window.confirm(`Togliere tutto l'annuncio «${a.title}» con i suoi ruoli?`)) return;
+    await supabase.from("bond_ads").delete().eq("character_id", a.character_id);
     onChanged();
   }
 
@@ -146,33 +154,43 @@ function Board({ bonds, myTags, uid, canManage, onChanged }: { bonds: Bond[] | n
           </button>
         )}
       </div>
-      {bonds === null && <p className="text-sm text-muted-foreground">Caricamento…</p>}
-      {bonds !== null && list.length === 0 && <p className="text-sm text-muted-foreground">Nessun legame cercato{tag || term ? " con questo filtro" : " per ora"}.</p>}
-      <ul className="flex flex-col gap-2">
-        {list.map((b) => (
-          <li key={b.id} className="flex gap-3 rounded-xl bg-white/5 p-3 text-sm">
-            <Portrait url={b.character?.avatar_url ?? null} name={b.character?.name ?? ""} />
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <p>
-                <b className="text-peach">{firstName(b.character?.name)}</b> cerca: <b>{b.title}</b>
-              </p>
-              {b.description && <p className="break-words whitespace-pre-line text-muted-foreground">{b.description}</p>}
-              <Tags tags={b.tags} highlight={b.owner_id === uid ? [] : myTags} onClick={setTag} />
-              {b.owner_id !== uid && (
-                <span className="pt-1">
-                  <OffLink ownerId={b.owner_id} />
-                </span>
-              )}
-            </div>
-            {(b.owner_id === uid || canManage) && (
-              <button type="button" onClick={() => remove(b)} className="self-start rounded p-1 text-muted-foreground hover:text-destructive" aria-label="Togli">
-                <Trash2 className="size-4" />
-              </button>
-            )}
-          </li>
-        ))}
+      {ads === null && <p className="text-sm text-muted-foreground">Caricamento…</p>}
+      {ads !== null && list.length === 0 && <p className="text-sm text-muted-foreground">Nessun annuncio{tag || term ? " con questo filtro" : " per ora"}.</p>}
+      <ul className="flex flex-col gap-3">
+        {list.map((a) => {
+          const mine = a.owner_id === uid;
+          return (
+            <li key={a.character_id} className="flex flex-col gap-3 rounded-2xl bg-white/5 p-4 text-sm">
+              <div className="flex items-start gap-3">
+                <Portrait url={a.character?.avatar_url ?? null} name={a.character?.name ?? ""} size="size-12" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-heading text-2xl leading-tight tracking-wide">{a.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    di <b className="text-peach">{firstName(a.character?.name)}</b> · {a.roles.length} {a.roles.length === 1 ? "ruolo cercato" : "ruoli cercati"}
+                  </p>
+                </div>
+                {!mine && <OffLink ownerId={a.owner_id} />}
+                {(mine || canManage) && (
+                  <button type="button" onClick={() => remove(a)} className="rounded p-1 text-muted-foreground hover:text-destructive" aria-label="Togli l'annuncio">
+                    <Trash2 className="size-4" />
+                  </button>
+                )}
+              </div>
+              {a.description && <p className="break-words whitespace-pre-line text-muted-foreground">{a.description}</p>}
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {a.roles.map((r) => (
+                  <li key={r.id} className={cn("flex flex-col gap-1 rounded-xl border p-2.5", roleFits(r) && (tag || term) ? "border-peach/50 bg-peach/10" : "border-white/10 bg-night/30")}>
+                    <b>{r.title}</b>
+                    {r.description && <p className="break-words whitespace-pre-line text-xs text-muted-foreground">{r.description}</p>}
+                    <Tags tags={r.tags} highlight={mine ? [] : myTags} onClick={setTag} />
+                  </li>
+                ))}
+              </ul>
+            </li>
+          );
+        })}
       </ul>
-      {myTags.length > 0 && <p className="text-xs text-muted-foreground">In rosa i tag che hai anche tu. Clicca un tag per vedere solo i legami con quel tag.</p>}
+      {myTags.length > 0 && <p className="text-xs text-muted-foreground">In rosa i tag che hai anche tu. Clicca un tag per vedere solo gli annunci con quel tag.</p>}
     </div>
   );
 }
@@ -198,9 +216,9 @@ function Discover({ characterId, hasOwn, onAdd }: { characterId: string; hasOwn:
   if (!hasOwn) {
     return (
       <div className="flex flex-col items-start gap-2 rounded-2xl bg-white/5 p-4 text-sm">
-        <p>Per trovare chi cerca il tuo stesso legame, prima aggiungi almeno un legame che stai cercando, con i suoi tag.</p>
+        <p>Per trovare chi cerca il tuo stesso legame, prima aggiungi al tuo annuncio almeno un ruolo che stai cercando, con i suoi tag.</p>
         <Button type="button" size="sm" onClick={onAdd} className="rounded-full">
-          <Plus /> Aggiungi un legame
+          <Plus /> Aggiungi un ruolo
         </Button>
       </div>
     );
@@ -255,11 +273,12 @@ function Discover({ characterId, hasOwn, onAdd }: { characterId: string; hasOwn:
           <p className="font-heading text-3xl tracking-wide">{firstName(card.name)}</p>
           <p className="text-sm text-muted-foreground">cerca</p>
           <p className="text-lg font-semibold text-peach">{card.title}</p>
+          {card.ad_title && <p className="text-xs text-muted-foreground">dall&apos;annuncio «{card.ad_title}»</p>}
           {card.description && <p className="max-h-40 overflow-y-auto text-sm break-words whitespace-pre-line">{card.description}</p>}
           <Tags tags={card.tags} highlight={card.shared ?? []} />
           {card.my_titles && card.my_titles.length > 0 && (
             <p className="text-xs text-muted-foreground">
-              Combacia con il tuo legame «{card.my_titles.join("», «")}» ({(card.shared ?? []).map((t) => `#${t}`).join(" ")})
+              Combacia con il tuo ruolo «{card.my_titles.join("», «")}» ({(card.shared ?? []).map((t) => `#${t}`).join(" ")})
             </p>
           )}
           <div className="flex gap-6 pt-2">
@@ -285,7 +304,7 @@ function Discover({ characterId, hasOwn, onAdd }: { characterId: string; hasOwn:
             </button>
           </div>
           <p className="text-xs text-muted-foreground">
-            {list && list.length > 1 ? `Altri ${list.length - 1} da vedere. ` : ""}Se anche lui mette ♥ a uno dei tuoi legami, è un match.
+            {list && list.length > 1 ? `Altri ${list.length - 1} da vedere. ` : ""}Se anche lui mette ♥ a uno dei tuoi ruoli, è un match.
           </p>
         </div>
       )}
@@ -327,19 +346,22 @@ function Matches({ characterId }: { characterId: string }) {
   );
 }
 
-/* ------------------------------ I miei legami ------------------------------ */
+/* ------------------------------ Il mio annuncio ------------------------------ */
 
 type Draft = { id?: string; title: string; description: string; tags: string[] };
 const emptyDraft = (): Draft => ({ title: "", description: "", tags: [] });
 
-function MyBonds({ characterId, mine, canManage, onChanged }: { characterId: string; mine: Bond[]; canManage: boolean; onChanged: () => void }) {
+function MyAd({ characterId, ad, canManage, onChanged }: { characterId: string; ad: Ad | null; canManage: boolean; onChanged: () => void }) {
   const supabase = useMemo(() => createClient(), []);
   const [presets, setPresets] = useState<string[]>([]);
+  const [head, setHead] = useState({ title: ad?.title ?? "", description: ad?.description ?? "" });
+  const [headMsg, setHeadMsg] = useState<string | null>(null);
   const [d, setD] = useState<Draft>(emptyDraft());
   const [custom, setCustom] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newPreset, setNewPreset] = useState("");
+  const roles = ad?.roles ?? [];
 
   const loadPresets = useCallback(async () => {
     const { data } = await supabase.from("bond_tag_presets").select("name").order("sort_order").order("name");
@@ -349,6 +371,18 @@ function MyBonds({ characterId, mine, canManage, onChanged }: { characterId: str
     const t = setTimeout(loadPresets, 0);
     return () => clearTimeout(t);
   }, [loadPresets]);
+
+  async function saveHead() {
+    if (head.title.trim().length < 3) return setHeadMsg("Il titolo deve avere almeno 3 caratteri.");
+    setBusy(true);
+    setHeadMsg(null);
+    const row = { title: head.title.trim(), description: head.description.trim() };
+    const { error: e } = ad ? await supabase.from("bond_ads").update(row).eq("character_id", characterId) : await supabase.from("bond_ads").insert({ ...row, character_id: characterId });
+    setBusy(false);
+    if (e) return setHeadMsg(e.code === "P0001" ? e.message : "Annuncio non salvato.");
+    setHeadMsg("Salvato.");
+    onChanged();
+  }
 
   const toggle = (t: string) => setD({ ...d, tags: d.tags.includes(t) ? d.tags.filter((x) => x !== t) : [...d.tags, t].slice(0, 8) });
   function addCustom() {
@@ -360,22 +394,37 @@ function MyBonds({ characterId, mine, canManage, onChanged }: { characterId: str
     setCustom("");
   }
 
-  async function save() {
-    if (d.title.trim().length < 3) return setError("Dai un nome al legame (almeno 3 caratteri).");
+  async function saveRole() {
+    if (d.title.trim().length < 3) return setError("Dai un nome al ruolo (almeno 3 caratteri).");
     if (d.tags.length === 0) return setError("Scegli almeno un tag: servono per trovare chi cerca lo stesso legame.");
     setBusy(true);
     setError(null);
+    // senza annuncio si crea con il titolo scritto sopra (o «Cerco legami»)
+    if (!ad) {
+      const title = head.title.trim().length >= 3 ? head.title.trim() : "Cerco legami";
+      const { error: a } = await supabase.from("bond_ads").insert({ character_id: characterId, title, description: head.description.trim() });
+      if (a && a.code !== "23505") {
+        setBusy(false);
+        return setError(a.code === "P0001" ? a.message : "Annuncio non creato.");
+      }
+    }
     const row = { title: d.title.trim(), description: d.description.trim(), tags: d.tags };
     const { error: e } = d.id ? await supabase.from("bond_searches").update(row).eq("id", d.id) : await supabase.from("bond_searches").insert({ ...row, character_id: characterId });
     setBusy(false);
-    if (e) return setError(e.code === "P0001" ? e.message : "Salvataggio non riuscito.");
+    if (e) return setError(e.code === "P0001" ? e.message : "Ruolo non salvato.");
     setD(emptyDraft());
     onChanged();
   }
-  async function remove(b: Bond) {
-    if (!window.confirm(`Togliere «${b.title}»?`)) return;
-    await supabase.from("bond_searches").delete().eq("id", b.id);
-    if (d.id === b.id) setD(emptyDraft());
+  async function removeRole(r: Role) {
+    if (!window.confirm(`Togliere il ruolo «${r.title}»?`)) return;
+    await supabase.from("bond_searches").delete().eq("id", r.id);
+    if (d.id === r.id) setD(emptyDraft());
+    onChanged();
+  }
+  async function removeAd() {
+    if (!ad || !window.confirm("Togliere tutto l'annuncio con i suoi ruoli?")) return;
+    await supabase.from("bond_ads").delete().eq("character_id", characterId);
+    setHead({ title: "", description: "" });
     onChanged();
   }
   async function addPreset() {
@@ -394,19 +443,47 @@ function MyBonds({ characterId, mine, canManage, onChanged }: { characterId: str
 
   return (
     <div className="flex flex-col gap-4">
-      {mine.length > 0 && (
-        <ul className="flex flex-col gap-2">
-          {mine.map((b) => (
-            <li key={b.id} className={cn("flex gap-2 rounded-xl p-3 text-sm", d.id === b.id ? "bg-peach/10 ring-1 ring-peach/40" : "bg-white/5")}>
+      {/* l'annuncio: titolo e presentazione */}
+      <div className="flex flex-col gap-2 rounded-2xl bg-white/5 p-3">
+        <p className="text-sm font-semibold">Il tuo annuncio</p>
+        <input value={head.title} onChange={(e) => setHead({ ...head, title: e.target.value })} maxLength={100} placeholder="Titolo (es. «Cerco la mia famiglia e i miei vecchi amici»)" className={field} />
+        <textarea
+          value={head.description}
+          onChange={(e) => setHead({ ...head, description: e.target.value })}
+          maxLength={3000}
+          rows={3}
+          placeholder="Presentazione: chi è il tuo personaggio, che tipo di gioco cerchi…"
+          className={field}
+        />
+        <div className="flex items-center justify-end gap-2">
+          {headMsg && <span className={cn("text-xs", headMsg === "Salvato." ? "text-mint" : "text-destructive")}>{headMsg}</span>}
+          {ad && (
+            <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={removeAd} className="rounded-full text-destructive">
+              <Trash2 /> Togli l&apos;annuncio
+            </Button>
+          )}
+          <Button type="button" size="sm" disabled={busy} onClick={saveHead} className="rounded-full">
+            <Save /> {ad ? "Salva" : "Crea l'annuncio"}
+          </Button>
+        </div>
+      </div>
+
+      {/* i ruoli cercati */}
+      <p className="text-sm font-semibold">Ruoli cercati{roles.length > 0 ? ` (${roles.length})` : ""}</p>
+      {roles.length === 0 && <p className="text-sm text-muted-foreground">Nessun ruolo ancora: aggiungi qui sotto i legami che cerchi, quanti ne vuoi.</p>}
+      {roles.length > 0 && (
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {roles.map((r) => (
+            <li key={r.id} className={cn("flex gap-2 rounded-xl p-3 text-sm", d.id === r.id ? "bg-peach/10 ring-1 ring-peach/40" : "bg-white/5")}>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <b>{b.title}</b>
-                {b.description && <p className="break-words whitespace-pre-line text-muted-foreground">{b.description}</p>}
-                <Tags tags={b.tags} />
+                <b>{r.title}</b>
+                {r.description && <p className="break-words whitespace-pre-line text-xs text-muted-foreground">{r.description}</p>}
+                <Tags tags={r.tags} />
               </div>
-              <button type="button" onClick={() => setD({ id: b.id, title: b.title, description: b.description, tags: b.tags })} className="self-start rounded p-1 text-muted-foreground hover:text-foreground" aria-label="Modifica">
+              <button type="button" onClick={() => setD({ id: r.id, title: r.title, description: r.description, tags: r.tags })} className="self-start rounded p-1 text-muted-foreground hover:text-foreground" aria-label="Modifica">
                 <PenLine className="size-4" />
               </button>
-              <button type="button" onClick={() => remove(b)} className="self-start rounded p-1 text-muted-foreground hover:text-destructive" aria-label="Togli">
+              <button type="button" onClick={() => removeRole(r)} className="self-start rounded p-1 text-muted-foreground hover:text-destructive" aria-label="Togli">
                 <Trash2 className="size-4" />
               </button>
             </li>
@@ -414,9 +491,9 @@ function MyBonds({ characterId, mine, canManage, onChanged }: { characterId: str
         </ul>
       )}
 
-      <div className="flex flex-col gap-2 rounded-2xl bg-white/5 p-3">
-        <p className="text-sm font-semibold">{d.id ? "Modifica il legame" : "Nuovo legame che cerchi"}</p>
-        <input value={d.title} onChange={(e) => setD({ ...d, title: e.target.value })} maxLength={80} placeholder="Nome del legame (es. «Il mio ex dei tempi del liceo»)" className={field} />
+      <div className="flex flex-col gap-2 rounded-2xl border border-peach/30 bg-white/5 p-3">
+        <p className="text-sm font-semibold">{d.id ? "Modifica il ruolo" : "Aggiungi un ruolo"}</p>
+        <input value={d.title} onChange={(e) => setD({ ...d, title: e.target.value })} maxLength={80} placeholder="Nome del ruolo (es. «Il mio ex dei tempi del liceo»)" className={field} />
         <textarea
           value={d.description}
           onChange={(e) => setD({ ...d, description: e.target.value })}
@@ -478,8 +555,8 @@ function MyBonds({ characterId, mine, canManage, onChanged }: { characterId: str
               Annulla
             </Button>
           )}
-          <Button type="button" size="sm" disabled={busy} onClick={save} className="rounded-full">
-            {d.id ? <Save /> : <Plus />} {d.id ? "Salva" : "Pubblica"}
+          <Button type="button" size="sm" disabled={busy} onClick={saveRole} className="rounded-full">
+            {d.id ? <Save /> : <Plus />} {d.id ? "Salva il ruolo" : "Aggiungi all'annuncio"}
           </Button>
         </div>
       </div>

@@ -78,8 +78,8 @@ export function CommunityButtons({
         <FloatingWindow
           label={titles[open][0]}
           onClose={() => setOpen(null)}
-          initialWidth={open === "pettegolezzi" ? 900 : open === "legami" ? 720 : 560}
-          maxHeight={open === "pettegolezzi" || open === "legami" ? 700 : undefined}
+          initialWidth={open === "pettegolezzi" ? 900 : open === "legami" ? 1100 : 560}
+          maxHeight={open === "pettegolezzi" ? 700 : open === "legami" ? 720 : undefined}
           header={
             <h2 className="pb-4 font-heading text-3xl tracking-wide">{titles[open][1]}</h2>
           }
