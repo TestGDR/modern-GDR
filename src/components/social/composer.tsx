@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, CalendarDays, ImagePlus, MapPin, PenLine, Tag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, MediaItem, useSocial } from "@/components/social/social-ui";
-import { detectMedia, handleOf, PERSON, splitMentions, type Media, type SocialPerson } from "@/lib/social";
+import { detectMedia, handleOf, PERSON, splitMentions, type Media, type SocialPerson, type SocialPost } from "@/lib/social";
 import { cn } from "@/lib/utils";
 
 type MyEvent = { id: string; title: string; starts_at: string };
@@ -60,10 +60,28 @@ export function usePersonSearch(query: string) {
   return term.length >= 2 ? results : [];
 }
 
-/** Nuovo post: link di foto/video (carosello), testo, luogo, persone taggate */
-export function Composer({ onPublished, eventId }: { onPublished: (id: string) => void; eventId?: string }) {
+/** Valori del post dopo una modifica (per aggiornare subito la scheda del post) */
+export type EditedPost = { body: string; location: string | null; edited_at: string | null };
+
+/**
+ * Nuovo post: link di foto/video (carosello), testo, luogo, persone taggate.
+ * Con edit si modifica un post già pubblicato: tutto (foto, testo, luogo, tag, evento).
+ */
+export function Composer({
+  onPublished,
+  eventId,
+  edit,
+  onCancel,
+  onEdited,
+}: {
+  onPublished: (id: string) => void;
+  eventId?: string;
+  edit?: SocialPost;
+  onCancel?: () => void;
+  onEdited?: (values: EditedPost) => void;
+}) {
   const { supabase, me } = useSocial();
-  const [eventChoice, setEventChoice] = useState(eventId ?? "");
+  const [eventChoice, setEventChoice] = useState(edit ? (edit.event_id ?? "") : (eventId ?? ""));
   const [myEvents, setMyEvents] = useState<MyEvent[]>([]);
   // eventi a cui si può collegare il post: quelli che organizzo e quelli a cui partecipo (o forse), dell'ultimo mese
   useEffect(() => {
@@ -79,19 +97,23 @@ export function Composer({ onPublished, eventId }: { onPublished: (id: string) =
         ...((own.data ?? []) as MyEvent[]),
         ...((guest.data ?? []) as unknown as { event: MyEvent | null }[]).map((x) => x.event).filter((x): x is MyEvent => x !== null && x.starts_at >= since),
       ];
+      // modificando: anche l'evento già collegato, se è più vecchio
+      if (edit?.event && !all.some((x) => x.id === edit.event!.id)) all.push({ id: edit.event.id, title: edit.event.title, starts_at: "" });
       setMyEvents(all.filter((e, i) => all.findIndex((x) => x.id === e.id) === i).sort((a, b) => b.starts_at.localeCompare(a.starts_at)));
     });
     return () => {
       alive = false;
     };
-  }, [supabase, me]);
+  }, [supabase, me, edit]);
+  // tag del post che si sta modificando (per sapere quali togliere)
+  const originalTags = edit ? edit.social_tags.map((t) => t.character).filter((c): c is SocialPerson => c !== null) : [];
   // "foto" = post con foto o video; "testo" = post scritto, come su Facebook
-  const [kind, setKind] = useState<"foto" | "testo">("foto");
-  const [media, setMedia] = useState<Media[]>([]);
+  const [kind, setKind] = useState<"foto" | "testo">(edit && edit.media.length === 0 ? "testo" : "foto");
+  const [media, setMedia] = useState<Media[]>(edit?.media ?? []);
   const [link, setLink] = useState("");
-  const [body, setBody] = useState("");
-  const [location, setLocation] = useState("");
-  const [tags, setTags] = useState<SocialPerson[]>([]);
+  const [body, setBody] = useState(edit?.body ?? "");
+  const [location, setLocation] = useState(edit?.location ?? "");
+  const [tags, setTags] = useState<SocialPerson[]>(originalTags);
   const [tagQuery, setTagQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -120,6 +142,7 @@ export function Composer({ onPublished, eventId }: { onPublished: (id: string) =
     if (media.length === 0 && !body.trim()) return setError("Aggiungi una foto, un video o del testo.");
     setBusy(true);
     setError(null);
+    if (edit) return saveEdit();
     const { data, error: e } = await supabase
       .from("social_posts")
       .insert({ character_id: me.id, body: body.trim().slice(0, 2200), media: kind === "testo" ? [] : media, location: location.trim().slice(0, 60) || null, event_id: eventChoice || null })
@@ -139,10 +162,37 @@ export function Composer({ onPublished, eventId }: { onPublished: (id: string) =
     onPublished(data.id);
   }
 
+  // modifica di un post già pubblicato
+  async function saveEdit() {
+    if (!me || !edit) return;
+    const row = {
+      body: body.trim().slice(0, 2200),
+      media: kind === "testo" ? [] : media,
+      location: location.trim().slice(0, 60) || null,
+      event_id: eventChoice || null,
+    };
+    const { data, error: e } = await supabase.from("social_posts").update(row).eq("id", edit.id).select("body, location, edited_at").maybeSingle<EditedPost>();
+    if (e || !data) {
+      setBusy(false);
+      return setError(e?.message.includes("https") ? "Un link non è valido: usa indirizzi https://" : "Modifica non salvata.");
+    }
+    // tag: via quelli tolti, poi quelli scelti e i @nome del testo
+    const q = tagQuery.trim().replace(/^@/, "").toLowerCase();
+    const typed = q ? (found.find((p) => p.social?.handle?.toLowerCase() === q || p.name.toLowerCase() === q || p.name.split(" ")[0].toLowerCase() === q) ?? (found.length === 1 ? found[0] : null)) : null;
+    const chosen = [...tags, ...(typed ? [typed] : [])].map((t) => t.id);
+    const removed = originalTags.map((t) => t.id).filter((id) => !chosen.includes(id));
+    if (removed.length) await supabase.from("social_tags").delete().eq("post_id", edit.id).in("character_id", removed);
+    const tagError = await saveTags(supabase, edit.id, chosen, row.body, me.id);
+    setBusy(false);
+    if (tagError) window.alert(tagError.replace("Post pubblicato", "Post modificato"));
+    onEdited?.(data);
+    onPublished(edit.id);
+  }
+
   const input = "h-10 w-full min-w-0 rounded-xl border border-white/15 bg-night/50 px-3 text-sm outline-none focus-visible:border-peach/60";
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="font-heading text-3xl tracking-wide text-sunset">Nuovo post</h2>
+      <h2 className="font-heading text-3xl tracking-wide text-sunset">{edit ? "Modifica il post" : "Nuovo post"}</h2>
 
       <div className="flex gap-2">
         {(
@@ -277,9 +327,16 @@ export function Composer({ onPublished, eventId }: { onPublished: (id: string) =
       </section>
 
       {error && <p className="rounded-lg bg-destructive/15 px-3 py-2 text-sm text-destructive">{error}</p>}
-      <Button type="button" onClick={publish} disabled={busy} className="h-11 rounded-full">
-        {busy ? "Pubblicazione…" : "Condividi"}
-      </Button>
+      <div className="flex gap-2">
+        {onCancel && (
+          <Button type="button" variant="ghost" onClick={onCancel} disabled={busy} className="h-11 flex-1 rounded-full border border-white/15">
+            Annulla
+          </Button>
+        )}
+        <Button type="button" onClick={publish} disabled={busy} className="h-11 flex-1 rounded-full">
+          {busy ? (edit ? "Salvataggio…" : "Pubblicazione…") : edit ? "Salva le modifiche" : "Condividi"}
+        </Button>
+      </div>
     </div>
   );
 }

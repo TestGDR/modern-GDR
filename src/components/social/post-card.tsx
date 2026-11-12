@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CalendarDays, MapPin, MessageCircle, MoreHorizontal, Pencil, SendHorizontal, SmilePlus, Trash2 } from "lucide-react";
-import { saveTags } from "@/components/social/composer";
+import { Composer } from "@/components/social/composer";
 import { Avatar, Caption, Carousel, PersonName, useSocial } from "@/components/social/social-ui";
 import { PERSON, REACTIONS, socialTime, type Reaction, type SocialComment, type SocialPost } from "@/lib/social";
 import { firstName } from "@/lib/format";
@@ -19,7 +19,7 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   // modifica: del post (testo e luogo) e di un commento
-  const [editPost, setEditPost] = useState<{ body: string; location: string } | null>(null);
+  const [editing, setEditing] = useState(false);
   const [editComment, setEditComment] = useState<{ id: number; body: string } | null>(null);
   const [current, setCurrent] = useState({ body: post.body, location: post.location, edited: post.edited_at ?? null });
   const mine = reactions.find((r) => r.character_id === me?.id)?.emoji ?? null;
@@ -100,26 +100,6 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
     await loadComments();
   }
 
-  async function savePost() {
-    if (!editPost) return;
-    setError(null);
-    const body = editPost.body.trim().slice(0, 2200);
-    const location = editPost.location.trim().slice(0, 60) || null;
-    const { data, error: e } = await supabase
-      .from("social_posts")
-      .update({ body, location })
-      .eq("id", post.id)
-      .select("body, location, edited_at")
-      .maybeSingle<{ body: string; location: string | null; edited_at: string | null }>();
-    if (e || !data) return setError(e?.message.includes("Aggiungi") ? e.message : "Modifica non salvata.");
-    setCurrent({ body: data.body, location: data.location, edited: data.edited_at });
-    setEditPost(null);
-    // chi è scritto nel testo con @nome diventa un tag
-    const tagError = await saveTags(supabase, post.id, [], data.body, me?.id);
-    if (tagError) setError("Modifica salvata, ma i tag non sono stati salvati.");
-    onChanged();
-  }
-
   async function saveComment() {
     if (!editComment) return;
     const body = editComment.body.trim().slice(0, 1000);
@@ -137,6 +117,23 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
     if (e) return setError("Post non eliminato.");
     onDeleted?.();
     onChanged();
+  }
+
+  // modifica: lo stesso modulo del nuovo post, già compilato (foto, testo, luogo, tag, evento)
+  if (editing) {
+    return (
+      <article className="rounded-2xl border border-peach/30 bg-night/40 p-4">
+        <Composer
+          edit={post}
+          onCancel={() => setEditing(false)}
+          onEdited={(v) => setCurrent({ body: v.body, location: v.location, edited: v.edited_at })}
+          onPublished={() => {
+            setEditing(false);
+            onChanged();
+          }}
+        />
+      </article>
+    );
   }
 
   return (
@@ -170,16 +167,18 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
             </button>
             {menu && (
               <div className="absolute top-9 right-0 z-10 w-44 overflow-hidden rounded-xl border border-white/15 bg-night/95 shadow-xl">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenu(false);
-                    setEditPost({ body: current.body, location: current.location ?? "" });
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/10"
-                >
-                  <Pencil className="size-4" /> Modifica il post
-                </button>
+                {isMine && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenu(false);
+                      setEditing(true);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/10"
+                  >
+                    <Pencil className="size-4" /> Modifica il post
+                  </button>
+                )}
                 <button type="button" onClick={removePost} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-destructive hover:bg-white/10">
                   <Trash2 className="size-4" /> Elimina il post
                 </button>
@@ -190,7 +189,7 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
       </header>
 
       <Carousel media={post.media} />
-      {textOnly && !editPost && current.body && (
+      {textOnly && current.body && (
         <div className="px-4 pt-1 pb-1 text-[0.95rem] leading-relaxed">
           <Caption text={current.body.length > LONG && !expanded ? `${current.body.slice(0, LONG).trimEnd()}…` : current.body} />
           {current.body.length > LONG && (
@@ -244,47 +243,11 @@ export function PostCard({ post, onChanged, onDeleted }: { post: SocialPost; onC
       </div>
 
       <div className="flex flex-col gap-1 px-3 pt-1 pb-3 text-sm">
-        {editPost ? (
-          <form
-            className="flex flex-col gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              savePost();
-            }}
-          >
-            <textarea
-              value={editPost.body}
-              onChange={(e) => setEditPost({ ...editPost, body: e.target.value })}
-              maxLength={2200}
-              rows={4}
-              aria-label="Testo del post"
-              className="rounded-xl border border-white/15 bg-night/50 p-2 text-sm outline-none focus-visible:border-peach/60"
-            />
-            <input
-              value={editPost.location}
-              onChange={(e) => setEditPost({ ...editPost, location: e.target.value })}
-              maxLength={60}
-              placeholder="Luogo (facoltativo)"
-              aria-label="Luogo"
-              className="h-9 rounded-full border border-white/15 bg-night/50 px-3 text-sm outline-none focus-visible:border-peach/60"
-            />
-            <div className="flex gap-3 text-sm">
-              <button type="submit" className="font-semibold text-peach">
-                Salva
-              </button>
-              <button type="button" onClick={() => setEditPost(null)} className="text-muted-foreground hover:text-foreground">
-                Annulla
-              </button>
-            </div>
-          </form>
-        ) : (
-          current.body &&
-          !textOnly && (
-            <p>
-              <PersonName person={post.author} className="mr-1.5" />
-              <Caption text={current.body} />
-            </p>
-          )
+        {current.body && !textOnly && (
+          <p>
+            <PersonName person={post.author} className="mr-1.5" />
+            <Caption text={current.body} />
+          </p>
         )}
         {tags.length > 0 && (
           <p className="text-xs text-muted-foreground">
