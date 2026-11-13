@@ -63,10 +63,12 @@ export type PressComment = {
   character: PressAuthor | null;
 };
 
-const AUTHOR = "character:characters(id, name, avatar_url)";
+// articoli e personaggi sono collegati anche tramite le reazioni: va detto quale collegamento usare
+const AUTHOR = "character:characters!press_items_character_id_fkey(id, name, avatar_url)";
+const COMMENT_AUTHOR = "character:characters!press_comments_character_id_fkey(id, name, avatar_url)";
 export const PRESS_LIST_SELECT = `id, kind, character_id, author_id, title, summary, section, cover_url, guests, status, review_note, reviewed_by_name, published_at, created_at, updated_at, ${AUTHOR}, press_reactions(count), press_comments(count)`;
 export const PRESS_FULL_SELECT = `id, kind, character_id, author_id, title, summary, body, section, cover_url, guests, status, review_note, reviewed_by_name, published_at, created_at, updated_at, ${AUTHOR}, press_reactions(count), press_comments(count), reactions:press_reactions(character_id, emoji)`;
-export const PRESS_COMMENT_SELECT = `id, character_id, author_id, body, created_at, ${AUTHOR}`;
+export const PRESS_COMMENT_SELECT = `id, character_id, author_id, body, created_at, ${COMMENT_AUTHOR}`;
 
 /** "12 nov 2026" in ora italiana */
 export function pressDate(iso: string | null) {

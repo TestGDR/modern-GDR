@@ -31,7 +31,17 @@ import { cn } from "@/lib/utils";
 // (Club Giornalistico), pubblicano Direttore, Caporedattore e lo staff.
 
 type Me = { id: string; name: string } | null;
-type PressInfo = { editor: boolean; writers: { id: string; name: string }[] };
+type PressInfo = {
+  editor: boolean;
+  writers: { id: string; name: string }[];
+  /** il giocatore ha un personaggio approvato */
+  has_character?: boolean;
+  /** gruppi che scrivono sul giornale e quanti personaggi ci sono */
+  groups?: string[];
+  members?: number;
+  /** letto dal database (per non mostrare avvisi prima del tempo) */
+  loaded?: boolean;
+};
 type Draft = { id?: string; pg: string; kind: PressKind; title: string; summary: string; body: string; section: PressSection; cover: string; guests: string };
 type View = { name: "list" } | { name: "read"; id: string } | { name: "write"; draft: Draft } | { name: "desk" };
 
@@ -61,8 +71,10 @@ export function PressApp({ me }: { me: Me }) {
 
   useEffect(() => {
     let alive = true;
-    supabase.rpc("press_me").then(({ data }) => {
-      if (alive && data) setInfo(data as PressInfo);
+    supabase.rpc("press_me").then(({ data, error }) => {
+      if (!alive) return;
+      if (error) console.error(error.message);
+      setInfo({ ...((data as PressInfo | null) ?? { editor: false, writers: [] }), loaded: true });
     });
     supabase.auth.getSession().then(({ data }) => {
       if (alive) setUid(data.session?.user.id ?? null);
@@ -95,6 +107,13 @@ export function PressApp({ me }: { me: Me }) {
           )}
         </div>
       </header>
+      {info.loaded && !canWrite && view.name === "list" && (
+        <p className="rounded-xl bg-white/5 px-3 py-2 text-xs text-muted-foreground">
+          {info.has_character === false
+            ? "Per scrivere sul giornale serve un personaggio approvato."
+            : `Scrivono articoli e podcast i membri della redazione (${(info.groups ?? []).join(", ") || "nessun gruppo scelto"}). Per entrarci chiedi allo staff di assegnarti al gruppo.`}
+        </p>
+      )}
 
       {view.name === "list" && <PressList onOpen={(id) => setView({ name: "read", id })} />}
       {view.name === "read" && (
