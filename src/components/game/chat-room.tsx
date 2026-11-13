@@ -63,6 +63,8 @@ type Props = {
 };
 
 const byTime = (a: Message, b: Message) => a.created_at.localeCompare(b.created_at) || a.id - b.id;
+// dopo quanto tempo senza ricontrolli si rileggono tutti i messaggi (correzioni ed eliminazioni perse)
+const FULL_SYNC_MS = 10 * 60_000;
 
 /** Comandi della chat: ognuno si apre nella sua finestra */
 type Tool = "scontro" | "incidente" | "oggetti" | "cassa" | "locale" | "dadi" | "master" | "note" | "salva" | "impostazioni";
@@ -278,17 +280,37 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
     else if (!atBottom.current) setUnseen((n) => n + 1);
   }, []);
 
-  // Ricarica gli ultimi messaggi visibili (alla connessione e tornando sulla pagina)
+  // Ricontrollo dei messaggi (alla connessione, tornando sulla pagina, ogni 3 minuti).
+  // Di solito si chiedono solo quelli arrivati dopo l'ultimo che si ha: il tempo reale
+  // li ha quasi sempre già consegnati, quindi la risposta è vuota e non pesa.
+  // Tutti gli ultimi messaggi (anche le correzioni e le eliminazioni perse) solo
+  // dopo FULL_SYNC_MS senza ricontrolli (scheda nascosta a lungo, connessione caduta).
+  const messagesRef = useRef(messages);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+  // ora dei dati arrivati dal server (la pagina appena caricata è già completa)
+  const lastSync = useRef(Date.parse(data.snapshotAt));
   const reload = useCallback(async () => {
-    const since = freshSince(Date.now(), settings.ttl_minutes);
-    const { data: rows } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("room_id", roomId)
-      .gt("created_at", room.cleared_at && room.cleared_at > since ? room.cleared_at : since)
-      .order("created_at", { ascending: false })
-      .limit(HISTORY_SIZE);
-    if (rows) setMessages((rows as Message[]).sort(byTime));
+    const nowMs = Date.now();
+    const since = freshSince(nowMs, settings.ttl_minutes);
+    const floor = room.cleared_at && room.cleared_at > since ? room.cleared_at : since;
+    const known = messagesRef.current;
+    const latest = known.length ? known[known.length - 1].created_at : null;
+    const full = !latest || nowMs - lastSync.current > FULL_SYNC_MS;
+    let query = supabase.from("messages").select("*").eq("room_id", roomId);
+    // stesso istante dell'ultimo: si riprende anche lui (si uniscono per id)
+    query = full ? query.gt("created_at", floor) : query.gte("created_at", Date.parse(latest) > Date.parse(floor) ? latest : floor);
+    const { data: rows } = await query.order("created_at", { ascending: false }).limit(HISTORY_SIZE);
+    if (!rows) return;
+    lastSync.current = nowMs;
+    if (full) return setMessages((rows as Message[]).sort(byTime));
+    if (rows.length === 0) return;
+    setMessages((prev) => {
+      const byId = new Map(prev.map((m) => [m.id, m]));
+      for (const m of rows as Message[]) byId.set(m.id, m);
+      return [...byId.values()].sort(byTime);
+    });
   }, [supabase, roomId, room.cleared_at, settings.ttl_minutes]);
 
   const myId = me?.id;
