@@ -779,13 +779,20 @@ function SkillList({ character, build, rules, canGrow, canAssignPx }: { characte
                 {attrValue}
               </span>
             </h3>
-            <ul className="flex flex-col gap-1.5">
+            {/* finestra stretta (cellulare, tablet): il nome sopra la barra del livello */}
+            <ul className="@container flex flex-col gap-1.5">
               {skills.map((s) => {
                 const level = build.skills[s.id] ?? 0;
                 return (
-                  <li key={s.id} className={cn("flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3 py-1.5 text-sm", level === 0 && "text-muted-foreground")}>
-                    <span className="min-w-0 truncate" title={s.description}>{s.name}</span>
-                    <span className="flex shrink-0 items-center gap-2">
+                  <li
+                    key={s.id}
+                    className={cn(
+                      "flex flex-col gap-1 rounded-lg bg-white/5 px-3 py-1.5 text-sm @lg:flex-row @lg:items-center @lg:justify-between @lg:gap-3",
+                      level === 0 && "text-muted-foreground",
+                    )}
+                  >
+                    <span className="min-w-0 break-words @lg:truncate" title={s.description}>{s.name}</span>
+                    <span className="flex flex-wrap items-center gap-2 @lg:shrink-0 @lg:flex-nowrap">
                       <span className="flex gap-0.5" aria-label={`Livello ${level}`}>
                         {Array.from({ length: 10 }, (_, i) => (
                           <span key={i} className={cn("size-2 rounded-full", i < level ? "bg-flamingo" : "bg-white/15")} />
