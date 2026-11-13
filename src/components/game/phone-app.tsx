@@ -284,7 +284,16 @@ export function PhoneApp({ characterId, maxNumbers, initialNumber, initialThread
         setThreadMessages((prev) => prev.map((x) => (x.id === m.id ? { ...x, ...m } : x)));
         loadInbox();
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "phone_members" }, () => loadAll())
+      // qualcuno entra o esce da una conversazione: si rilegge tutto
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "phone_members" }, () => loadAll())
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "phone_members" }, () => loadAll())
+      // letto o svuotato: la riga nuova arriva con l'avviso, niente riletture
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "phone_members" }, (p) => {
+        const row = p.new as PhoneMember;
+        if (!row.thread_id || !row.number_id) return;
+        setMembers((prev) => prev.map((m) => (m.thread_id === row.thread_id && m.number_id === row.number_id ? { ...m, ...row } : m)));
+        if (row.number_id === current) loadInbox();
+      })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "phone_threads" }, () => loadAll())
       .on("postgres_changes", { event: "*", schema: "public", table: "phone_calls" }, async () => {
         const { data } = await supabase

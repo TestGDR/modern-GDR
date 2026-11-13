@@ -84,7 +84,7 @@ export function Feed({ initialMode = "tutti" }: { initialMode?: "tutti" | "segui
     const t = setTimeout(() => load(0), 0);
     return () => clearTimeout(t);
   }, [load]);
-  useResync(() => load(0));
+  useResync(() => load(0), 1_800_000);
 
   return (
     <div className="flex flex-col gap-4">

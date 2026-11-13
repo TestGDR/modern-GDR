@@ -40,8 +40,8 @@ const TICK_MS = 60_000;
 const HEARTBEAT_MS = 300_000;
 /** Rilettura dell'elenco a scheda visibile */
 const POLL_MS = 300_000;
-/** Riletture dopo gli avvisi: al massimo una ogni 30 secondi */
-const REFRESH_GAP_MS = 30_000;
+/** Riletture dopo gli avvisi: al massimo una ogni 90 secondi */
+const REFRESH_GAP_MS = 90_000;
 const RETRY_MS = 4_000;
 
 type Row = {
@@ -97,7 +97,7 @@ export function usePresence(info: PresenceInfo) {
     );
   }, [supabase]);
 
-  // Riletture raggruppate: al massimo una ogni 30 secondi, con un piccolo ritardo
+  // Riletture raggruppate: al massimo una ogni 90 secondi, con un piccolo ritardo
   // a caso perché non partano tutti insieme quando qualcuno entra o esce
   const lastRefresh = useRef(0);
   const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -117,7 +117,8 @@ export function usePresence(info: PresenceInfo) {
 
   // Chi sono (serve come chiave del canale)
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+    // dalla sessione nel browser: niente chiamata al server
+    supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user.id ?? null));
   }, [supabase]);
 
   // --- Tempo reale: entrate e uscite subito ---

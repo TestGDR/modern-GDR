@@ -73,7 +73,8 @@ export function SocialApp({ me: meProp, canModerate, initialView }: Props) {
       supabase.removeChannel(ch);
     };
   }, [supabase, loadMine, loadUnread]);
-  useResync(loadUnread);
+  // i non letti arrivano in tempo reale: ricontrollo ogni 15 minuti
+  useResync(loadUnread, 900_000);
 
   const go = useCallback(
     (v: SocialView) => {

@@ -109,10 +109,12 @@ export function requestCounters(urgent = false) {
     return;
   }
   if (debounce) return;
+  // non urgente: si aspetta che la lettura precedente abbia almeno 45 secondi
+  const wait = urgent ? DEBOUNCE_MS : Math.max(DEBOUNCE_MS, CACHE_MS - (Date.now() - fetchedAt));
   debounce = setTimeout(() => {
     debounce = null;
     refreshCounters(true);
-  }, DEBOUNCE_MS);
+  }, wait);
 }
 
 /* ---------- Avvisi in tempo reale e ricontrollo: una sola volta per tutto il sito ---------- */
@@ -142,7 +144,7 @@ function start() {
       .on("postgres_changes", { event: "*", schema: "public", table: "system_messages", filter: `user_id=eq.${me}` }, urgent)
       // telefono
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "phone_messages" }, urgent)
-      .on("postgres_changes", { event: "*", schema: "public", table: "phone_members" }, later)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "phone_members" }, later)
       .on("postgres_changes", { event: "*", schema: "public", table: "phone_calls" }, urgent)
       // ticket
       .on("postgres_changes", { event: "*", schema: "public", table: "tickets" }, urgent)
