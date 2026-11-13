@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { forgetPrefsRow, readPrefsRow } from "@/lib/prefs";
 
 // Disponibilità scelta dal giocatore (dal Westeros: availability.ts).
 // Disponibilità e messaggio OFF personale sono dell'account: stanno nel database
@@ -17,10 +18,11 @@ export function isAvailability(value: unknown): value is Availability {
 
 /** Disponibilità e messaggio OFF dell'account collegato (la RLS dà solo la propria riga) */
 export async function loadPresenceState(supabase: SupabaseClient): Promise<{ availability: Availability; note: string }> {
-  const { data } = await supabase.from("user_prefs").select("availability, presence_note").maybeSingle<{ availability: string; presence_note: string }>();
+  const data = await readPrefsRow(supabase);
+  const availability = data?.availability;
   return {
-    availability: isAvailability(data?.availability) ? data.availability : "disponibile",
-    note: (data?.presence_note ?? "").slice(0, 80),
+    availability: isAvailability(availability) ? availability : "disponibile",
+    note: String(data?.presence_note ?? "").slice(0, 80),
   };
 }
 
@@ -30,5 +32,6 @@ export async function savePresenceState(supabase: SupabaseClient, userId: string
   if (value.availability) row.availability = value.availability;
   if (value.note !== undefined) row.presence_note = value.note.slice(0, 80);
   const { error } = await supabase.from("user_prefs").upsert(row);
+  forgetPrefsRow();
   return !error;
 }

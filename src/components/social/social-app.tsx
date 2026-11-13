@@ -73,10 +73,7 @@ export function SocialApp({ me: meProp, canModerate, initialView }: Props) {
       supabase.removeChannel(ch);
     };
   }, [supabase, loadMine, loadUnread]);
-  useResync(() => {
-    loadMine();
-    loadUnread();
-  });
+  useResync(loadUnread);
 
   const go = useCallback(
     (v: SocialView) => {

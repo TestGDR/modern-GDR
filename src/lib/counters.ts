@@ -57,7 +57,7 @@ export const EMPTY_COUNTERS: Counters = {
 
 const CACHE_MS = 45_000;
 const DEBOUNCE_MS = 1_500;
-const RESYNC_MS = 180_000;
+const RESYNC_MS = 300_000;
 
 let state: Counters = EMPTY_COUNTERS;
 let fetchedAt = 0;

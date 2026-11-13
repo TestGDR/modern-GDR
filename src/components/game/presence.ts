@@ -36,10 +36,10 @@ export type PresenceInfo = { availability: Availability; place: string; placeKey
 
 /** Ogni quanto si guarda se mandare il segnale */
 const TICK_MS = 60_000;
-/** Al massimo un segnale ogni 3 minuti (online = un'azione nelle ultime 2 ore) */
-const HEARTBEAT_MS = 180_000;
+/** Al massimo un segnale ogni 5 minuti (online = un'azione nelle ultime 2 ore) */
+const HEARTBEAT_MS = 300_000;
 /** Rilettura dell'elenco a scheda visibile */
-const POLL_MS = 180_000;
+const POLL_MS = 300_000;
 /** Riletture dopo gli avvisi: al massimo una ogni 30 secondi */
 const REFRESH_GAP_MS = 30_000;
 const RETRY_MS = 4_000;

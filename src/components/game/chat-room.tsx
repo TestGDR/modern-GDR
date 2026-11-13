@@ -161,11 +161,11 @@ export function ChatRoom({ data, me, canNarrate, canModerate, canTags, canStash,
   const loadStatusesRef = useRef(loadStatuses);
   useEffect(() => {
     loadStatusesRef.current = loadStatuses;
-    // all'entrata (e quando cambiano i presenti), poi ogni 3 minuti a scheda visibile
+    // all'entrata (e quando cambiano i presenti), poi ogni 5 minuti a scheda visibile
     const first = setTimeout(loadStatuses, 0);
     const t = setInterval(() => {
       if (document.visibilityState === "visible") loadStatuses();
-    }, 180_000);
+    }, 300_000);
     return () => {
       clearTimeout(first);
       clearInterval(t);

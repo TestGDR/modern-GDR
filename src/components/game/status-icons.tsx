@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Moon, Pill, Wine, X, type LucideIcon } from "lucide-react";
 import { HoverTip } from "@/components/game/hover-tip";
-import { LevelIcon } from "@/components/game/level-icon";
+import { LevelIcon, loadOwnerLevel } from "@/components/game/level-icon";
 import { modsText, timeLeft, type AlterationStage } from "@/lib/market";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,16 @@ type Item = {
   until: string | null;
 };
 
+// stati di una scheda: una lettura al minuto per scheda, condivisa tra le copie del componente
+const statusReads = new Map<string, { at: number; promise: Promise<CharacterStatus | null> }>();
+function loadStatus(characterId: string): Promise<CharacterStatus | null> {
+  const hit = statusReads.get(characterId);
+  if (hit && Date.now() - hit.at < 60_000) return hit.promise;
+  const promise = Promise.resolve(createClient().rpc("character_status_get", { p_character: characterId })).then(({ data }) => (data ?? null) as CharacterStatus | null);
+  statusReads.set(characterId, { at: Date.now(), promise });
+  return promise;
+}
+
 export function SheetStatus({ characterId }: { characterId: string }) {
   const [level, setLevel] = useState<Level | null>(null);
   const [status, setStatus] = useState<CharacterStatus | null>(null);
@@ -40,22 +50,18 @@ export function SheetStatus({ characterId }: { characterId: string }) {
 
   useEffect(() => {
     let alive = true;
-    const supabase = createClient();
     const load = () =>
-      Promise.all([
-        supabase.rpc("character_owner_level", { p_character: characterId }),
-        supabase.rpc("character_status_get", { p_character: characterId }),
-      ]).then(([l, s]) => {
+      Promise.all([loadOwnerLevel(characterId), loadStatus(characterId)]).then(([l, s]) => {
         if (!alive) return;
-        setLevel((l.data ?? null) as Level | null);
-        setStatus((s.data ?? null) as CharacterStatus | null);
+        setLevel(l as Level | null);
+        setStatus(s);
         setNow(Date.now());
       });
     load();
-    // ogni 3 minuti, solo a scheda visibile
+    // ogni 5 minuti, solo a scheda visibile
     const t = setInterval(() => {
       if (document.visibilityState === "visible") load();
-    }, 180_000);
+    }, 300_000);
     return () => {
       alive = false;
       clearInterval(t);

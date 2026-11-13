@@ -255,11 +255,12 @@ export function PhoneApp({ characterId, maxNumbers, initialNumber, initialThread
     return () => clearTimeout(t);
   }, [loadAll]);
 
+  // il tempo reale porta messaggi e chiamate: il ricontrollo completo basta ogni 10 minuti
   useResync(() => {
     loadNumbers();
     loadAll();
     if (openThreadRef.current) loadThread(openThreadRef.current);
-  });
+  }, 600_000);
 
   // Tempo reale: messaggi, partecipanti, conversazioni e chiamate
   const threadIds = useMemo(() => new Set(threads.map((t) => t.id)), [threads]);

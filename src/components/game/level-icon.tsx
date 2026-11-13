@@ -7,6 +7,17 @@ import { cn } from "@/lib/utils";
 
 // Icona del livello OFF (Amministratore, Master, Moderatore…), con il nome nel fumetto.
 
+type OwnerLevel = { name: string; icon_url: string | null };
+// livello del proprietario di una scheda: una lettura al minuto per scheda, condivisa
+const levelReads = new Map<string, { at: number; promise: Promise<OwnerLevel | null> }>();
+export function loadOwnerLevel(characterId: string): Promise<OwnerLevel | null> {
+  const hit = levelReads.get(characterId);
+  if (hit && Date.now() - hit.at < 60_000) return hit.promise;
+  const promise = Promise.resolve(createClient().rpc("character_owner_level", { p_character: characterId })).then(({ data }) => (data ?? null) as OwnerLevel | null);
+  levelReads.set(characterId, { at: Date.now(), promise });
+  return promise;
+}
+
 export function LevelIcon({ icon, name, className }: { icon: string | null | undefined; name: string | null | undefined; className?: string }) {
   if (!icon) return null;
   return (
@@ -23,11 +34,9 @@ export function CharacterLevelIcon({ characterId, className, withName = false }:
   const [level, setLevel] = useState<{ name: string; icon_url: string | null } | null>(null);
   useEffect(() => {
     let alive = true;
-    createClient()
-      .rpc("character_owner_level", { p_character: characterId })
-      .then(({ data }) => {
-        if (alive) setLevel((data ?? null) as typeof level);
-      });
+    loadOwnerLevel(characterId).then((data) => {
+      if (alive) setLevel(data);
+    });
     return () => {
       alive = false;
     };

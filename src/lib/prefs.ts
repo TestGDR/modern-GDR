@@ -118,9 +118,29 @@ export function savedPrefs(): Prefs | null {
   return saved;
 }
 
+// Una sola lettura della propria riga per preferenze, skin e disponibilità:
+// chi la chiede entro pochi secondi riceve la stessa risposta (meno chiamate a Supabase).
+let rowRead: { at: number; promise: Promise<Record<string, unknown> | null> } | null = null;
+const ROW_TTL_MS = 10_000;
+export function readPrefsRow(supabase: SupabaseClient): Promise<Record<string, unknown> | null> {
+  if (rowRead && Date.now() - rowRead.at < ROW_TTL_MS) return rowRead.promise;
+  const promise = Promise.resolve(supabase.from("user_prefs").select("*").maybeSingle()).then(({ data, error }) => {
+    if (error) rowRead = null;
+    return (data as Record<string, unknown> | null) ?? null;
+  });
+  rowRead = { at: Date.now(), promise };
+  return promise;
+}
+/** Dopo un salvataggio la prossima lettura torna al database */
+export function forgetPrefsRow() {
+  rowRead = null;
+}
+
 /** Le proprie preferenze (la RLS restituisce solo la propria riga) */
 export async function loadPrefs(supabase: SupabaseClient): Promise<Prefs> {
-  const { data } = await supabase.from("user_prefs").select(COLUMNS).maybeSingle();
+  const row = await readPrefsRow(supabase);
+  const keys = COLUMNS.split(",").map((c) => c.trim());
+  const data = row ? Object.fromEntries(Object.entries(row).filter(([k]) => keys.includes(k))) : null;
   const p = { ...DEFAULT_PREFS, ...((data as Partial<Prefs> | null) ?? {}) };
   saved = {
     ...p,
@@ -135,6 +155,7 @@ export async function savePrefs(supabase: SupabaseClient, p: Prefs) {
   const { data } = await supabase.auth.getUser();
   if (!data.user) return false;
   const { error } = await supabase.from("user_prefs").upsert({ user_id: data.user.id, ...p, updated_at: new Date().toISOString() });
+  forgetPrefsRow();
   if (!error) saved = p;
   return !error;
 }
@@ -172,11 +193,9 @@ export function setSkinImageAttr(on: boolean) {
 
 /** La propria skin dal database (classica se manca) e se mostrare lo sfondo con l'immagine */
 export async function loadSkin(supabase: SupabaseClient): Promise<{ skin: Skin; image: boolean }> {
-  const { data, error } = await supabase.from("user_prefs").select("skin").maybeSingle();
-  const skin: Skin = !error && (data as { skin?: string } | null)?.skin === "tramonto" ? "tramonto" : "classica";
-  // a parte: se la colonna non c'è ancora resta spento
-  const { data: img, error: imgError } = await supabase.from("user_prefs").select("skin_image").maybeSingle();
-  const image = !imgError && Boolean((img as { skin_image?: boolean } | null)?.skin_image);
+  const row = await readPrefsRow(supabase);
+  const skin: Skin = row?.skin === "tramonto" ? "tramonto" : "classica";
+  const image = Boolean(row?.skin_image);
   setSkinAttr(skin);
   setSkinImageAttr(image);
   return { skin, image };
@@ -187,6 +206,7 @@ export async function saveSkinImage(supabase: SupabaseClient, on: boolean) {
   const { data } = await supabase.auth.getUser();
   if (!data.user) return false;
   const { error } = await supabase.from("user_prefs").upsert({ user_id: data.user.id, skin_image: on, updated_at: new Date().toISOString() });
+  forgetPrefsRow();
   if (!error) setSkinImageAttr(on);
   return !error;
 }
@@ -196,6 +216,7 @@ export async function saveSkin(supabase: SupabaseClient, skin: Skin) {
   const { data } = await supabase.auth.getUser();
   if (!data.user) return false;
   const { error } = await supabase.from("user_prefs").upsert({ user_id: data.user.id, skin, updated_at: new Date().toISOString() });
+  forgetPrefsRow();
   if (!error) setSkinAttr(skin);
   return !error;
 }
